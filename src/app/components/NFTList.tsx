@@ -160,8 +160,11 @@ const NFTList: React.FC = () => {
             return nft.lastSaleAmount || -1;
           case 'lastTransferredAt':
             return nft.lastTransferredAt || -1;
-          case 'priceChange':
-            return calculatePriceChange(nft.firstSaleAmount, nft.lastSaleAmount) || -Infinity;
+            case 'priceChange':
+              const firstAmount = nft.firstSaleAmount;
+              const lastAmount = nft.lastSaleAmount;
+              if (!firstAmount || !lastAmount) return sort.direction === 'asc' ? Infinity : -Infinity;
+              return ((lastAmount - firstAmount) / firstAmount) * 100;
           case 'isOrderMade':
             return nft.isOrderMade;
           default:
@@ -175,7 +178,16 @@ const NFTList: React.FC = () => {
   const formatDate = (timestamp?: number | null) => {
     if (timestamp === undefined) return '-';
     if (!timestamp) return '-';
-    return new Date(timestamp).toLocaleString();
+    const date = new Date(timestamp);
+    return date.toLocaleString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).replace(/\//g, '/').replace(',', '');
   };
 
   const formatAmount = (amount?: number | null) => {

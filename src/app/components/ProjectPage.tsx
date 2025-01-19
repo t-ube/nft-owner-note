@@ -6,17 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { dbManager, Project } from '@/utils/db';
-import ProjectSidebar from '@/app/components/ProjectSidebar';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import ProjectLayout from '@/app/components/ProjectLayout';
 
 interface ProjectFormData {
   projectId: string;
@@ -33,9 +23,6 @@ const ProjectPage: React.FC = () => {
     issuer: '',
     taxon: ''
   });
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     loadProjects();
@@ -61,37 +48,9 @@ const ProjectPage: React.FC = () => {
     }
   };
 
-  const handleDeleteClick = (e: React.MouseEvent, project: Project) => {
-    e.stopPropagation();
-    setProjectToDelete(project);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (projectToDelete) {
-      try {
-        await dbManager.deleteProject(projectToDelete.id);
-        setProjects(projects.filter(p => p.id !== projectToDelete.id));
-      } catch (error) {
-        console.error('Failed to delete project:', error);
-      }
-    }
-    setIsDeleteDialogOpen(false);
-    setProjectToDelete(null);
-  };
-
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <ProjectSidebar
-        projects={projects}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        onDeleteClick={handleDeleteClick}
-      />
-
-      {/* Main Content */}
-      <div className="flex-1 p-8">
+    <ProjectLayout>
+      <div className="p-8">
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle>Create New Project</CardTitle>
@@ -163,24 +122,7 @@ const ProjectPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the project 
-              `&quot;`{projectToDelete?.name}`&quot;` (#{projectToDelete?.projectId}).
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+    </ProjectLayout>
   );
 };
 

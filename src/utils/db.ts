@@ -27,7 +27,7 @@ export interface NFTokenBase {
 }
 
 export interface NFToken extends NFTokenBase {
-  name: string | null;
+  name?: string | null;
   lastSaleAmount?: number | null;
   lastTransferredAt?: number | null;
   firstSaleAmount?: number | null;

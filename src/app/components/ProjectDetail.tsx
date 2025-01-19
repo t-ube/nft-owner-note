@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { dbManager, Project } from '@/utils/db';
 import ProjectSidebar from '@/app/components/ProjectSidebar';
 import { 
-  ArrowUpDown,
   RefreshCcw,
   Filter,
   Users,
@@ -199,10 +198,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
                     <Button variant="outline" size="sm">
                       <Filter className="h-4 w-4 mr-2" />
                       Filter
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <ArrowUpDown className="h-4 w-4 mr-2" />
-                      Sort
                     </Button>
                   </div>
                 </CardHeader>

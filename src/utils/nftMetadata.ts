@@ -12,7 +12,6 @@ interface NFTMetadata {
   }>;
 }
 
-// 複数のIPFSゲートウェイを用意
 const IPFS_GATEWAYS = [
   'https://ipfs.io/ipfs/',
   'https://gateway.pinata.cloud/ipfs/',
@@ -22,15 +21,12 @@ const TIMEOUT_DURATION = 20000; // 20 seconds
 
 export async function fetchNFTMetadata(uri: string): Promise<NFTMetadata | null> {
   try {
-    // タイムアウト用のコントローラーを作成
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_DURATION);
 
-    // URIがIPFSの場合の処理
     if (uri.startsWith('ipfs://')) {
       const hash = uri.replace('ipfs://', '');
       
-      // 複数のゲートウェイを並列に試す
       const fetchPromises = IPFS_GATEWAYS.map(async (gateway) => {
         try {
           const response = await fetch(gateway + hash, {
@@ -51,7 +47,6 @@ export async function fetchNFTMetadata(uri: string): Promise<NFTMetadata | null>
         }
       });
 
-      // 最初に成功したレスポンスを返す
       const result = await Promise.race(
         fetchPromises.map(p => p.catch(() => null))
       );
@@ -60,7 +55,6 @@ export async function fetchNFTMetadata(uri: string): Promise<NFTMetadata | null>
       return result;
     }
     
-    // HTTP/HTTPSの場合の処理
     if (uri.startsWith('http://') || uri.startsWith('https://')) {
       const response = await fetch(uri, {
         signal: controller.signal
@@ -69,7 +63,6 @@ export async function fetchNFTMetadata(uri: string): Promise<NFTMetadata | null>
       return await response.json();
     }
 
-    // Base64でエンコードされたJSONの場合の処理
     if (uri.startsWith('data:application/json;base64,')) {
       const base64Data = uri.replace('data:application/json;base64,', '');
       const jsonString = atob(base64Data);
@@ -85,40 +78,34 @@ export async function fetchNFTMetadata(uri: string): Promise<NFTMetadata | null>
 }
 
 export async function updateNFTNames(nfts: NFToken[]): Promise<NFToken[]> {
-  const updatedNFTs: NFToken[] = [];
-
-  for (const nft of nfts) {
-    try {
-      // nameが既に設定されている場合はスキップ
-      if (nft.name !== null) {
-        updatedNFTs.push(nft);
-        continue;
-      }
-
-      // URIが空の場合はスキップ
-      if (!nft.uri) {
-        updatedNFTs.push(nft);
-        continue;
-      }
-
-      const metadata = await fetchNFTMetadata(nft.uri);
-      if (metadata?.name) {
-        updatedNFTs.push({
-          ...nft,
-          name: metadata.name
-        });
-      } else {
-        // メタデータの取得に失敗した場合は、nameをnullに設定
-        updatedNFTs.push({
-          ...nft,
-          name: null
-        });
-      }
-    } catch (error) {
-      console.error(`Error updating NFT name for ${nft.nft_id}:`, error);
-      updatedNFTs.push(nft);
-    }
+  // Filter NFTs that need name updates (name is null and has a URI)
+  const nftsToUpdate = nfts.filter(nft => nft.name === null && nft.uri);
+  
+  // If no NFTs need updating, return original array
+  if (nftsToUpdate.length === 0) {
+    return nfts;
   }
 
-  return updatedNFTs;
+  console.log(`Updating names for ${nftsToUpdate.length} NFTs`);
+
+  const updatedNFTs = await Promise.all(
+    nftsToUpdate.map(async (nft) => {
+      try {
+        const metadata = await fetchNFTMetadata(nft.uri);
+        return {
+          ...nft,
+          name: metadata?.name || null
+        };
+      } catch (error) {
+        console.error(`Error updating NFT name for ${nft.nft_id}:`, error);
+        return nft;
+      }
+    })
+  );
+
+  // Combine updated NFTs with unchanged ones and maintain original order
+  return nfts.map(originalNft => {
+    const updatedNft = updatedNFTs.find(u => u.nft_id === originalNft.nft_id);
+    return updatedNft || originalNft;
+  });
 }

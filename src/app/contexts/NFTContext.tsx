@@ -143,12 +143,22 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
         is_burned: nft.is_burned,
         ledger_index: nft.ledger_index,
         updatedAt: Date.now(),
-        // デフォルトの追加情報
-        name: null,
       }));
 
+      const existingNFTs = nfts.filter(nft => 
+        transformedNFTs.some(transformed => transformed.nft_id === nft.nft_id)
+      );
+
+      const mergedNFTs = transformedNFTs.map(newNFT => {
+        const existing = existingNFTs.find(e => e.nft_id === newNFT.nft_id);
+        return {
+          ...newNFT,
+          name: existing?.name ?? null,
+        };
+      });
+
       // メタデータからnameを更新
-      const nftsWithNames = await updateNFTNames(transformedNFTs);
+      const nftsWithNames = await updateNFTNames(mergedNFTs);
   
       // Update NFTs in the database
       const updatedNFTs = await dbManager.updateNFTs(projectId, nftsWithNames);
