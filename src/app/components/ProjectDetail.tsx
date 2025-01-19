@@ -106,7 +106,12 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
           onSearchChange={setSearchTerm}
           onDeleteClick={handleDeleteClick}
         />
-        <div className="flex-1 p-6">Loading...</div>
+        <div className="flex-1 p-6 flex items-center justify-center">
+          <div className="flex items-center space-x-2">
+            <RefreshCcw className="h-5 w-5 animate-spin" />
+            <span>Loading project data...</span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -121,7 +126,14 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
           onSearchChange={setSearchTerm}
           onDeleteClick={handleDeleteClick}
         />
-        <div className="flex-1 p-6">Project not found</div>
+        <div className="flex-1 p-6 flex items-center justify-center">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Project not found
+            </AlertDescription>
+          </Alert>
+        </div>
       </div>
     );
   }
