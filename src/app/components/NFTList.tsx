@@ -283,10 +283,8 @@ const NFTList: React.FC = () => {
             <TableRow>
               <SortableHeader field="tokenId">Token ID</SortableHeader>
               <SortableHeader field="name">Name</SortableHeader>
-              <SortableHeader field="owner">Owner / Group</SortableHeader>
+              <SortableHeader field="owner">Owner / Label</SortableHeader>
               <SortableHeader field="mintedAt">Mint</SortableHeader>
-              <SortableHeader field="firstSaleAmount">First Sale</SortableHeader>
-              <SortableHeader field="firstTransferredAt">First Transfer</SortableHeader>
               <SortableHeader field="lastSaleAmount">Last Sale</SortableHeader>
               <SortableHeader field="lastTransferredAt">Last Transfer</SortableHeader>
               <SortableHeader field="priceChange">Price Change</SortableHeader>
@@ -331,12 +329,6 @@ const NFTList: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     {formatDate(nft.mintedAt)}
-                  </TableCell>
-                  <TableCell>
-                    {formatAmount(nft.firstSaleAmount)}
-                  </TableCell>
-                  <TableCell>
-                    {formatDate(nft.firstTransferredAt)}
                   </TableCell>
                   <TableCell>
                     {formatAmount(nft.lastSaleAmount)}

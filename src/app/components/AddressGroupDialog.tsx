@@ -94,11 +94,11 @@ export function AddressGroupDialog({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{groupId ? 'Edit Group' : 'Create Group'}</DialogTitle>
+          <DialogTitle>{groupId ? 'Edit Owner' : 'Create Owner'}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="name">Group Name</Label>
+            <Label htmlFor="name">Owner Label</Label>
             <Input
               id="name"
               value={addressGroup.name || ''}

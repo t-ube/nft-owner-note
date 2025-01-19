@@ -15,7 +15,7 @@ export interface NFTokenBase {
   projectId: string;
   nft_id: string;
   nft_serial: number;
-  owner: string;
+  owner: string; // Wallet address
   is_burned: boolean;
   uri: string;
   flags: number;

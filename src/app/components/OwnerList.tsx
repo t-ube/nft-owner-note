@@ -130,7 +130,7 @@ const OwnerList: React.FC = () => {
         <AddressGroupDialog onSave={handleGroupSave}>
           <Button variant="outline" size="sm">
             <Plus className="h-4 w-4 mr-2" />
-            Add Group
+            Add Owner
           </Button>
         </AddressGroupDialog>
         <CSVImportExport onGroupsUpdated={loadData} />
@@ -141,7 +141,7 @@ const OwnerList: React.FC = () => {
           <TableHeader>
             <TableRow>
               <TableHead className="w-40">Owner</TableHead>
-              <TableHead className="w-40">Group</TableHead>
+              <TableHead className="w-40">Label</TableHead>
               <TableHead className="w-40">XAccount</TableHead>
               <TableHead className="w-32 text-right">NFT Count</TableHead>
               <TableHead className="w-32 text-right">Holding %</TableHead>
