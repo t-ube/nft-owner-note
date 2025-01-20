@@ -86,6 +86,13 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
   if (isLoading) {
     return (
       <div className="flex h-screen">
+        <ProjectSidebar
+          projects={projects}
+          currentProjectId={projectId}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          onDeleteClick={handleDeleteClick}
+        />
         <div className="flex-1 p-6 flex items-center justify-center">
           <div className="flex items-center space-x-2">
             <RefreshCcw className="h-5 w-5 animate-spin" />
@@ -99,6 +106,13 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
   if (error) {
     return (
       <div className="flex h-screen">
+        <ProjectSidebar
+          projects={projects}
+          currentProjectId={projectId}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          onDeleteClick={handleDeleteClick}
+        />
         <div className="flex-1 p-6 flex items-center justify-center">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -112,6 +126,13 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
   if (!project) {
     return (
       <div className="flex h-screen">
+        <ProjectSidebar
+          projects={projects}
+          currentProjectId={projectId}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          onDeleteClick={handleDeleteClick}
+        />
         <div className="flex-1 p-6 flex items-center justify-center">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />

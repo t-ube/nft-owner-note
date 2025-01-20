@@ -32,7 +32,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
   const { isReady: isXrplReady, error: xrplError } = useXrplClient();
   const { refreshData: refreshNFTs, isLoading: isNFTLoading } = useNFTContext();
 
-
   const loadProjectData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -40,10 +39,11 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
       if (projectData) {
         setProject(projectData);
       }
+      setIsLoading(false);
     } catch (error) {
+      setIsLoading(false);
       console.error('Failed to load project data:', error);
     }
-    setIsLoading(false);
   }, [projectId]);
 
   useEffect(() => {
