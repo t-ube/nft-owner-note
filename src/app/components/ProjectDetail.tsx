@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import NFTList from '@/app/components/NFTList';
 import OwnerList from '@/app/components/OwnerList';
+import Statistics from '@/app/components/Statistics';
 import { useXrplClient } from '@/app/contexts/XrplContext';
 import { useNFTContext } from '@/app/contexts/NFTContext';
 
@@ -161,22 +162,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
 
           <TabsContent value="stats" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Daily Sales</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {/* Daily Sales Chart will go here */}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>7-Day Moving Average</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {/* Moving Average Chart will go here */}
-                </CardContent>
-              </Card>
+              <Statistics projectId={projectId}/>
             </div>
           </TabsContent>
         </Tabs>
