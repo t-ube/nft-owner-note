@@ -21,7 +21,8 @@ import {
 import { RefreshCcw, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
-import { AddressGroupDialog } from './AddressGroupDialog';
+import { AddressGroupDialog } from '@/app/components/AddressGroupDialog';
+import NFTSiteIcons from '@/app/components/NFTSiteIcons';
 import _ from 'lodash';
 
 const SYMBOLS = [
@@ -293,9 +294,9 @@ const NFTList: React.FC = () => {
               <SortableHeader field="tokenId">Token ID</SortableHeader>
               <SortableHeader field="name">Name</SortableHeader>
               <SortableHeader field="owner">Owner / Label</SortableHeader>
-              <SortableHeader field="mintedAt">Mint</SortableHeader>
+              <SortableHeader field="mintedAt">Minted At</SortableHeader>
               <SortableHeader field="lastSaleAmount">Last Sale</SortableHeader>
-              <SortableHeader field="lastTransferredAt">Last Transfer</SortableHeader>
+              <SortableHeader field="lastTransferredAt">Last Sale At</SortableHeader>
               <SortableHeader field="priceChange">Price Change</SortableHeader>
               <SortableHeader field="isOrderMade">Custom Made</SortableHeader>
               <TableHead>Symbol</TableHead>
@@ -311,6 +312,7 @@ const NFTList: React.FC = () => {
                 <TableRow key={nft.nft_id}>
                   <TableCell className="font-mono text-xs">
                     {formatTokenId(nft.nft_id)}
+                    <NFTSiteIcons tokenId={nft.nft_id} />
                   </TableCell>
                   <TableCell>
                     {nft.name || '-'}
@@ -347,8 +349,8 @@ const NFTList: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     {priceChange !== null ? (
-                      <span className={priceChange >= 0 ? 'text-green-600' : 'text-red-600'}>
-                        {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
+                      <span className={priceChange > 0 ? 'text-green-600' : priceChange < 0 ? 'text-red-600' : ''}>
+                        {priceChange > 0 ? '+' : ''}{priceChange.toFixed(2)}%
                       </span>
                     ) : '-'}
                   </TableCell>
