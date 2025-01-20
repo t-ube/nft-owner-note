@@ -1,7 +1,8 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Folder, Search, Trash2 } from 'lucide-react';
+import { Folder, Search, Trash2, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Project } from '@/utils/db';
 
 interface ProjectSidebarProps {
@@ -29,6 +30,10 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     router.push('/');
   };
 
+  const handleOwnersClick = () => {
+    router.push('/owners');
+  };
+
   const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     project.projectId.toLowerCase().includes(searchTerm.toLowerCase())
@@ -43,6 +48,16 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
         >
           Owner Note
         </h1>
+
+        <Button
+          variant="outline"
+          className="w-full mb-4 justify-start"
+          onClick={handleOwnersClick}
+        >
+          <Users className="h-4 w-4 mr-2" />
+          Owners List
+        </Button>
+
         <h2 className="text-xl font-bold mb-4">Projects</h2>
         <div className="relative">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />

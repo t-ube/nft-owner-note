@@ -71,14 +71,22 @@ export function AddressGroupDialog({
   };
 
   const handleSave = async () => {
-    if (!addressGroup.name || !addressGroup.addresses?.length) return;
+    if (!addressGroup.name) {
+      // 名前は必須
+      return;
+    }
 
     try {
       let savedGroup: AddressGroup;
       if (groupId) {
         savedGroup = await dbManager.updateAddressGroup(addressGroup as AddressGroup);
       } else {
-        savedGroup = await dbManager.createAddressGroup(addressGroup as Omit<AddressGroup, 'id' | 'updatedAt'>);
+        // 新規作成時は空の配列をデフォルトとして設定
+        const groupToSave = {
+          ...addressGroup,
+          addresses: addressGroup.addresses || []
+        };
+        savedGroup = await dbManager.createAddressGroup(groupToSave as Omit<AddressGroup, 'id' | 'updatedAt'>);
       }
       onSave?.(savedGroup);
       setOpen(false);
@@ -103,7 +111,7 @@ export function AddressGroupDialog({
               id="name"
               value={addressGroup.name || ''}
               onChange={(e) => setAddressGroup(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Enter group name"
+              placeholder="Enter owner label"
             />
           </div>
           <div className="grid gap-2">

@@ -45,8 +45,11 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
       // Generate CSV
       const csv = Papa.unparse(csvData);
       
+      // Add BOM for UTF-8
+      const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+      
       // Create and trigger download
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob([bom, csv], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.setAttribute('download', `address_groups_${new Date().toISOString().split('T')[0]}.csv`);
@@ -96,7 +99,7 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = event.target.files?.[0];
     if (!file) return;
-
+  
     try {
       const text = await file.text();
       
@@ -104,7 +107,7 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
         header: true,
         complete: async (results: ParseResult<AddressGroupCSV>) => {
           try {
-            // Validate all rows first
+            // バリデーション
             const validationErrors: ValidationError[] = [];
             results.data.forEach((row: AddressGroupCSV, index: number) => {
               const error = validateCSVRow(row, index);
@@ -112,18 +115,35 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
                 validationErrors.push(error);
               }
             });
-
+  
             if (validationErrors.length > 0) {
               setError(`Validation errors in CSV: ${validationErrors.map(e => 
                 `Row ${e.row}: ${e.errors.join(', ')}`
               ).join('; ')}`);
               return;
             }
-
-            // Convert and import valid data
-            const importPromises = results.data
-              .map((row: AddressGroupCSV) => dbManager.createAddressGroup(convertCSVToAddressGroup(row)));
-
+  
+            // 既存のグループを取得
+            const existingGroups = await dbManager.getAllAddressGroups();
+            const existingGroupsByName = new Map(existingGroups.map(g => [g.name, g]));
+  
+            // 各行を処理
+            const importPromises = results.data.map(async (row: AddressGroupCSV) => {
+              const groupData = convertCSVToAddressGroup(row);
+              const existingGroup = existingGroupsByName.get(groupData.name);
+  
+              if (existingGroup) {
+                // 既存のグループを更新
+                return dbManager.updateAddressGroup({
+                  ...existingGroup,
+                  ...groupData
+                });
+              } else {
+                // 新規グループを作成
+                return dbManager.createAddressGroup(groupData);
+              }
+            });
+  
             await Promise.all(importPromises);
             onGroupsUpdated();
             setError(null);
@@ -133,7 +153,7 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
           }
         },
         error: () => {
-          setError(`Failed to parse CSV file`);
+          setError('Failed to parse CSV file');
           console.error('Parse error');
         }
       });
@@ -159,7 +179,8 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
     ];
     
     const csv = Papa.unparse(sampleData);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+    const blob = new Blob([bom, csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.setAttribute('download', 'sample_address_groups.csv');

@@ -11,11 +11,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Plus } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AddressGroupDialog } from './AddressGroupDialog';
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
-import CSVImportExport from '@/app/components/CSVImportExport';
 
 interface OwnerStats {
   address: string;
@@ -47,7 +46,7 @@ const OwnerList: React.FC = () => {
     void loadData();
   }, [loadData]);
 
-  // Calculate owner statistics
+    // Calculate owner statistics
   const ownerStats = React.useMemo(() => {
     const activeNFTs = nfts.filter(nft => !nft.is_burned);
     const totalActiveNFTs = activeNFTs.length;
@@ -69,6 +68,28 @@ const OwnerList: React.FC = () => {
 
     return _.orderBy(stats, ['nftCount', 'address'], ['desc', 'asc']);
   }, [nfts, addressGroups, addressInfos]);
+
+  // ランク計算用の関数
+  const calculateRank = React.useCallback((stats: OwnerStats[]): (number | string)[] => {
+    const ranks: (number | string)[] = [];
+    let currentRank = 1;
+    let currentCount: number | null = null;
+    let sameRankCount = 0;
+
+    stats.forEach((stat) => {
+      if (stat.nftCount !== currentCount) {
+        currentRank = currentRank + sameRankCount;
+        currentCount = stat.nftCount;
+        sameRankCount = 0;
+      }
+      ranks.push(currentRank);
+      sameRankCount++;
+    });
+
+    return ranks;
+  }, []);
+
+  const ranks = React.useMemo(() => calculateRank(ownerStats), [ownerStats, calculateRank]);
 
   const handleGroupSave = async (savedGroup: AddressGroup) => {
     setAddressGroups(prev => ({
@@ -127,19 +148,13 @@ const OwnerList: React.FC = () => {
             Burned: {burnedCount.toLocaleString()})
           </div>
         </div>
-        <AddressGroupDialog onSave={handleGroupSave}>
-          <Button variant="outline" size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Owner
-          </Button>
-        </AddressGroupDialog>
-        <CSVImportExport onGroupsUpdated={loadData} />
       </div>
 
       <div className="border rounded-md">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-20">Rank</TableHead>
               <TableHead className="w-40">Owner</TableHead>
               <TableHead className="w-40">Label</TableHead>
               <TableHead className="w-40">XAccount</TableHead>
@@ -149,8 +164,11 @@ const OwnerList: React.FC = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {ownerStats.map((stat) => (
+            {ownerStats.map((stat, index)  => (
               <TableRow key={stat.address}>
+                <TableCell className="text-center font-medium">
+                  {ranks[index]}
+                </TableCell>
                 <TableCell className="font-mono">
                   <AddressGroupDialog
                     initialAddresses={[stat.address]}

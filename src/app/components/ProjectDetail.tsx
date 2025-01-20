@@ -123,7 +123,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
             </TabsTrigger>
             <TabsTrigger value="owners">
               <Users className="h-4 w-4 mr-2" />
-              Owner List
+              Owner Rank
             </TabsTrigger>
             <TabsTrigger value="stats">
               <BarChart3 className="h-4 w-4 mr-2" />
@@ -151,7 +151,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
           <TabsContent value="owners" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Owner List</CardTitle>
+                <CardTitle>Owner Rank</CardTitle>
               </CardHeader>
               <CardContent>
                 <OwnerList />

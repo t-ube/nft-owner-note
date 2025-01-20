@@ -448,6 +448,41 @@ class DatabaseManager {
       request.onsuccess = () => resolve(request.result);
     });
   }
+
+  async deleteAddressGroup(id: string): Promise<void> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['addressGroups', 'addresses'], 'readwrite');
+      const groupStore = transaction.objectStore('addressGroups');
+      const addressStore = transaction.objectStore('addresses');
+
+      // まず既存のグループ情報を取得
+      const getRequest = groupStore.get(id);
+
+      getRequest.onsuccess = () => {
+        const group = getRequest.result as AddressGroup;
+        if (!group) {
+          resolve();
+          return;
+        }
+
+        // グループに所属する全アドレスのgroupIdをnullに更新
+        group.addresses.forEach(address => {
+          addressStore.put({
+            address,
+            groupId: null,
+            updatedAt: Date.now()
+          });
+        });
+
+        // グループを削除
+        groupStore.delete(id);
+      };
+
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
 }
 
 export const dbManager = new DatabaseManager();
