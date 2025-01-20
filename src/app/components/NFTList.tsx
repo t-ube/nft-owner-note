@@ -23,6 +23,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
 import { AddressGroupDialog } from '@/app/components/AddressGroupDialog';
 import NFTSiteIcons from '@/app/components/NFTSiteIcons';
+import { NFTFilters } from '@/app/components/NFTFilters';
+import { NFToken } from '@/utils/db';
 import _ from 'lodash';
 
 const SYMBOLS = [
@@ -61,6 +63,11 @@ const NFTList: React.FC = () => {
   const [addressGroups, setAddressGroups] = React.useState<Record<string, AddressGroup>>({});
   const [addressInfos, setAddressInfos] = React.useState<Record<string, AddressInfo>>({});
   const [sort, setSort] = React.useState<SortState>({ field: 'tokenId', direction: null });
+  const [filteredNfts, setFilteredNfts] = React.useState<NFToken[]>([]);
+
+  React.useEffect(() => {
+    setFilteredNfts(nfts);
+  }, [nfts]);
 
   React.useEffect(() => {
     const loadData = async () => {
@@ -139,7 +146,8 @@ const NFTList: React.FC = () => {
   };
 
   const getSortedNFTs = () => {
-    const activeNFTs = nfts.filter(nft => !nft.is_burned);
+    // フィルタリングされたNFTsに対してソートを適用
+    const activeNFTs = filteredNfts.filter(nft => !nft.is_burned);
     if (!sort.direction) return activeNFTs;
 
     return _.orderBy(
@@ -271,20 +279,26 @@ const NFTList: React.FC = () => {
             Burned: {burnedCount.toLocaleString()})
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={async () => {
-            await refreshData();
-            updateAllNFTHistory();
-          }}
-          disabled={isLoading || isUpdatingHistory}
-          className="flex items-center gap-2"
-        >
-          <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          {isLoading ? "Refreshing" : "Refresh"}
-          {isUpdatingHistory ? " / Updating History..." : " / Update History"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <NFTFilters
+            activeNfts={nfts.filter(nft => !nft.is_burned)}
+            onFilterChange={setFilteredNfts}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await refreshData();
+              updateAllNFTHistory();
+            }}
+            disabled={isLoading || isUpdatingHistory}
+            className="flex items-center gap-2"
+          >
+            <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            {isLoading ? "Refreshing" : "Refresh"}
+            {isUpdatingHistory ? " / Updating History..." : " / Update History"}
+          </Button>
+        </div>
       </div>
 
       <div className="border rounded-md">

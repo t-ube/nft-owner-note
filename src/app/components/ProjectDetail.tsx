@@ -7,7 +7,6 @@ import { dbManager, Project } from '@/utils/db';
 import ProjectInfo from '@/app/components/ProjectInfo';
 import { 
   RefreshCcw,
-  Filter,
   Users,
   BarChart3,
   List,
@@ -136,12 +135,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>NFT List</CardTitle>
-                <div className="flex space-x-2">
-                  <Button variant="outline" size="sm">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filter
-                  </Button>
-                </div>
               </CardHeader>
               <CardContent>
                 <NFTList/>
