@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { dbManager, Project } from '@/utils/db';
 import ProjectSidebar from '@/app/components/ProjectSidebar';
+import ProjectInfo from '@/app/components/ProjectInfo';
 import { 
   RefreshCcw,
   Filter,
@@ -96,6 +97,11 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
     setProjectToDelete(null);
   };
 
+  const handleProjectUpdate = (updatedProject: Project) => {
+    setProject(updatedProject);
+    loadAllProjects();
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-screen">
@@ -185,6 +191,8 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
               {isNFTLoading ? "Syncing..." : "Sync Data"}
             </Button>
           </div>
+
+          <ProjectInfo project={project} onProjectUpdate={handleProjectUpdate} />
 
           <Tabs defaultValue="nfts" className="space-y-4">
             <TabsList>

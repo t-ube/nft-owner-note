@@ -66,7 +66,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                 key={project.id}
                 className={`
                   flex items-center justify-between px-4 py-2 cursor-pointer
-                  transition-colors duration-200 relative
+                  transition-colors duration-200 relative group  // groupを追加
                   ${project.projectId === currentProjectId ? 'bg-gray-100' : 'hover:bg-gray-50'}
                 `}
                 onClick={() => handleProjectClick(project.projectId)}

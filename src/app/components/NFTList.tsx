@@ -138,10 +138,11 @@ const NFTList: React.FC = () => {
   };
 
   const getSortedNFTs = () => {
-    if (!sort.direction) return nfts;
+    const activeNFTs = nfts.filter(nft => !nft.is_burned);
+    if (!sort.direction) return activeNFTs;
 
     return _.orderBy(
-      nfts,
+      activeNFTs,
       [nft => {
         switch (sort.field) {
           case 'tokenId':
@@ -160,11 +161,11 @@ const NFTList: React.FC = () => {
             return nft.lastSaleAmount || -1;
           case 'lastTransferredAt':
             return nft.lastTransferredAt || -1;
-            case 'priceChange':
-              const firstAmount = nft.firstSaleAmount;
-              const lastAmount = nft.lastSaleAmount;
-              if (!firstAmount || !lastAmount) return sort.direction === 'asc' ? Infinity : -Infinity;
-              return ((lastAmount - firstAmount) / firstAmount) * 100;
+          case 'priceChange':
+            const firstAmount = nft.firstSaleAmount;
+            const lastAmount = nft.lastSaleAmount;
+            if (!firstAmount || !lastAmount) return sort.direction === 'asc' ? Infinity : -Infinity;
+            return ((lastAmount - firstAmount) / firstAmount) * 100;
           case 'isOrderMade':
             return nft.isOrderMade;
           default:
@@ -254,12 +255,20 @@ const NFTList: React.FC = () => {
   }
 
   const sortedNFTs = getSortedNFTs();
+  const burnedCount = nfts.filter(nft => nft.is_burned).length;
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <div className="text-sm text-gray-500">
-          Showing {nfts.length} NFTs
+        <div className="text-sm text-gray-500 space-y-1">
+          <div>
+            Showing {sortedNFTs.length} NFTs
+          </div>
+          <div>
+            Total NFTs: {nfts.length.toLocaleString()} 
+            (Active: {(nfts.length - burnedCount).toLocaleString()}, 
+            Burned: {burnedCount.toLocaleString()})
+          </div>
         </div>
         <Button
           variant="outline"
