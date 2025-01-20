@@ -57,7 +57,7 @@ const getDistributionStatus = (percentage: number): DistributionStatus => {
 };
 
 const Statistics: React.FC<StatisticsProps> = ({ projectId }) => {
-  const [nfts, setNfts] = useState<NFToken[]>([]);
+  const [, setNfts] = useState<NFToken[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<StatisticsState>({
     mintLast7Days: 0,
