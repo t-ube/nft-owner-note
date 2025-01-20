@@ -1,11 +1,22 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NFTContextProvider } from '@/app/contexts/NFTContext';
 import ProjectDetail from './ProjectDetail';
 import { dbManager, Project } from '@/utils/db';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RefreshCcw, AlertCircle } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import ProjectSidebar from '@/app/components/ProjectSidebar';
 
 interface ProjectDetailWrapperProps {
   projectId: string;
@@ -15,7 +26,42 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
+  const loadAllProjects = useCallback(async () => {
+    try {
+      const allProjects = await dbManager.getAllProjects();
+      setProjects(allProjects);
+    } catch (error) {
+      console.error('Failed to load projects:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAllProjects();
+  }, [loadAllProjects]);
+
+  const handleDeleteClick = (e: React.MouseEvent, project: Project) => {
+    e.stopPropagation();
+    setProjectToDelete(project);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (projectToDelete) {
+      try {
+        await dbManager.deleteProject(projectToDelete.id);
+        await loadAllProjects();
+      } catch (error) {
+        console.error('Failed to delete project:', error);
+      }
+    }
+    setIsDeleteDialogOpen(false);
+    setProjectToDelete(null);
+  };
   useEffect(() => {
     const loadProject = async () => {
       setIsLoading(true);
@@ -77,13 +123,38 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
   }
 
   return (
-    <NFTContextProvider 
-      projectId={projectId}
-      issuer={project.issuer}
-      taxon={project.taxon}
-    >
-      <ProjectDetail projectId={projectId} />
-    </NFTContextProvider>
+    <div className="flex h-screen">
+      <ProjectSidebar
+        projects={projects}
+        currentProjectId={projectId}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        onDeleteClick={handleDeleteClick}
+      />
+      <NFTContextProvider 
+        projectId={projectId}
+        issuer={project.issuer}
+        taxon={project.taxon}
+      >
+        <ProjectDetail projectId={projectId} />
+      </NFTContextProvider>
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the project 
+              &quot;{projectToDelete?.name}&quot; (#{projectToDelete?.projectId}).
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 };
 
