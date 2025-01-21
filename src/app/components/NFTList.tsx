@@ -295,7 +295,7 @@ const NFTList: React.FC = () => {
             size="sm"
             onClick={async () => {
               await refreshData();
-              updateAllNFTHistory();
+              await updateAllNFTHistory();
             }}
             disabled={isLoading || updatingNFTs.size > 0}
             className="flex items-center gap-2"
