@@ -23,7 +23,7 @@ import _ from 'lodash';
 
 interface FilterState {
   name: string;
-  symbol: string | null;
+  color: string | null;
   mintedAtStart: string;
   mintedAtEnd: string;
   lastTransferredAtStart: string;
@@ -35,7 +35,7 @@ export interface NFTFiltersProps {
   onFilterChange: (filteredNfts: NFToken[]) => void;
 }
 
-const SYMBOLS = [
+const COLORS = [
   { value: '🔴', label: '🔴 Red' },
   { value: '🟠', label: '🟠 Orange' },
   { value: '🟡', label: '🟡 Yellow' },
@@ -49,7 +49,7 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ activeNfts, onFilterChan
   const [isOpen, setIsOpen] = React.useState(false);
   const [filters, setFilters] = React.useState<FilterState>({
     name: '',
-    symbol: null,
+    color: null,
     mintedAtStart: '',
     mintedAtEnd: '',
     lastTransferredAtStart: '',
@@ -69,8 +69,8 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ activeNfts, onFilterChan
           return false;
         }
 
-        // Symbol filter
-        if (currentFilters.symbol && nft.symbol !== currentFilters.symbol) {
+        // color filter
+        if (currentFilters.color && nft.color !== currentFilters.color) {
           return false;
         }
 
@@ -109,7 +109,7 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ activeNfts, onFilterChan
   const clearFilters = () => {
     setFilters({
       name: '',
-      symbol: null,
+      color: null,
       mintedAtStart: '',
       mintedAtEnd: '',
       lastTransferredAtStart: '',
@@ -170,28 +170,28 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ activeNfts, onFilterChan
             </div>
 
             <div className="space-y-2">
-              <Label>Symbol</Label>
+              <Label>Color</Label>
               <div className="flex gap-2">
                 <Select
-                  value={filters.symbol || undefined}
-                  onValueChange={value => updateFilter('symbol', value)}
+                  value={filters.color || undefined}
+                  onValueChange={value => updateFilter('color', value)}
                 >
                   <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select symbol" />
+                    <SelectValue placeholder="Select color" />
                   </SelectTrigger>
                   <SelectContent>
-                    {SYMBOLS.map(symbol => (
-                    <SelectItem key={symbol.value} value={symbol.value}>
-                      {symbol.label}
+                    {COLORS.map(color => (
+                    <SelectItem key={color.value} value={color.value}>
+                      {color.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {filters.symbol && (
+              {filters.color && (
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  onClick={() => updateFilter('symbol', null)}
+                  onClick={() => updateFilter('color', null)}
                   className="h-10 w-10"
                 >
                   <X className="h-4 w-4" />

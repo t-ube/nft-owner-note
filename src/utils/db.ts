@@ -36,7 +36,7 @@ export interface NFToken extends NFTokenBase {
   isOrderMade?: boolean;
   customValue1?: number | null;
   customValue2?: number | null;
-  symbol?: string | null;
+  color?: string | null;
   memo?: string | null;
 }
 
@@ -50,7 +50,7 @@ export interface NFTDetail {
   isOrderMade: boolean;
   customValue1: number | null;
   customValue2: number | null;
-  symbol: string | null;
+  color: string | null;
   memo: string | null;
   updatedAt: number;
 }
@@ -101,7 +101,7 @@ class DatabaseManager {
           store.createIndex('owner', 'owner', { unique: false });
           store.createIndex('projectId_nft_id', ['projectId', 'nft_id'], { unique: true });
           store.createIndex('isOrderMade', 'isOrderMade', { unique: false });
-          store.createIndex('symbol', 'symbol', { unique: false });
+          store.createIndex('color', 'color', { unique: false });
           store.createIndex('firstSaleAmount', 'firstSaleAmount', { unique: false });
           store.createIndex('firstTransferredAt', 'firstTransferredAt', { unique: false });
           store.createIndex('mintedAt', 'mintedAt', { unique: false });
@@ -229,7 +229,7 @@ class DatabaseManager {
             isOrderMade: false,
             customValue1: null,
             customValue2: null,
-            symbol: null,
+            color: null,
             memo: null,
             ...existing, // 既存の拡張情報を適用
             ...nft,      // 新しい基本情報を適用

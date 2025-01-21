@@ -160,7 +160,6 @@ const OwnerList: React.FC = () => {
               <TableHead className="w-40">XAccount</TableHead>
               <TableHead className="w-32 text-right">NFT Count</TableHead>
               <TableHead className="w-32 text-right">Holding %</TableHead>
-              <TableHead>NFT IDs</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -194,10 +193,6 @@ const OwnerList: React.FC = () => {
                 </TableCell>
                 <TableCell className="text-right">
                   {stat.holdingRatio.toFixed(2)}%
-                </TableCell>
-                <TableCell className="font-mono text-xs overflow-hidden">
-                  {stat.nftIds.slice(0, 3).map(id => id.substring(0, 8)).join(', ')}
-                  {stat.nftIds.length > 3 ? ` ... (+${stat.nftIds.length - 3} more)` : ''}
                 </TableCell>
               </TableRow>
             ))}

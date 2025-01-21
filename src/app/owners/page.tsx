@@ -53,6 +53,11 @@ export default function OwnerListPage() {
     setProjectToDelete(null);
   };
 
+  const refreshProjects = async () => {
+    const allProjects = await dbManager.getAllProjects();
+    setProjects(allProjects);
+  };
+
   return (
     <div className="flex h-screen overflow-hidden">
       <ProjectSidebar
@@ -61,6 +66,7 @@ export default function OwnerListPage() {
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onDeleteClick={handleDeleteClick}
+        onProjectsUpdated={refreshProjects}
       />
       <div className="flex-1 overflow-auto">
         <OwnersPage />

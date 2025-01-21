@@ -4,6 +4,7 @@ import { Folder, Search, Trash2, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Project } from '@/utils/db';
+import ProjectCSVImportExport from '@/app/components/ProjectCSVImportExport';
 
 interface ProjectSidebarProps {
   projects: Project[];
@@ -11,6 +12,7 @@ interface ProjectSidebarProps {
   searchTerm: string;
   onSearchChange: (term: string) => void;
   onDeleteClick: (e: React.MouseEvent, project: Project) => void;
+  onProjectsUpdated: () => void;
 }
 
 const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
@@ -19,6 +21,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   searchTerm,
   onSearchChange,
   onDeleteClick,
+  onProjectsUpdated,
 }) => {
   const router = useRouter();
 
@@ -58,15 +61,23 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
           Owners List
         </Button>
 
-        <h2 className="text-xl font-bold mb-4">Projects</h2>
-        <div className="relative">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />
-          <Input
-            placeholder="Search projects"
-            className="pl-8 w-full"
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
+        {/* プロジェクト管理セクション */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold">Projects</h2>
+          
+          {/* インポート/エクスポート機能を追加 */}
+          <ProjectCSVImportExport onProjectsUpdated={onProjectsUpdated} />
+          
+          {/* 既存の検索バー */}
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />
+            <Input
+              placeholder="Search projects"
+              className="pl-8 w-full"
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+            />
+          </div>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto">

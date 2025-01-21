@@ -80,6 +80,11 @@ const ProjectPage: React.FC = () => {
     setProjectToDelete(null);
   };
 
+  const refreshProjects = async () => {
+    const allProjects = await dbManager.getAllProjects();
+    setProjects(allProjects);
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
@@ -88,6 +93,7 @@ const ProjectPage: React.FC = () => {
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onDeleteClick={handleDeleteClick}
+        onProjectsUpdated={refreshProjects}
       />
 
       {/* Main Content */}

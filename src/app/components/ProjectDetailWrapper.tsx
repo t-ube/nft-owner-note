@@ -83,6 +83,11 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
     loadProject();
   }, [projectId]);
 
+  const refreshProjects = async () => {
+    const allProjects = await dbManager.getAllProjects();
+    setProjects(allProjects);
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-screen">
@@ -92,6 +97,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           onDeleteClick={handleDeleteClick}
+          onProjectsUpdated={refreshProjects}
         />
         <div className="flex-1 p-6 flex items-center justify-center">
           <div className="flex items-center space-x-2">
@@ -112,6 +118,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           onDeleteClick={handleDeleteClick}
+          onProjectsUpdated={refreshProjects}
         />
         <div className="flex-1 p-6 flex items-center justify-center">
           <Alert variant="destructive">
@@ -132,6 +139,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           onDeleteClick={handleDeleteClick}
+          onProjectsUpdated={refreshProjects}
         />
         <div className="flex-1 p-6 flex items-center justify-center">
           <Alert variant="destructive">
@@ -151,6 +159,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onDeleteClick={handleDeleteClick}
+        onProjectsUpdated={refreshProjects}
       />
       <NFTContextProvider 
         projectId={projectId}

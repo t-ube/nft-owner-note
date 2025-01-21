@@ -10,7 +10,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -27,17 +26,17 @@ import { NFTFilters } from '@/app/components/NFTFilters';
 import { NFToken } from '@/utils/db';
 import _ from 'lodash';
 
-const SYMBOLS = [
-  { value: '🔴', label: '🔴' },
-  { value: '🟠', label: '🟠' },
-  { value: '🟡', label: '🟡' },
-  { value: '🟢', label: '🟢' },
-  { value: '🔵', label: '🔵' },
-  { value: '🟣', label: '🟣' },
-  { value: '🟤', label: '🟤' },
+const COLORS = [
+  { value: '🔴', label: '🔴 Red' },
+  { value: '🟠', label: '🟠 Orange' },
+  { value: '🟡', label: '🟡 Yellow' },
+  { value: '🟢', label: '🟢 Green' },
+  { value: '🔵', label: '🔵 Blue' },
+  { value: '🟣', label: '🟣 Purple' },
+  { value: '🟤', label: '🟤 Brown' },
 ] as const;
 
-type SymbolType = typeof SYMBOLS[number]['value'] | null;
+type ColorType = typeof COLORS[number]['value'] | null;
 
 type SortField = 'tokenId' | 'name' | 'owner' | 'mintedAt' | 'firstSaleAmount' | 'firstTransferredAt' | 'lastSaleAmount' | 'lastTransferredAt' | 'priceChange' | 'isOrderMade';
 type SortDirection = 'asc' | 'desc' | null;
@@ -92,33 +91,13 @@ const NFTList: React.FC = () => {
     setAddressInfos(_.keyBy(infos, 'address'));
   };
 
-  const handleOrderMadeChange = async (nftId: string, checked: boolean) => {
+  const handleColorChange = async (nftId: string, newColor: ColorType) => {
     const nft = nfts.find(n => n.nft_id === nftId);
     if (!nft) return;
 
     const updatedNFT = {
       ...nft,
-      isOrderMade: checked
-    };
-
-    try {
-      await dbManager.updateNFTDetails(updatedNFT);
-      const updatedNfts = nfts.map(n => 
-        n.nft_id === nftId ? updatedNFT : n
-      );
-      setNfts(updatedNfts);
-    } catch (error) {
-      console.error('Failed to update order made status:', error);
-    }
-  };
-
-  const handleSymbolChange = async (nftId: string, newSymbol: SymbolType) => {
-    const nft = nfts.find(n => n.nft_id === nftId);
-    if (!nft) return;
-
-    const updatedNFT = {
-      ...nft,
-      symbol: newSymbol
+      color: newColor
     };
 
     try {
@@ -127,7 +106,7 @@ const NFTList: React.FC = () => {
         n.nft_id === nftId ? updatedNFT : n
       ));
     } catch (error) {
-      console.error('Failed to update symbol:', error);
+      console.error('Failed to update color:', error);
     }
   };
 
@@ -312,8 +291,7 @@ const NFTList: React.FC = () => {
               <SortableHeader field="lastSaleAmount">Last Sale</SortableHeader>
               <SortableHeader field="lastTransferredAt">Last Sale At</SortableHeader>
               <SortableHeader field="priceChange">Price Change</SortableHeader>
-              <SortableHeader field="isOrderMade">Custom Made</SortableHeader>
-              <TableHead>Symbol</TableHead>
+              <TableHead>Color</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -368,26 +346,18 @@ const NFTList: React.FC = () => {
                       </span>
                     ) : '-'}
                   </TableCell>
-                  <TableCell className="text-center">
-                    <Checkbox
-                      checked={nft.isOrderMade}
-                      onCheckedChange={(checked:boolean) => {
-                        handleOrderMadeChange(nft.nft_id, checked as boolean);
-                      }}
-                    />
-                  </TableCell>
                   <TableCell>
                     <Select
-                      value={nft.symbol || undefined}
-                      onValueChange={(value) => handleSymbolChange(nft.nft_id, value as SymbolType || null)}
+                      value={nft.color || undefined}
+                      onValueChange={(value) => handleColorChange(nft.nft_id, value as ColorType || null)}
                     >
-                      <SelectTrigger className="w-24">
+                      <SelectTrigger className="w-24 text-xs">
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
-                        {SYMBOLS.map(symbol => (
-                          <SelectItem key={symbol.value} value={symbol.value}>
-                            {symbol.label}
+                        {COLORS.map(color => (
+                          <SelectItem key={color.value} value={color.value}>
+                            {color.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
