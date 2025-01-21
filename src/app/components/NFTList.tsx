@@ -288,8 +288,7 @@ const NFTList: React.FC = () => {
             className="flex items-center gap-2"
           >
             <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? "Refreshing" : "Refresh"}
-            {updatingNFTs.size > 0 ? " / Updating History..." : " / Update History"}
+            {updatingNFTs.size > 0 ? "Updating History..." : "Update History"}
           </Button>
         </div>
       </div>

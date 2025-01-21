@@ -14,7 +14,7 @@ interface NFTMetadata {
 
 const IPFS_GATEWAYS = [
   'https://ipfs.io/ipfs/',
-  'https://gateway.pinata.cloud/ipfs/',
+  //'https://gateway.pinata.cloud/ipfs/',
 ];
 
 const TIMEOUT_DURATION = 20000; // 20 seconds
