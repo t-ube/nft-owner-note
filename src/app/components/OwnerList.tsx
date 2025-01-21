@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNFTContext } from '@/app/contexts/NFTContext';
-import { useXrplClient } from '@/app/contexts/XrplContext';
 import _ from 'lodash';
 import {
   Table,
@@ -11,8 +10,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AddressGroupDialog } from './AddressGroupDialog';
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
 
@@ -26,7 +23,6 @@ interface OwnerStats {
 
 const OwnerList: React.FC = () => {
   const { nfts } = useNFTContext();
-  const { isReady } = useXrplClient();
   const [addressGroups, setAddressGroups] = React.useState<Record<string, AddressGroup>>({});
   const [addressInfos, setAddressInfos] = React.useState<Record<string, AddressInfo>>({});
 
@@ -121,17 +117,6 @@ const OwnerList: React.FC = () => {
       </a>
     );
   };
-
-  if (!isReady) {
-    return (
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Connecting to XRPL...
-        </AlertDescription>
-      </Alert>
-    );
-  }
 
   const burnedCount = nfts.filter(nft => nft.is_burned).length;
 

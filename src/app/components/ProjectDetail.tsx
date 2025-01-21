@@ -16,7 +16,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import NFTList from '@/app/components/NFTList';
 import OwnerList from '@/app/components/OwnerList';
 import Statistics from '@/app/components/Statistics';
-import { useXrplClient } from '@/app/contexts/XrplContext';
 
 
 interface ProjectDetailProps {
@@ -26,8 +25,6 @@ interface ProjectDetailProps {
 const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const { error: xrplError } = useXrplClient();
 
   const loadProjectData = useCallback(async () => {
     setIsLoading(true);
@@ -69,19 +66,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             Project not found
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  if (xrplError) {
-    return (
-      <div className="flex-1 p-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Failed to connect to XRPL: {xrplError.message}
           </AlertDescription>
         </Alert>
       </div>

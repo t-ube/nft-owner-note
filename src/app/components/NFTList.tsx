@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNFTContext } from '@/app/contexts/NFTContext';
-import { useXrplClient } from '@/app/contexts/XrplContext';
 import {
   Table,
   TableBody,
@@ -60,7 +59,6 @@ const NFTList: React.FC = () => {
     updateAllNFTHistory,
     updateNFTHistory
   } = useNFTContext();
-  const { isReady } = useXrplClient();
   const [addressGroups, setAddressGroups] = React.useState<Record<string, AddressGroup>>({});
   const [addressInfos, setAddressInfos] = React.useState<Record<string, AddressInfo>>({});
   const [sort, setSort] = React.useState<SortState>({ field: 'tokenId', direction: null });
@@ -246,17 +244,6 @@ const NFTList: React.FC = () => {
       </Button>
     </TableHead>
   );
-
-  if (!isReady) {
-    return (
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Connecting to XRPL...
-        </AlertDescription>
-      </Alert>
-    );
-  }
 
   if (error) {
     return (

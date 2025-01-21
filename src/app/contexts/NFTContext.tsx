@@ -1,11 +1,15 @@
 "use client"
 
 import { useState, useEffect, createContext, useContext, useCallback } from 'react';
-import { useXrplClient } from '@/app/contexts/XrplContext';
 import { dbManager, NFToken } from '@/utils/db';
 import { fetchNFTTransferHistory } from '@/utils/nftHistory';
 import { updateNFTNames } from '@/utils/nftMetadata';
 import _ from 'lodash';
+import { Client } from 'xrpl';
+
+const XRPL_WEBSOCKET_URL = 'wss://s1.ripple.com';
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000;
 
 interface NFTContextType {
   nfts: NFToken[];
@@ -37,6 +41,31 @@ export const useNFTContext = () => {
   return context;
 };
 
+async function executeXrplRequest<T>(
+  requestFn: (client: Client) => Promise<T>,
+  retryCount = 0
+): Promise<T> {
+  const client = new Client(XRPL_WEBSOCKET_URL);
+
+  try {
+    await client.connect();
+    const result = await requestFn(client);
+    return result;
+  } catch (error) {
+    if (retryCount < MAX_RETRIES) {
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      return executeXrplRequest(requestFn, retryCount + 1);
+    }
+    throw error;
+  } finally {
+    try {
+      await client.disconnect();
+    } catch (err) {
+      console.error('Error disconnecting from XRPL:', err);
+    }
+  }
+}
+
 export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({ 
   children,
   projectId,
@@ -49,15 +78,14 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [marker, setMarker] = useState<unknown | undefined>();
-  const { client, isReady } = useXrplClient();
 
   const MAX_NFTS = 1000;
   const BATCH_SIZE = 50;
-  const HISTORY_BATCH_SIZE = 10; // 一度に処理するNFTの数
+  const HISTORY_BATCH_SIZE = 5;
+  const CONCURRENT_CONNECTIONS = 4;
 
   // 単一のNFTの履歴を更新
   const updateNFTHistory = async (nftId: string) => {
-    if (!client || !isReady) return;
   
     try {
       setUpdatingNFTs(prev => {
@@ -65,18 +93,18 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
         next.add(nftId);
         return next;
       });
-
+  
       const nft = nfts.find(n => n.nft_id === nftId);
       if (!nft) {
-        setUpdatingNFTs(prev => {
-          const next = new Set(prev);
-          next.delete(nftId);
-          return next;
-        });
+        console.warn(`NFT with ID ${nftId} not found`);
         return;
       }
   
-      const history = await fetchNFTTransferHistory(client, nft);
+      // executeXrplRequestを使用してNFT履歴を取得
+      const history = await executeXrplRequest(async (client) => {
+        return await fetchNFTTransferHistory(client, nft);
+      });
+  
       if (history) {
         const updatedNFT = {
           ...nft,
@@ -87,6 +115,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
           lastSaleAmount: history.lastSale?.amount || null,
           lastSaleAt: history.lastSale?.timestamp || null
         };
+  
         await dbManager.updateNFTDetails(updatedNFT);
         
         setNfts(prev => 
@@ -95,6 +124,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
       }
     } catch (error) {
       console.error(`Error updating NFT history for ${nftId}:`, error);
+      throw error; // エラーを上位に伝播させる
     } finally {
       setUpdatingNFTs(prev => {
         const next = new Set(prev);
@@ -106,7 +136,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
 
   // 全NFTの履歴を更新
   const updateAllNFTHistory = async () => {
-    if (!client || !isReady || nfts.length === 0) return;
+    if (nfts.length === 0) return;
   
     try {
       const nftIds = nfts.map(nft => nft.nft_id);
@@ -115,40 +145,51 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
       // NFTsをバッチに分割
       const batches = _.chunk(nfts, HISTORY_BATCH_SIZE);
       
-      for (const batch of batches) {
-        // バッチ内のNFTを並列で処理
-        const promises = batch.map(async (nft) => {
-          try {
-            const history = await fetchNFTTransferHistory(client, nft);
-            if (history) {
-              const updatedNFT = {
-                ...nft,
-                name: nft.name,
-                mintedAt: history.mintInfo?.timestamp || null,
-                firstSaleAmount: history.firstSale?.amount || null,
-                firstSaleAt: history.firstSale?.timestamp || null,
-                lastSaleAmount: history.lastSale?.amount || null,
-                lastSaleAt: history.lastSale?.timestamp || null
-              };
-              await dbManager.updateNFTDetails(updatedNFT);
-              
-              setNfts(prev => 
-                prev.map(n => n.nft_id === nft.nft_id ? updatedNFT : n)
-              );
-            }
-          } finally {
-            setUpdatingNFTs(prev => {
-              const next = new Set(prev);
-              next.delete(nft.nft_id);
-              return next;
+      // バッチを同時接続数で制限して処理
+      const batchGroups = _.chunk(batches, CONCURRENT_CONNECTIONS);
+      
+      for (const batchGroup of batchGroups) {
+        const batchPromises = batchGroup.map(async (batch) => {
+          // 一つのバッチ内のNFTsを単一のクライアント接続で処理
+          return executeXrplRequest(async (client) => {
+            const nftPromises = batch.map(async (nft) => {
+              try {
+                const history = await fetchNFTTransferHistory(client, nft);
+                if (history) {
+                  const updatedNFT = {
+                    ...nft,
+                    name: nft.name,
+                    mintedAt: history.mintInfo?.timestamp || null,
+                    firstSaleAmount: history.firstSale?.amount || null,
+                    firstSaleAt: history.firstSale?.timestamp || null,
+                    lastSaleAmount: history.lastSale?.amount || null,
+                    lastSaleAt: history.lastSale?.timestamp || null
+                  };
+                  await dbManager.updateNFTDetails(updatedNFT);
+                  
+                  setNfts(prev => 
+                    prev.map(n => n.nft_id === nft.nft_id ? updatedNFT : n)
+                  );
+                }
+              } catch (error) {
+                console.error(`Error updating NFT ${nft.nft_id}:`, error);
+              } finally {
+                setUpdatingNFTs(prev => {
+                  const next = new Set(prev);
+                  next.delete(nft.nft_id);
+                  return next;
+                });
+              }
             });
-          }
+            
+            await Promise.all(nftPromises);
+          });
         });
         
-        // バッチ内のPromiseを待機
-        await Promise.all(promises);
+        // バッチグループ内のPromiseを待機
+        await Promise.all(batchPromises);
         
-        // バッチ間で少し待機してレート制限を回避
+        // バッチグループ間で待機してレート制限を回避
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     } catch (error) {
@@ -161,7 +202,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
   const fetchNFTs = useCallback(async () => {
     console.log("NFTContext: fetchNFTs");
 
-    if (!client || !isReady || !hasMore) return;
+    if (!hasMore) return;
     
     // nfts.lengthの代わりにsetNftsの関数形式で現在の長さをチェック
     let currentLength = 0;
@@ -174,12 +215,14 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
   
     setIsLoading(true);
     try {
-      const response = await client.request({
-        command: 'nfts_by_issuer',
-        issuer: issuer,
-        limit: BATCH_SIZE,
-        marker,
-        nft_taxon: parseInt(taxon, 10)
+      const response = await executeXrplRequest(async (client) => {
+        return await client.request({
+          command: 'nfts_by_issuer',
+          issuer: issuer,
+          limit: BATCH_SIZE,
+          marker,
+          nft_taxon: parseInt(taxon, 10)
+        });
       });
   
       const transformedNFTs = response.result.nfts.map(nft => ({
@@ -243,15 +286,13 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [client, isReady, hasMore, marker, projectId, issuer, taxon]);
+  }, [hasMore, marker, projectId, issuer, taxon]);
 
   // Load cached data from database
   useEffect(() => {
     let mounted = true;
 
     const loadCachedData = async () => {
-      if (!isReady) return;
-
       console.log("NFTContext: useEffect - loadCachedData");
       try {
         const cachedNFTs = await dbManager.getNFTsByProjectId(projectId);
@@ -279,7 +320,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
     return () => {
       mounted = false;
     };
-  }, [isReady, projectId]);
+  }, [projectId]);
 
   const loadMore = async () => {
     await fetchNFTs();
