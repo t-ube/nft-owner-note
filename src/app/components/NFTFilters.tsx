@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { NFToken } from '@/utils/db';
 import {
   Sheet,
@@ -60,51 +60,57 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ activeNfts, onFilterChan
     value !== '' && value !== null
   ).length;
 
+  const filterNFTs = useCallback((currentFilters: FilterState): void => {
+    const filteredNfts = activeNfts.filter((nft) => {
+      // Name filter
+      if (currentFilters.name && (!nft.name || !nft.name.toLowerCase().includes(currentFilters.name.toLowerCase()))) {
+        return false;
+      }
+  
+      // Color filter
+      if (currentFilters.color && nft.color !== currentFilters.color) {
+        return false;
+      }
+  
+      // Minted date range
+      if (currentFilters.mintedAtStart && (!nft.mintedAt || new Date(nft.mintedAt) < new Date(currentFilters.mintedAtStart))) {
+        return false;
+      }
+      if (currentFilters.mintedAtEnd && (!nft.mintedAt || new Date(nft.mintedAt) > new Date(currentFilters.mintedAtEnd))) {
+        return false;
+      }
+  
+      // Last transferred date range
+      if (currentFilters.lastTransferredAtStart && 
+          (!nft.lastSaleAt || new Date(nft.lastSaleAt) < new Date(currentFilters.lastTransferredAtStart))) {
+        return false;
+      }
+      if (currentFilters.lastTransferredAtEnd && 
+          (!nft.lastSaleAt || new Date(nft.lastSaleAt) > new Date(currentFilters.lastTransferredAtEnd))) {
+        return false;
+      }
+  
+      return true;
+    });
+  
+    onFilterChange(filteredNfts);
+  }, [activeNfts, onFilterChange]);
+
   // フィルター処理をデバウンス
-  const debouncedFilter = React.useCallback(
-    _.debounce((currentFilters: FilterState) => {
-      const filteredNfts = activeNfts.filter(nft => {
-        // Name filter
-        if (currentFilters.name && (!nft.name || !nft.name.toLowerCase().includes(currentFilters.name.toLowerCase()))) {
-          return false;
-        }
-
-        // color filter
-        if (currentFilters.color && nft.color !== currentFilters.color) {
-          return false;
-        }
-
-        // Minted date range
-        if (currentFilters.mintedAtStart && (!nft.mintedAt || new Date(nft.mintedAt) < new Date(currentFilters.mintedAtStart))) {
-          return false;
-        }
-        if (currentFilters.mintedAtEnd && (!nft.mintedAt || new Date(nft.mintedAt) > new Date(currentFilters.mintedAtEnd))) {
-          return false;
-        }
-
-        // Last transferred date range
-        if (currentFilters.lastTransferredAtStart && 
-            (!nft.lastSaleAt || new Date(nft.lastSaleAt) < new Date(currentFilters.lastTransferredAtStart))) {
-          return false;
-        }
-        if (currentFilters.lastTransferredAtEnd && 
-            (!nft.lastSaleAt || new Date(nft.lastSaleAt) > new Date(currentFilters.lastTransferredAtEnd))) {
-          return false;
-        }
-
-        return true;
-      });
-
-      onFilterChange(filteredNfts);
-    }, 300),
-    [activeNfts, onFilterChange]
+  const debouncedFilterRef = useRef(
+    _.debounce((currentFilters: FilterState, callback: typeof filterNFTs) => {
+      callback(currentFilters);
+    }, 300)
   );
 
-  // フィルターの変更を監視
-  React.useEffect(() => {
-    debouncedFilter(filters);
-    return () => debouncedFilter.cancel();
-  }, [filters, debouncedFilter]);
+  useEffect(() => {
+    const debouncedFilter = debouncedFilterRef.current;
+    debouncedFilter(filters, filterNFTs);
+    
+    return () => {
+      debouncedFilter.cancel();
+    };
+  }, [filters, filterNFTs]);
 
   const clearFilters = () => {
     setFilters({
