@@ -3,7 +3,7 @@
 import { useState, useEffect, createContext, useContext, useCallback } from 'react';
 import { dbManager, NFToken } from '@/utils/db';
 import { fetchNFTTransferHistory } from '@/utils/nftHistory';
-import { updateNFTNames } from '@/utils/nftMetadata';
+import { updateNFTName } from '@/utils/nftMetadata';
 import _ from 'lodash';
 import { Client } from 'xrpl';
 
@@ -15,6 +15,7 @@ interface NFTContextType {
   nfts: NFToken[];
   setNfts: React.Dispatch<React.SetStateAction<NFToken[]>>;
   isLoading: boolean;
+  isSyncHistory: boolean;
   updatingNFTs: Set<string>;
   error: string | null;
   hasMore: boolean;
@@ -74,6 +75,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
 }) => {
   const [nfts, setNfts] = useState<NFToken[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncHistory, setIsSyncHistory] = useState(false);
   const [updatingNFTs, setUpdatingNFTs] = useState<Set<string>>(new Set()); 
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
@@ -88,6 +90,8 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
   const updateNFTHistory = async (nftId: string) => {
   
     try {
+      setIsSyncHistory(true);
+
       setUpdatingNFTs(prev => {
         const next = new Set(prev);
         next.add(nftId);
@@ -104,11 +108,12 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
       const history = await executeXrplRequest(async (client) => {
         return await fetchNFTTransferHistory(client, nft);
       });
+      const namedNft = await updateNFTName(nft);
   
       if (history) {
         const updatedNFT = {
           ...nft,
-          name: nft.name,
+          name: namedNft.name,
           mintedAt: history.mintInfo?.timestamp || null,
           firstSaleAmount: history.firstSale?.amount || null,
           firstSaleAt: history.firstSale?.timestamp || null,
@@ -131,6 +136,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
         next.delete(nftId);
         return next;
       });
+      setIsSyncHistory(false);
     }
   };
 
@@ -139,6 +145,8 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
     if (nfts.length === 0) return;
   
     try {
+      setIsSyncHistory(true);
+
       const nftIds = nfts.map(nft => nft.nft_id);
       setUpdatingNFTs(new Set(Array.from(nftIds)));
       
@@ -154,17 +162,20 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
           return executeXrplRequest(async (client) => {
             const nftPromises = batch.map(async (nft) => {
               try {
+                const namedNft = await updateNFTName(nft);
                 const history = await fetchNFTTransferHistory(client, nft);
+
                 if (history) {
                   const updatedNFT = {
                     ...nft,
-                    name: nft.name,
+                    name: namedNft.name,
                     mintedAt: history.mintInfo?.timestamp || null,
                     firstSaleAmount: history.firstSale?.amount || null,
                     firstSaleAt: history.firstSale?.timestamp || null,
                     lastSaleAmount: history.lastSale?.amount || null,
                     lastSaleAt: history.lastSale?.timestamp || null
                   };
+                  
                   await dbManager.updateNFTDetails(updatedNFT);
                   
                   setNfts(prev => 
@@ -196,11 +207,11 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
       console.error('Error updating all NFT histories:', error);
     } finally {
       setUpdatingNFTs(new Set());
+      setIsSyncHistory(false);
     }
   };
 
   const fetchNFTs = useCallback(async () => {
-    console.log("NFTContext: fetchNFTs");
 
     if (!hasMore) return;
     
@@ -257,8 +268,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
         };
       });
 
-      const nftsWithNames = await updateNFTNames(mergedNFTs);
-      const updatedNFTs = await dbManager.updateNFTs(projectId, nftsWithNames);
+      const updatedNFTs = await dbManager.updateNFTs(projectId, mergedNFTs);
   
       const nextMarker = response.result.marker;
       let willExceedLimit = false;
@@ -336,6 +346,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
     nfts,
     setNfts,
     isLoading,
+    isSyncHistory,
     updatingNFTs,
     error,
     hasMore,

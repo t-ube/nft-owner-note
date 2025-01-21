@@ -51,6 +51,7 @@ const NFTList: React.FC = () => {
     nfts,
     setNfts,
     isLoading, 
+    isSyncHistory,
     updatingNFTs,
     error, 
     hasMore, 
@@ -284,11 +285,11 @@ const NFTList: React.FC = () => {
               await refreshData();
               await updateAllNFTHistory();
             }}
-            disabled={isLoading || updatingNFTs.size > 0}
+            disabled={isLoading || isSyncHistory || updatingNFTs.size > 0}
             className="flex items-center gap-2"
           >
-            <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            {updatingNFTs.size > 0 ? "Updating History..." : "Update History"}
+            <RefreshCcw className={`h-4 w-4 ${isSyncHistory ? 'animate-spin' : ''}`} />
+            {updatingNFTs.size > 0 ? "Syncing Details..." : "Sync Details"}
           </Button>
         </div>
       </div>
@@ -298,8 +299,8 @@ const NFTList: React.FC = () => {
           <TableHeader>
             <TableRow>
               <SortableHeader field="tokenId">Token ID</SortableHeader>
-              <SortableHeader field="name">Name</SortableHeader>
               <SortableHeader field="owner">Owner / Label</SortableHeader>
+              <SortableHeader field="name">Name</SortableHeader>
               <SortableHeader field="mintedAt">Minted At</SortableHeader>
               <SortableHeader field="lastSaleAmount">Last Sale</SortableHeader>
               <SortableHeader field="lastSaleAt">Last Sale At</SortableHeader>
@@ -321,12 +322,6 @@ const NFTList: React.FC = () => {
                     <NFTSiteIcons tokenId={nft.nft_id} />
                   </TableCell>
                   <TableCell>
-                    <NFTNameEdit 
-                      nft={nft}
-                      onSave={handleNameSave}
-                    />
-                  </TableCell>
-                  <TableCell>
                     <div>
                       <AddressGroupDialog
                         initialAddresses={[nft.owner]}
@@ -346,6 +341,12 @@ const NFTList: React.FC = () => {
                         {group.name}
                       </div>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <NFTNameEdit 
+                      nft={nft}
+                      onSave={handleNameSave}
+                    />
                   </TableCell>
                   <TableCell>
                     {formatDate(nft.mintedAt)}
@@ -386,7 +387,7 @@ const NFTList: React.FC = () => {
                       size="sm"
                       className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
                       onClick={() => updateNFTHistory(nft.nft_id)}
-                      disabled={updatingNFTs.has(nft.nft_id)}
+                      disabled={isLoading || updatingNFTs.has(nft.nft_id)}
                     >
                       <RefreshCcw className={`h-4 w-4 ${updatingNFTs.has(nft.nft_id) ? 'animate-spin' : ''}`} />
                     </Button>

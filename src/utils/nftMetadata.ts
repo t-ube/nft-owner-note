@@ -14,10 +14,32 @@ interface NFTMetadata {
 
 const IPFS_GATEWAYS = [
   'https://ipfs.io/ipfs/',
-  //'https://gateway.pinata.cloud/ipfs/',
+  'https://gateway.pinata.cloud/ipfs/',
+  //'https://cloudflare-ipfs.com/ipfs/',
+  //'https://dweb.link/ipfs/',
+  //'https://gateway.ipfs.io/ipfs/',
 ];
 
-const TIMEOUT_DURATION = 20000; // 20 seconds
+const TIMEOUT_DURATION = 10000; // 10 seconds
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 1000;
+
+async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
+  try {
+    const response = await fetch(url, options);
+    if (!response.ok && retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      return fetchWithRetry(url, options, retries - 1);
+    }
+    return response;
+  } catch (error) {
+    if (retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      return fetchWithRetry(url, options, retries - 1);
+    }
+    throw error;
+  }
+}
 
 export async function fetchNFTMetadata(uri: string): Promise<NFTMetadata | null> {
   try {
@@ -29,11 +51,9 @@ export async function fetchNFTMetadata(uri: string): Promise<NFTMetadata | null>
       
       const fetchPromises = IPFS_GATEWAYS.map(async (gateway) => {
         try {
-          const response = await fetch(gateway + hash, {
+          const response = await fetchWithRetry(gateway + hash, {
             method: 'GET',
-            headers: {
-              'Accept': 'application/json'
-            },
+            headers: { 'Accept': 'application/json' },
             mode: 'cors',
             signal: controller.signal
           });
@@ -56,7 +76,7 @@ export async function fetchNFTMetadata(uri: string): Promise<NFTMetadata | null>
     }
     
     if (uri.startsWith('http://') || uri.startsWith('https://')) {
-      const response = await fetch(uri, {
+      const response = await fetchWithRetry(uri, {
         signal: controller.signal
       });
       clearTimeout(timeoutId);
@@ -108,4 +128,23 @@ export async function updateNFTNames(nfts: NFToken[]): Promise<NFToken[]> {
     const updatedNft = updatedNFTs.find(u => u.nft_id === originalNft.nft_id);
     return updatedNft || originalNft;
   });
+}
+
+export async function updateNFTName(nft: NFToken): Promise<NFToken> {
+  if (nft.name !== null || !nft.uri) {
+    return nft;
+  }
+
+  console.log(`Updating name for ${nft.nft_id}`);
+
+  try {
+    const metadata = await fetchNFTMetadata(nft.uri);
+    return {
+      ...nft,
+      name: metadata?.name || null
+    };
+  } catch (error) {
+    console.error(`Error updating NFT name for ${nft.nft_id}:`, error);
+    return nft;
+  }
 }
