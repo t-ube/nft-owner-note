@@ -29,9 +29,9 @@ export interface NFTokenBase {
 export interface NFToken extends NFTokenBase {
   name?: string | null;
   lastSaleAmount?: number | null;
-  lastTransferredAt?: number | null;
+  lastSaleAt?: number | null;
   firstSaleAmount?: number | null;
-  firstTransferredAt?: number | null;
+  firstSaleAt?: number | null;
   mintedAt?: number | null;
   isOrderMade?: boolean;
   userValue1?: number | null;
@@ -46,7 +46,7 @@ export interface NFTDetail {
   projectId: string;
   name: string;
   lastSaleAmount: number | null;
-  lastTransferredAt: number | null;
+  lastSaleAt: number | null;
   isOrderMade: boolean;
   userValue1: number | null;
   userValue2: number | null;
@@ -103,7 +103,7 @@ class DatabaseManager {
           store.createIndex('isOrderMade', 'isOrderMade', { unique: false });
           store.createIndex('color', 'color', { unique: false });
           store.createIndex('firstSaleAmount', 'firstSaleAmount', { unique: false });
-          store.createIndex('firstTransferredAt', 'firstTransferredAt', { unique: false });
+          store.createIndex('firstSaleAt', 'firstSaleAt', { unique: false });
           store.createIndex('mintedAt', 'mintedAt', { unique: false });
         }
 
@@ -225,7 +225,7 @@ class DatabaseManager {
             updatedAt: now,
             name: null,
             lastSaleAmount: null,
-            lastTransferredAt: null,
+            lastSaleAt: null,
             isOrderMade: false,
             userValue1: null,
             userValue2: null,

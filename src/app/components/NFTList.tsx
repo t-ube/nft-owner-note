@@ -39,7 +39,7 @@ const COLORS = [
 
 type ColorType = typeof COLORS[number]['value'] | null;
 
-type SortField = 'tokenId' | 'name' | 'owner' | 'mintedAt' | 'firstSaleAmount' | 'firstTransferredAt' | 'lastSaleAmount' | 'lastTransferredAt' | 'priceChange' | 'isOrderMade';
+type SortField = 'tokenId' | 'name' | 'owner' | 'mintedAt' | 'firstSaleAmount' | 'firstSaleAt' | 'lastSaleAmount' | 'lastSaleAt' | 'priceChange' | 'isOrderMade';
 type SortDirection = 'asc' | 'desc' | null;
 
 interface SortState {
@@ -82,6 +82,15 @@ const NFTList: React.FC = () => {
     };
     loadData();
   }, []);
+
+  React.useEffect(() => {
+    const autoLoad = async () => {
+      if (hasMore && !isLoading) {
+        await loadMore();
+      }
+    };
+    autoLoad();
+  }, [hasMore, isLoading, loadMore]);
 
   const handleGroupSave = async (savedGroup: AddressGroup) => {
     setAddressGroups(prev => ({
@@ -145,12 +154,12 @@ const NFTList: React.FC = () => {
               return nft.mintedAt || -1;
           case 'firstSaleAmount':
             return nft.firstSaleAmount || -1;
-          case 'firstTransferredAt':
-            return nft.firstTransferredAt || -1;
+          case 'firstSaleAt':
+            return nft.firstSaleAt || -1;
           case 'lastSaleAmount':
             return nft.lastSaleAmount || -1;
-          case 'lastTransferredAt':
-            return nft.lastTransferredAt || -1;
+          case 'lastSaleAt':
+            return nft.lastSaleAt || -1;
           case 'priceChange':
             const firstAmount = nft.firstSaleAmount;
             const lastAmount = nft.lastSaleAmount;
@@ -307,7 +316,7 @@ const NFTList: React.FC = () => {
               <SortableHeader field="owner">Owner / Label</SortableHeader>
               <SortableHeader field="mintedAt">Minted At</SortableHeader>
               <SortableHeader field="lastSaleAmount">Last Sale</SortableHeader>
-              <SortableHeader field="lastTransferredAt">Last Sale At</SortableHeader>
+              <SortableHeader field="lastSaleAt">Last Sale At</SortableHeader>
               <SortableHeader field="priceChange">Price Change</SortableHeader>
               <TableHead>Color</TableHead>
               <TableHead>Actions</TableHead>
@@ -359,7 +368,7 @@ const NFTList: React.FC = () => {
                     {formatAmount(nft.lastSaleAmount)}
                   </TableCell>
                   <TableCell>
-                    {formatDate(nft.lastTransferredAt)}
+                    {formatDate(nft.lastSaleAt)}
                   </TableCell>
                   <TableCell>
                     {priceChange !== null ? (

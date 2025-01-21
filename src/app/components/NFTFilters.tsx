@@ -84,11 +84,11 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ activeNfts, onFilterChan
 
         // Last transferred date range
         if (currentFilters.lastTransferredAtStart && 
-            (!nft.lastTransferredAt || new Date(nft.lastTransferredAt) < new Date(currentFilters.lastTransferredAtStart))) {
+            (!nft.lastSaleAt || new Date(nft.lastSaleAt) < new Date(currentFilters.lastTransferredAtStart))) {
           return false;
         }
         if (currentFilters.lastTransferredAtEnd && 
-            (!nft.lastTransferredAt || new Date(nft.lastTransferredAt) > new Date(currentFilters.lastTransferredAtEnd))) {
+            (!nft.lastSaleAt || new Date(nft.lastSaleAt) > new Date(currentFilters.lastTransferredAtEnd))) {
           return false;
         }
 

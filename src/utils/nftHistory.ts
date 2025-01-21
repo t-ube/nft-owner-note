@@ -250,9 +250,9 @@ export async function updateNFTTransferHistories(
       updatedNFTs.push({
         ...nft,
         firstSaleAmount: history.firstSale?.amount || null,
-        firstTransferredAt: history.firstSale?.timestamp || null,
+        firstSaleAt: history.firstSale?.timestamp || null,
         lastSaleAmount: history.lastSale?.amount || null,
-        lastTransferredAt: history.lastSale?.timestamp || null,
+        lastSaleAt: history.lastSale?.timestamp || null,
         mintedAt: history.mintInfo?.timestamp || null,
       });
     } catch (error) {

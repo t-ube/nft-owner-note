@@ -146,19 +146,19 @@ const Statistics: React.FC<StatisticsProps> = ({ projectId }) => {
         ).length;
 
         const recentSales = nftData.filter(nft => 
-          nft.firstTransferredAt && nft.firstTransferredAt >= sevenDaysAgo
+          nft.firstSaleAt && nft.firstSaleAt >= sevenDaysAgo
         );
         const salesLast7Days = recentSales.length;
         const uniqueBuyersLast7Days = _.uniqBy(recentSales, 'owner').length;
 
         const totalMints = nftData.filter(nft => nft.mintedAt).length;
-        const totalSales = nftData.filter(nft => nft.firstTransferredAt).length;
+        const totalSales = nftData.filter(nft => nft.firstSaleAt).length;
 
         const timeToFirstSale = nftData
-          .filter(nft => nft.mintedAt && nft.firstTransferredAt)
+          .filter(nft => nft.mintedAt && nft.firstSaleAt)
           .map(nft => {
             const mintDate = nft.mintedAt!;
-            const saleDate = nft.firstTransferredAt!;
+            const saleDate = nft.firstSaleAt!;
             return (saleDate - mintDate) / (24 * 60 * 60 * 1000);
           });
         

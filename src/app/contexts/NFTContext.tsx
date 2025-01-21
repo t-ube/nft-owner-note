@@ -81,9 +81,9 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
           name: nft.name,
           mintedAt: history.mintInfo?.timestamp || null,
           firstSaleAmount: history.firstSale?.amount || null,
-          firstTransferredAt: history.firstSale?.timestamp || null,
+          firstSaleAt: history.firstSale?.timestamp || null,
           lastSaleAmount: history.lastSale?.amount || null,
-          lastTransferredAt: history.lastSale?.timestamp || null
+          lastSaleAt: history.lastSale?.timestamp || null
         };
         await dbManager.updateNFTDetails(updatedNFT);
         
@@ -118,9 +118,9 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
             name: nft.name,
             mintedAt: history.mintInfo?.timestamp || null,
             firstSaleAmount: history.firstSale?.amount || null,
-            firstTransferredAt: history.firstSale?.timestamp || null,
+            firstSaleAt: history.firstSale?.timestamp || null,
             lastSaleAmount: history.lastSale?.amount || null,
-            lastTransferredAt: history.lastSale?.timestamp || null
+            lastSaleAt: history.lastSale?.timestamp || null
           };
           await dbManager.updateNFTDetails(updatedNFT);
           
@@ -144,6 +144,8 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
   };
 
   const fetchNFTs = useCallback(async () => {
+    console.log("NFTContext: fetchNFTs");
+
     if (!client || !isReady || nfts.length >= MAX_NFTS || !hasMore) return;
   
     setIsLoading(true);
@@ -217,6 +219,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
   // Load cached data from database
   useEffect(() => {
     const loadCachedData = async () => {
+      console.log("NFTContext: useEffect - loadCachedData");
       try {
         const cachedNFTs = await dbManager.getNFTsByProjectId(projectId);
         if (cachedNFTs.length > 0) {
@@ -234,16 +237,13 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
     if (isReady) {
       loadCachedData();
     }
-  }, [isReady, projectId, fetchNFTs]);
+  }, [isReady, projectId]);
 
   const loadMore = async () => {
     await fetchNFTs();
   };
 
   const refreshData = async () => {
-    // Clear existing data for this project
-    await dbManager.clearProjectNFTs(projectId);
-    setNfts([]);
     setMarker(undefined);
     setHasMore(true);
     await fetchNFTs();
