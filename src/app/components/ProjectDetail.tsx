@@ -20,9 +20,10 @@ import Statistics from '@/app/components/Statistics';
 
 interface ProjectDetailProps {
   projectId: string;
+  onProjectsUpdated: () => void;
 }
 
-const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
+const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onProjectsUpdated }) => {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -46,6 +47,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
 
   const handleProjectUpdate = (updatedProject: Project) => {
     setProject(updatedProject);
+    onProjectsUpdated();
   };
 
   if (isLoading) {

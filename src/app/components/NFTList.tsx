@@ -36,7 +36,7 @@ const COLORS = [
   { value: '🟤', label: '🟤 Brown' },
 ] as const;
 
-type ColorType = typeof COLORS[number]['value'] | null;
+type ColorType = typeof COLORS[number]['value'] | 'none' |  null;
 
 type SortField = 'tokenId' | 'name' | 'owner' | 'mintedAt' | 'firstSaleAmount' | 'firstSaleAt' | 'lastSaleAmount' | 'lastSaleAt' | 'priceChange' | 'isOrderMade';
 type SortDirection = 'asc' | 'desc' | null;
@@ -107,7 +107,7 @@ const NFTList: React.FC = () => {
 
     const updatedNFT = {
       ...nft,
-      color: newColor
+      color: newColor === 'none' ? null : newColor
     };
 
     try {
@@ -366,13 +366,16 @@ const NFTList: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <Select
-                      value={nft.color || undefined}
-                      onValueChange={(value) => handleColorChange(nft.nft_id, value as ColorType || null)}
+                      value={nft.color === null ? 'none' : nft.color || 'none'}
+                      onValueChange={(value) => handleColorChange(nft.nft_id, value as ColorType)}
                     >
                       <SelectTrigger className="w-24 text-xs">
-                        <SelectValue placeholder="Select" />
+                        <SelectValue placeholder="No Color" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="none">
+                          No Color
+                        </SelectItem>
                         {COLORS.map(color => (
                           <SelectItem key={color.value} value={color.value}>
                             {color.label}

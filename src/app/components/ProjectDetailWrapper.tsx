@@ -166,7 +166,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
         issuer={project.issuer}
         taxon={project.taxon}
       >
-        <ProjectDetail projectId={projectId} />
+        <ProjectDetail projectId={projectId} onProjectsUpdated={refreshProjects}/>
       </NFTContextProvider>
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
