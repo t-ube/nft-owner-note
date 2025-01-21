@@ -1,5 +1,6 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Folder, Search, Trash2, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -61,14 +62,11 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
           Owners List
         </Button>
 
-        {/* プロジェクト管理セクション */}
         <div className="space-y-4">
           <h2 className="text-xl font-bold">Projects</h2>
           
-          {/* インポート/エクスポート機能を追加 */}
           <ProjectCSVImportExport onProjectsUpdated={onProjectsUpdated} />
           
-          {/* 既存の検索バー */}
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />
             <Input
@@ -92,7 +90,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                 key={project.id}
                 className={`
                   flex items-center justify-between px-4 py-2 cursor-pointer
-                  transition-colors duration-200 relative group  // groupを追加
+                  transition-colors duration-200 relative group
                   ${project.projectId === currentProjectId ? 'bg-gray-100' : 'hover:bg-gray-50'}
                 `}
                 onClick={() => handleProjectClick(project.projectId)}
@@ -115,6 +113,26 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
             ))}
           </div>
         )}
+      </div>
+      <div className="p-4 mt-auto border-t">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-500">Developed by shirome</span>
+          <a
+            href="https://x.com/shirome_x"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            title="Follow on X"
+          >
+            <Image 
+              src="/x-logo-black.png" 
+              alt="X (Twitter)" 
+              width={20}
+              height={20}
+              className="opacity-75 hover:opacity-100 transition-opacity" 
+            />
+          </a>
+        </div>
       </div>
     </aside>
   );
