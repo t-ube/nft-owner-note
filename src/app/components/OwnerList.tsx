@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { AddressGroupDialog } from './AddressGroupDialog';
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
+import NFTSiteWalletIcons from '@/app/components/NFTSiteWalletIcons';
 
 interface OwnerStats {
   address: string;
@@ -21,7 +22,12 @@ interface OwnerStats {
   nftIds: string[];
 }
 
-const OwnerList: React.FC = () => {
+interface OwnerListProps {
+  issuer: string;
+  taxon: string;
+}
+
+const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
   const { nfts } = useNFTContext();
   const [addressGroups, setAddressGroups] = React.useState<Record<string, AddressGroup>>({});
   const [addressInfos, setAddressInfos] = React.useState<Record<string, AddressInfo>>({});
@@ -145,6 +151,7 @@ const OwnerList: React.FC = () => {
               <TableHead className="w-40">X Account</TableHead>
               <TableHead className="w-32 text-right">NFT Count</TableHead>
               <TableHead className="w-32 text-right">Holding %</TableHead>
+              <TableHead className="w-40">Links</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -178,6 +185,9 @@ const OwnerList: React.FC = () => {
                 </TableCell>
                 <TableCell className="text-right">
                   {stat.holdingRatio.toFixed(2)}%
+                </TableCell>
+                <TableCell>
+                  <NFTSiteWalletIcons wallet={stat.address} issuer={issuer} taxon={taxon} />
                 </TableCell>
               </TableRow>
             ))}

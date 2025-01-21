@@ -119,7 +119,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onProjectsUpda
                 <CardTitle>Owner Rank</CardTitle>
               </CardHeader>
               <CardContent>
-                <OwnerList />
+                <OwnerList issuer={project.issuer} taxon={project.taxon}/>
               </CardContent>
             </Card>
           </TabsContent>
