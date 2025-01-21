@@ -34,8 +34,8 @@ export interface NFToken extends NFTokenBase {
   firstTransferredAt?: number | null;
   mintedAt?: number | null;
   isOrderMade?: boolean;
-  customValue1?: number | null;
-  customValue2?: number | null;
+  userValue1?: number | null;
+  userValue2?: number | null;
   color?: string | null;
   memo?: string | null;
 }
@@ -48,8 +48,8 @@ export interface NFTDetail {
   lastSaleAmount: number | null;
   lastTransferredAt: number | null;
   isOrderMade: boolean;
-  customValue1: number | null;
-  customValue2: number | null;
+  userValue1: number | null;
+  userValue2: number | null;
   color: string | null;
   memo: string | null;
   updatedAt: number;
@@ -61,8 +61,8 @@ export interface AddressGroup {
   addresses: string[];  // 所属するアドレスのリスト
   xAccount: string | null;   // Xアカウント名
   memo: string | null;       // メモ
-  customValue1: number | null; // ユーザー定義数値1
-  customValue2: number | null; // ユーザー定義数値2
+  userValue1: number | null; // ユーザー定義数値1
+  userValue2: number | null; // ユーザー定義数値2
   updatedAt: number;        // 更新日時
 }
 
@@ -227,8 +227,8 @@ class DatabaseManager {
             lastSaleAmount: null,
             lastTransferredAt: null,
             isOrderMade: false,
-            customValue1: null,
-            customValue2: null,
+            userValue1: null,
+            userValue2: null,
             color: null,
             memo: null,
             ...existing, // 既存の拡張情報を適用
@@ -481,6 +481,24 @@ class DatabaseManager {
 
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  async getProjectByIssuerAndTaxon(issuer: string, taxon: string): Promise<Project | undefined> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('projects', 'readonly');
+      const store = transaction.objectStore('projects');
+      const request = store.getAll();
+  
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const projects = request.result as Project[];
+        const matchingProject = projects.find(
+          p => p.issuer === issuer && p.taxon === taxon
+        );
+        resolve(matchingProject);
+      };
     });
   }
 }

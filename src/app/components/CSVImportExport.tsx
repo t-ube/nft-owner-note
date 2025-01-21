@@ -15,8 +15,8 @@ interface AddressGroupCSV {
   addresses: string;
   xAccount: string;
   memo: string;
-  customValue1: string;
-  customValue2: string;
+  userValue1: string;
+  userValue2: string;
 }
 
 // CSVインポート時のバリデーションエラー型
@@ -38,8 +38,8 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
         addresses: group.addresses.join(';'),
         xAccount: group.xAccount || '',
         memo: group.memo || '',
-        customValue1: group.customValue1?.toString() || '',
-        customValue2: group.customValue2?.toString() || ''
+        userValue1: group.userValue1?.toString() || '',
+        userValue2: group.userValue2?.toString() || ''
       }));
 
       // Generate CSV
@@ -74,12 +74,12 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
       errors.push('At least one address is required');
     }
     
-    if (row.customValue1 && isNaN(Number(row.customValue1))) {
-      errors.push('Custom Value 1 must be a number');
+    if (row.userValue1 && isNaN(Number(row.userValue1))) {
+      errors.push('User Value 1 must be a number');
     }
     
-    if (row.customValue2 && isNaN(Number(row.customValue2))) {
-      errors.push('Custom Value 2 must be a number');
+    if (row.userValue2 && isNaN(Number(row.userValue2))) {
+      errors.push('User Value 2 must be a number');
     }
     
     return errors.length > 0 ? { row: index + 1, errors } : null;
@@ -91,8 +91,8 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
       addresses: row.addresses.split(';').filter(Boolean),
       xAccount: row.xAccount?.trim() || null,
       memo: row.memo?.trim() || null,
-      customValue1: row.customValue1 ? Number(row.customValue1) : null,
-      customValue2: row.customValue2 ? Number(row.customValue2) : null
+      userValue1: row.userValue1 ? Number(row.userValue1) : null,
+      userValue2: row.userValue2 ? Number(row.userValue2) : null
     };
   };
 
@@ -173,8 +173,8 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
         addresses: 'rAddress1;rAddress2',
         xAccount: '@sample',
         memo: 'Sample memo',
-        customValue1: '100',
-        customValue2: '200'
+        userValue1: '100',
+        userValue2: '200'
       }
     ];
     

@@ -12,13 +12,11 @@ import {
   List,
   AlertCircle
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import NFTList from '@/app/components/NFTList';
 import OwnerList from '@/app/components/OwnerList';
 import Statistics from '@/app/components/Statistics';
 import { useXrplClient } from '@/app/contexts/XrplContext';
-import { useNFTContext } from '@/app/contexts/NFTContext';
 
 
 interface ProjectDetailProps {
@@ -29,8 +27,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { isReady: isXrplReady, error: xrplError } = useXrplClient();
-  const { refreshData: refreshNFTs, isLoading: isNFTLoading } = useNFTContext();
+  const { error: xrplError } = useXrplClient();
 
   const loadProjectData = useCallback(async () => {
     setIsLoading(true);
@@ -49,11 +46,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
   useEffect(() => {
     loadProjectData();
   }, [loadProjectData]);
-
-  const handleSync = useCallback(async () => {
-    if (!isXrplReady) return;
-    await refreshNFTs();
-  }, [isXrplReady, refreshNFTs]);
 
   const handleProjectUpdate = (updatedProject: Project) => {
     setProject(updatedProject);
@@ -104,13 +96,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
             <h1 className="text-2xl font-bold">{project.name}</h1>
             <p className="text-gray-500">#{project.projectId}</p>
           </div>
-          <Button 
-            onClick={handleSync}
-            disabled={!isXrplReady || isNFTLoading}
-          >
-            <RefreshCcw className="h-4 w-4 mr-2" />
-            {isNFTLoading ? "Syncing..." : "Sync Data"}
-          </Button>
         </div>
 
         <ProjectInfo project={project} onProjectUpdate={handleProjectUpdate} />

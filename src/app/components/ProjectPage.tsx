@@ -36,10 +36,24 @@ const ProjectPage: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadProjects();
   }, []);
+
+  // Clear messages after 5 seconds
+  useEffect(() => {
+    if (error || successMessage) {
+      const timer = setTimeout(() => {
+        setError(null);
+        setSuccessMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, successMessage]);
 
   const loadProjects = async () => {
     try {
@@ -47,17 +61,52 @@ const ProjectPage: React.FC = () => {
       setProjects(loadedProjects);
     } catch (error) {
       console.error('Failed to load projects:', error);
+      setError('Failed to load projects');
     }
+  };
+
+  // 半角英数字のみを許可する正規表現
+  const alphanumericRegex = /^[a-zA-Z0-9]+$/;
+
+  const validateProjectId = (id: string): boolean => {
+    return alphanumericRegex.test(id);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
+    // Project IDのバリデーション
+    if (!validateProjectId(newProject.projectId)) {
+      setError('Project ID must contain only alphanumeric characters (0-9, a-z, A-Z)');
+      return;
+    }
+
     try {
+      setIsSubmitting(true);
+      setError(null);
+      setSuccessMessage(null);
+      
+      // Check for duplicate issuer/taxon combination
+      const existingProject = await dbManager.getProjectByIssuerAndTaxon(
+        newProject.issuer,
+        newProject.taxon
+      );
+
+      if (existingProject) {
+        setError(`A project with the same issuer and taxon already exists: ${existingProject.name} (${existingProject.projectId})`);
+        return;
+      }
+
       const project = await dbManager.addProject(newProject);
       setProjects([...projects, project]);
       setNewProject({ projectId: '', name: '', issuer: '', taxon: '' });
+      setSuccessMessage('Project created successfully');
     } catch (error) {
       console.error('Failed to add project:', error);
+      setError('Failed to create project');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -72,8 +121,10 @@ const ProjectPage: React.FC = () => {
       try {
         await dbManager.deleteProject(projectToDelete.id);
         setProjects(projects.filter(p => p.id !== projectToDelete.id));
+        setSuccessMessage('Project deleted successfully');
       } catch (error) {
         console.error('Failed to delete project:', error);
+        setError('Failed to delete project');
       }
     }
     setIsDeleteDialogOpen(false);
@@ -87,7 +138,6 @@ const ProjectPage: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
       <ProjectSidebar
         projects={projects}
         searchTerm={searchTerm}
@@ -96,13 +146,22 @@ const ProjectPage: React.FC = () => {
         onProjectsUpdated={refreshProjects}
       />
 
-      {/* Main Content */}
       <div className="flex-1 p-8">
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle>Create New Project</CardTitle>
           </CardHeader>
           <CardContent>
+            {error && (
+              <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                {error}
+              </div>
+            )}
+            {successMessage && (
+              <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+                {successMessage}
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
@@ -110,12 +169,18 @@ const ProjectPage: React.FC = () => {
                 </label>
                 <Input
                   value={newProject.projectId}
-                  onChange={(e) => setNewProject({
-                    ...newProject,
-                    projectId: e.target.value
-                  })}
-                  placeholder="Enter project ID"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // 入力時に半角英数字以外を除去
+                    const sanitizedValue = value.replace(/[^a-zA-Z0-9]/g, '');
+                    setNewProject({
+                      ...newProject,
+                      projectId: sanitizedValue
+                    });
+                  }}
+                  placeholder="Enter project ID (alphanumeric only)"
                   required
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -130,6 +195,7 @@ const ProjectPage: React.FC = () => {
                   })}
                   placeholder="Enter project name"
                   required
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -144,6 +210,7 @@ const ProjectPage: React.FC = () => {
                   })}
                   placeholder="Enter issuer address"
                   required
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -159,11 +226,12 @@ const ProjectPage: React.FC = () => {
                   placeholder="Enter taxon"
                   required
                   type="number"
+                  disabled={isSubmitting}
                 />
               </div>
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
                 <Plus className="h-4 w-4 mr-2" />
-                Create Project
+                {isSubmitting ? 'Creating...' : 'Create Project'}
               </Button>
             </form>
           </CardContent>
@@ -176,7 +244,7 @@ const ProjectPage: React.FC = () => {
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently delete the project 
-              `&quot;`{projectToDelete?.name}`&quot;` (#{projectToDelete?.projectId}).
+              &quot;{projectToDelete?.name}&quot; (#{projectToDelete?.projectId}).
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

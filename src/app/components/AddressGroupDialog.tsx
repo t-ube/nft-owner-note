@@ -32,8 +32,8 @@ export function AddressGroupDialog({
     name: '',
     xAccount: null,
     memo: null,
-    customValue1: null,
-    customValue2: null,
+    userValue1: null,
+    userValue2: null,
     addresses: initialAddresses,
   });
   const [newAddress, setNewAddress] = React.useState('');
@@ -140,26 +140,26 @@ export function AddressGroupDialog({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="customValue1">Custom Value 1</Label>
+              <Label htmlFor="userValue1">Custom Value 1</Label>
               <Input
-                id="customValue1"
+                id="userValue1"
                 type="number"
-                value={addressGroup.customValue1 || ''}
+                value={addressGroup.userValue1 || ''}
                 onChange={(e) => setAddressGroup(prev => ({ 
                   ...prev, 
-                  customValue1: e.target.value ? Number(e.target.value) : null 
+                  userValue1: e.target.value ? Number(e.target.value) : null 
                 }))}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="customValue2">Custom Value 2</Label>
+              <Label htmlFor="userValue2">Custom Value 2</Label>
               <Input
-                id="customValue2"
+                id="userValue2"
                 type="number"
-                value={addressGroup.customValue2 || ''}
+                value={addressGroup.userValue2 || ''}
                 onChange={(e) => setAddressGroup(prev => ({ 
                   ...prev, 
-                  customValue2: e.target.value ? Number(e.target.value) : null 
+                  userValue2: e.target.value ? Number(e.target.value) : null 
                 }))}
               />
             </div>
