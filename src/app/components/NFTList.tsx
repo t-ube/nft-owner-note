@@ -24,6 +24,7 @@ import { AddressGroupDialog } from '@/app/components/AddressGroupDialog';
 import NFTSiteIcons from '@/app/components/NFTSiteIcons';
 import { NFTFilters } from '@/app/components/NFTFilters';
 import { NFToken } from '@/utils/db';
+import NFTNameEdit from '@/app/components/NFTNameEdit';
 import _ from 'lodash';
 
 const COLORS = [
@@ -51,12 +52,13 @@ const NFTList: React.FC = () => {
     nfts,
     setNfts,
     isLoading, 
-    isUpdatingHistory,
+    updatingNFTs,
     error, 
     hasMore, 
     refreshData,
     loadMore,
-    updateAllNFTHistory
+    updateAllNFTHistory,
+    updateNFTHistory
   } = useNFTContext();
   const { isReady } = useXrplClient();
   const [addressGroups, setAddressGroups] = React.useState<Record<string, AddressGroup>>({});
@@ -207,6 +209,22 @@ const NFTList: React.FC = () => {
     return <ArrowUpDown className="ml-2 h-4 w-4" />;
   };
 
+  const handleNameSave = async (nft: NFToken, newName: string | null) => {
+    const updatedNFT = {
+      ...nft,
+      name: newName
+    };
+
+    try {
+      await dbManager.updateNFTDetails(updatedNFT);
+      setNfts(prev => prev.map(n => 
+        n.nft_id === nft.nft_id ? updatedNFT : n
+      ));
+    } catch (error) {
+      console.error('Failed to update name:', error);
+    }
+  };
+
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <TableHead>
       <Button
@@ -270,12 +288,12 @@ const NFTList: React.FC = () => {
               await refreshData();
               updateAllNFTHistory();
             }}
-            disabled={isLoading || isUpdatingHistory}
+            disabled={isLoading || updatingNFTs.size > 0}
             className="flex items-center gap-2"
           >
             <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             {isLoading ? "Refreshing" : "Refresh"}
-            {isUpdatingHistory ? " / Updating History..." : " / Update History"}
+            {updatingNFTs.size > 0 ? " / Updating History..." : " / Update History"}
           </Button>
         </div>
       </div>
@@ -292,6 +310,7 @@ const NFTList: React.FC = () => {
               <SortableHeader field="lastTransferredAt">Last Sale At</SortableHeader>
               <SortableHeader field="priceChange">Price Change</SortableHeader>
               <TableHead>Color</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -307,7 +326,10 @@ const NFTList: React.FC = () => {
                     <NFTSiteIcons tokenId={nft.nft_id} />
                   </TableCell>
                   <TableCell>
-                    {nft.name || '-'}
+                    <NFTNameEdit 
+                      nft={nft}
+                      onSave={handleNameSave}
+                    />
                   </TableCell>
                   <TableCell>
                     <div>
@@ -363,6 +385,17 @@ const NFTList: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                      onClick={() => updateNFTHistory(nft.nft_id)}
+                      disabled={updatingNFTs.has(nft.nft_id)}
+                    >
+                      <RefreshCcw className={`h-4 w-4 ${updatingNFTs.has(nft.nft_id) ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               );
             })}
@@ -375,7 +408,7 @@ const NFTList: React.FC = () => {
           <Button
             variant="outline"
             onClick={loadMore}
-            disabled={isLoading || isUpdatingHistory}
+            disabled={isLoading || updatingNFTs.size > 0}
           >
             {isLoading ? "Loading..." : "Load More"}
           </Button>

@@ -157,7 +157,7 @@ const OwnerList: React.FC = () => {
               <TableHead className="w-20">Rank</TableHead>
               <TableHead className="w-40">Owner</TableHead>
               <TableHead className="w-40">Label</TableHead>
-              <TableHead className="w-40">XAccount</TableHead>
+              <TableHead className="w-40">X Account</TableHead>
               <TableHead className="w-32 text-right">NFT Count</TableHead>
               <TableHead className="w-32 text-right">Holding %</TableHead>
             </TableRow>

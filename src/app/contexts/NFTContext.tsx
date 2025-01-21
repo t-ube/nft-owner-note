@@ -10,7 +10,7 @@ interface NFTContextType {
   nfts: NFToken[];
   setNfts: React.Dispatch<React.SetStateAction<NFToken[]>>;
   isLoading: boolean;
-  isUpdatingHistory: boolean;
+  updatingNFTs: Set<string>;
   error: string | null;
   hasMore: boolean;
   loadMore: () => Promise<void>;
@@ -44,7 +44,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
 }) => {
   const [nfts, setNfts] = useState<NFToken[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isUpdatingHistory, setIsUpdatingHistory] = useState(false);
+  const [updatingNFTs, setUpdatingNFTs] = useState<Set<string>>(new Set()); 
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [marker, setMarker] = useState<unknown | undefined>();
@@ -58,14 +58,27 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
     if (!client || !isReady) return;
   
     try {
-      setIsUpdatingHistory(true);
+      setUpdatingNFTs(prev => {
+        const next = new Set(prev);
+        next.add(nftId);
+        return next;
+      });
+
       const nft = nfts.find(n => n.nft_id === nftId);
-      if (!nft) return;
+      if (!nft) {
+        setUpdatingNFTs(prev => {
+          const next = new Set(prev);
+          next.delete(nftId);
+          return next;
+        });
+        return;
+      }
   
       const history = await fetchNFTTransferHistory(client, nft);
       if (history) {
         const updatedNFT = {
           ...nft,
+          name: nft.name,
           mintedAt: history.mintInfo?.timestamp || null,
           firstSaleAmount: history.firstSale?.amount || null,
           firstTransferredAt: history.firstSale?.timestamp || null,
@@ -81,7 +94,11 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
     } catch (error) {
       console.error(`Error updating NFT history for ${nftId}:`, error);
     } finally {
-      setIsUpdatingHistory(false);
+      setUpdatingNFTs(prev => {
+        const next = new Set(prev);
+        next.delete(nftId);
+        return next;
+      });
     }
   };
 
@@ -90,12 +107,15 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
     if (!client || !isReady || nfts.length === 0) return;
 
     try {
-      setIsUpdatingHistory(true);
+      const nftIds = nfts.map(nft => nft.nft_id);
+      setUpdatingNFTs(new Set(Array.from(nftIds)));
+      
       for (const nft of nfts) {
         const history = await fetchNFTTransferHistory(client, nft);
         if (history) {
           const updatedNFT = {
             ...nft,
+            name: nft.name,
             mintedAt: history.mintInfo?.timestamp || null,
             firstSaleAmount: history.firstSale?.amount || null,
             firstTransferredAt: history.firstSale?.timestamp || null,
@@ -107,12 +127,19 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
           setNfts(prev => 
             prev.map(n => n.nft_id === nft.nft_id ? updatedNFT : n)
           );
+          
+          // 更新が完了したNFTを削除
+          setUpdatingNFTs(prev => {
+            const next = new Set(prev);
+            next.delete(nft.nft_id);
+            return next;
+          });
         }
       }
     } catch (error) {
       console.error('Error updating all NFT histories:', error);
     } finally {
-      setIsUpdatingHistory(false);
+      setUpdatingNFTs(new Set());
     }
   };
 
@@ -226,7 +253,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
     nfts,
     setNfts,
     isLoading,
-    isUpdatingHistory,
+    updatingNFTs,
     error,
     hasMore,
     loadMore,
