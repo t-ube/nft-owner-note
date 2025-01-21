@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -39,10 +40,12 @@ const NFTSiteIcons: React.FC<NFTSiteIconsProps> = ({ tokenId }) => {
                 className="p-1 h-6 w-6 hover:bg-gray-100 rounded-full"
                 onClick={() => window.open(site.url, '_blank')}
               >
-                <img
+                <Image
                   src={`/${site.icon}`}
                   alt={site.name}
-                  className="w-full h-full object-contain rounded-full"
+                  width={24}
+                  height={24}
+                  className="object-contain rounded-full"
                 />
               </Button>
             </TooltipTrigger>
