@@ -86,32 +86,21 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onProjectsUpda
 
         <ProjectInfo project={project} onProjectUpdate={handleProjectUpdate} />
 
-        <Tabs defaultValue="nfts" className="space-y-4">
+        <Tabs defaultValue="owners" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="nfts">
-              <List className="h-4 w-4 mr-2" />
-              NFT List
-            </TabsTrigger>
             <TabsTrigger value="owners">
               <Users className="h-4 w-4 mr-2" />
               Owner Rank
+            </TabsTrigger>
+            <TabsTrigger value="nfts">
+              <List className="h-4 w-4 mr-2" />
+              NFT List
             </TabsTrigger>
             <TabsTrigger value="stats">
               <BarChart3 className="h-4 w-4 mr-2" />
               Statistics
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="nfts" className="space-y-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>NFT List</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <NFTList/>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="owners" className="space-y-4">
             <Card>
@@ -120,6 +109,17 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onProjectsUpda
               </CardHeader>
               <CardContent>
                 <OwnerList issuer={project.issuer} taxon={project.taxon}/>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="nfts" className="space-y-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>NFT List</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <NFTList/>
               </CardContent>
             </Card>
           </TabsContent>

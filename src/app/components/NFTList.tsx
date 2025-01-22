@@ -300,6 +300,7 @@ const NFTList: React.FC = () => {
         <Table>
           <TableHeader>
             <TableRow>
+              <SortableHeader field="tokenId">Serial</SortableHeader>
               <SortableHeader field="tokenId">Token ID</SortableHeader>
               <SortableHeader field="owner">Owner</SortableHeader>
               <SortableHeader field="name">NFT Name</SortableHeader>
@@ -319,6 +320,9 @@ const NFTList: React.FC = () => {
 
               return (
                 <TableRow key={nft.nft_id}>
+                  <TableCell className="font-mono text-xs">
+                    {nft.nft_serial}
+                  </TableCell>
                   <TableCell className="font-mono text-xs">
                     {formatTokenId(nft.nft_id)}
                     <NFTSiteIcons tokenId={nft.nft_id} />

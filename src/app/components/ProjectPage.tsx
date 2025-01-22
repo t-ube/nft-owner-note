@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface ProjectFormData {
-  projectId: string;
   name: string;
   issuer: string;
   taxon: string;
@@ -28,7 +27,6 @@ interface ProjectFormData {
 const ProjectPage: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [newProject, setNewProject] = useState<ProjectFormData>({
-    projectId: '',
     name: '',
     issuer: '',
     taxon: ''
@@ -44,7 +42,6 @@ const ProjectPage: React.FC = () => {
     loadProjects();
   }, []);
 
-  // Clear messages after 5 seconds
   useEffect(() => {
     if (error || successMessage) {
       const timer = setTimeout(() => {
@@ -65,22 +62,9 @@ const ProjectPage: React.FC = () => {
     }
   };
 
-  // 半角英数字のみを許可する正規表現
-  const alphanumericRegex = /^[a-zA-Z0-9]+$/;
-
-  const validateProjectId = (id: string): boolean => {
-    return alphanumericRegex.test(id);
-  };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSubmitting) return;
-
-    // Project IDのバリデーション
-    if (!validateProjectId(newProject.projectId)) {
-      setError('Project ID must contain only alphanumeric characters (0-9, a-z, A-Z)');
-      return;
-    }
 
     try {
       setIsSubmitting(true);
@@ -94,13 +78,13 @@ const ProjectPage: React.FC = () => {
       );
 
       if (existingProject) {
-        setError(`A project with the same issuer and taxon already exists: ${existingProject.name} (${existingProject.projectId})`);
+        setError(`A project with the same issuer and taxon already exists: ${existingProject.name}`);
         return;
       }
 
       const project = await dbManager.addProject(newProject);
       setProjects([...projects, project]);
-      setNewProject({ projectId: '', name: '', issuer: '', taxon: '' });
+      setNewProject({ name: '', issuer: '', taxon: '' });
       setSuccessMessage('Project created successfully');
     } catch (error) {
       console.error('Failed to add project:', error);
@@ -165,26 +149,6 @@ const ProjectPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Project ID
-                </label>
-                <Input
-                  value={newProject.projectId}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // 入力時に半角英数字以外を除去
-                    const sanitizedValue = value.replace(/[^a-zA-Z0-9]/g, '');
-                    setNewProject({
-                      ...newProject,
-                      projectId: sanitizedValue
-                    });
-                  }}
-                  placeholder="Enter project ID (alphanumeric only)"
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
                   Project Name
                 </label>
                 <Input
@@ -244,7 +208,7 @@ const ProjectPage: React.FC = () => {
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently delete the project 
-              &quot;{projectToDelete?.name}&quot; (#{projectToDelete?.projectId}).
+              &quot;{projectToDelete?.name}&quot;.
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

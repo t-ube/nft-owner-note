@@ -76,6 +76,23 @@ class DatabaseManager {
   private dbName = 'OwnerNoteDB';
   private version = 1;
 
+  // ProjectIDを生成するヘルパーメソッド
+  private async generateProjectId(project: { name: string; issuer: string; taxon: string }): Promise<string> {
+    // プロジェクトの情報とタイムスタンプを組み合わせてハッシュを生成
+    const timestamp = Date.now().toString();
+    const data = `${project.name}:${project.issuer}:${project.taxon}:${timestamp}`;
+    const encoder = new TextEncoder();
+    const buffer = encoder.encode(data);
+    
+    // SHA-256ハッシュを生成
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    // 最初の12文字を使用（十分なユニーク性を確保しつつ、適度な長さに）
+    return hashHex.slice(0, 12);
+  }
+
   async initDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.dbName, this.version);
@@ -97,7 +114,6 @@ class DatabaseManager {
         if (!db.objectStoreNames.contains('nfts')) {
           const store = db.createObjectStore('nfts', { keyPath: 'id' });
           store.createIndex('projectId', 'projectId', { unique: false });
-          store.createIndex('nft_id', 'nft_id', { unique: true });
           store.createIndex('owner', 'owner', { unique: false });
           store.createIndex('projectId_nft_id', ['projectId', 'nft_id'], { unique: true });
           store.createIndex('isOrderMade', 'isOrderMade', { unique: false });
@@ -125,15 +141,18 @@ class DatabaseManager {
   }
 
   // Project Methods
-  async addProject(project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>): Promise<Project> {
+  async addProject(project: Omit<Project, 'id' | 'projectId' | 'createdAt' | 'updatedAt'>): Promise<Project> {
     const db = await this.initDB();
+    const projectId = await this.generateProjectId(project);
     return new Promise((resolve, reject) => {
       const transaction = db.transaction('projects', 'readwrite');
       const store = transaction.objectStore('projects');
 
       const now = Date.now();
+
       const completeProject: Project = {
         id: crypto.randomUUID(),
+        projectId,
         createdAt: now,
         updatedAt: now,
         ...project
@@ -145,7 +164,7 @@ class DatabaseManager {
       request.onsuccess = () => resolve(completeProject);
     });
   }
-
+  
   async getProjectByProjectId(projectId: string): Promise<Project | undefined> {
     const db = await this.initDB();
     return new Promise((resolve, reject) => {
