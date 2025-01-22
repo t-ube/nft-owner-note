@@ -251,11 +251,9 @@ const NFTList: React.FC<NFTListProps> = ({ projectId }) => {
       <div className="flex justify-between items-center">
         <div className="text-sm text-gray-500 space-y-1">
           <div>
-            {isLoading ? (
-              "Loading..."
-            ) : (
+            {
               `Showing ${((currentPage - 1) * ITEMS_PER_PAGE) + 1} to ${Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} of ${totalItems} NFTs`
-            )}
+            }
           </div>
           <div>
             Total NFTs: {totalItems.toLocaleString()} 
@@ -263,18 +261,18 @@ const NFTList: React.FC<NFTListProps> = ({ projectId }) => {
         </div>
         <div className="flex items-center gap-4">
           <Button
-            variant="outline"
             size="sm"
             onClick={handleUpdateAllHistory}
             disabled={updatingNFTs.size > 0 || isLoading}
-            className="relative"
+            className="relative bg-black hover:bg-gray-800"
           >
-            <RefreshCcw className={`h-4 w-4 ${updatingNFTs.size > 0 ? 'animate-spin' : ''}`} />
-            Update All History
-            {updatingNFTs.size > 0 && (
-              <span className="ml-2">
-                ({totalItems - updatingNFTs.size}/{totalItems})
+            <RefreshCcw className={`h-4 w-4 mr-2 ${updatingNFTs.size > 0 ? 'animate-spin' : ''}`} />
+            {updatingNFTs.size > 0 ? (
+              <span>
+                Updating ({updatingNFTs.size})
               </span>
+            ) : (
+              "Update Sale Info"
             )}
           </Button>
           <NFTFilters onFilterChange={handleFilterChange} />

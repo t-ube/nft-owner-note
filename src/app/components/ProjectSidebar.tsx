@@ -99,7 +99,6 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                   <Folder className="h-4 w-4 mr-2 flex-shrink-0" />
                   <div className="flex flex-col min-w-0">
                     <span className="font-medium truncate">{project.name}</span>
-                    <span className="text-xs text-gray-500">#{project.projectId}</span>
                   </div>
                 </div>
                 <button
