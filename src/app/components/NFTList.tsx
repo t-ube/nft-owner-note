@@ -16,14 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RefreshCcw, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { RefreshCcw, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Pencil } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
 import { AddressGroupDialog } from '@/app/components/AddressGroupDialog';
 import NFTSiteIcons from '@/app/components/NFTSiteIcons';
 import { NFTFilters } from '@/app/components/NFTFilters';
 import { NFToken } from '@/utils/db';
-import NFTNameEdit from '@/app/components/NFTNameEdit';
+//import NFTNameEdit from '@/app/components/NFTNameEdit';
 import _ from 'lodash';
 
 const COLORS = [
@@ -217,6 +217,7 @@ const NFTList: React.FC = () => {
     return <ArrowUpDown className="ml-2 h-4 w-4" />;
   };
 
+  /*
   const handleNameSave = async (nft: NFToken, newName: string | null) => {
     const updatedNFT = {
       ...nft,
@@ -232,6 +233,7 @@ const NFTList: React.FC = () => {
       console.error('Failed to update name:', error);
     }
   };
+  */
 
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <TableHead>
@@ -321,18 +323,20 @@ const NFTList: React.FC = () => {
                     {formatTokenId(nft.nft_id)}
                     <NFTSiteIcons tokenId={nft.nft_id} />
                   </TableCell>
-                  <TableCell>
-                    <div>
+                  <TableCell className="font-mono group relative">
+                    <div className="flex items-center gap-2">
+                      {formatAddress(nft.owner)}
                       <AddressGroupDialog
                         initialAddresses={[nft.owner]}
                         groupId={group?.id}
                         onSave={handleGroupSave}
                       >
                         <Button 
-                          variant="link" 
-                          className="h-auto p-0 font-mono"
+                          variant="ghost" 
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          {formatAddress(nft.owner)}
+                          <Pencil className="h-4 w-4" />
                         </Button>
                       </AddressGroupDialog>
                     </div>
@@ -343,10 +347,7 @@ const NFTList: React.FC = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <NFTNameEdit 
-                      nft={nft}
-                      onSave={handleNameSave}
-                    />
+                    {nft.name}
                   </TableCell>
                   <TableCell>
                     {formatDate(nft.mintedAt)}

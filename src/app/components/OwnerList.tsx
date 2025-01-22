@@ -15,6 +15,7 @@ import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
 import NFTSiteWalletIcons from '@/app/components/NFTSiteWalletIcons';
 import Papa from 'papaparse';
 import { Download } from 'lucide-react';
+import { Pencil } from "lucide-react";
 
 interface OwnerStats {
   address: string;
@@ -186,8 +187,8 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
           <TableHeader>
             <TableRow>
               <TableHead className="w-20">Rank</TableHead>
-              <TableHead className="w-40">Wallet Address</TableHead>
-              <TableHead className="w-40">Owner Name</TableHead>
+              <TableHead className="w-40">Owner</TableHead>
+              <TableHead className="w-40">Name</TableHead>
               <TableHead className="w-40">X Account</TableHead>
               <TableHead className="w-32 text-right">NFT Count</TableHead>
               <TableHead className="w-32 text-right">User Value1</TableHead>
@@ -202,19 +203,23 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
                 <TableCell className="text-center font-medium">
                   {ranks[index]}
                 </TableCell>
-                <TableCell className="font-mono">
-                  <AddressGroupDialog
-                    initialAddresses={[stat.address]}
-                    groupId={stat.group?.id}
-                    onSave={handleGroupSave}
-                  >
-                    <Button 
-                      variant="link" 
-                      className="h-auto p-0 font-mono"
+                <TableCell className="font-mono group relative">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono">{formatAddress(stat.address)}</span>
+                    <AddressGroupDialog
+                      initialAddresses={[stat.address]}
+                      groupId={stat.group?.id}
+                      onSave={handleGroupSave}
                     >
-                      {formatAddress(stat.address)}
-                    </Button>
-                  </AddressGroupDialog>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </AddressGroupDialog>
+                  </div>
                 </TableCell>
                 <TableCell>
                   {stat.group?.name || '-'}
