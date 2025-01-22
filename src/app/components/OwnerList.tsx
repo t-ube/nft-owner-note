@@ -15,7 +15,7 @@ import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
 import NFTSiteWalletIcons from '@/app/components/NFTSiteWalletIcons';
 import Papa from 'papaparse';
 import { Download } from 'lucide-react';
-import { Pencil } from "lucide-react";
+import { Pencil, Loader2 } from "lucide-react";
 
 interface OwnerStats {
   address: string;
@@ -31,7 +31,7 @@ interface OwnerListProps {
 }
 
 const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
-  const { nfts } = useNFTContext();
+  const { nfts, hasMore } = useNFTContext();
   const [addressGroups, setAddressGroups] = React.useState<Record<string, AddressGroup>>({});
   const [addressInfos, setAddressInfos] = React.useState<Record<string, AddressInfo>>({});
 
@@ -164,11 +164,15 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
         <div className="text-sm text-gray-500 space-y-1">
           <div>
             Showing {ownerStats.length} owners
+            {hasMore && (
+              <span className="ml-2 inline-flex items-center gap-1 text-gray-500">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Loading more data...
+              </span>
+            )}
           </div>
           <div>
-            Total NFTs: {nfts.length.toLocaleString()} 
-            (Active: {(nfts.length - burnedCount).toLocaleString()}, 
-            Burned: {burnedCount.toLocaleString()})
+            Total NFTs: {(nfts.length - burnedCount).toLocaleString()}
           </div>
         </div>
         <Button

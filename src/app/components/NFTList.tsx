@@ -1,5 +1,4 @@
-import React from 'react';
-import { useNFTContext } from '@/app/contexts/NFTContext';
+import React, { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -16,14 +15,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { useNFTContext } from '@/app/contexts/NFTContext';
 import { RefreshCcw, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Pencil } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
+import { dbManager, AddressGroup, AddressInfo, NFToken } from '@/utils/db';
 import { AddressGroupDialog } from '@/app/components/AddressGroupDialog';
 import NFTSiteIcons from '@/app/components/NFTSiteIcons';
-import { NFTFilters } from '@/app/components/NFTFilters';
-import { NFToken } from '@/utils/db';
-//import NFTNameEdit from '@/app/components/NFTNameEdit';
+import { NFTFilters, FilterState } from '@/app/components/NFTFilters';
 import _ from 'lodash';
 
 const COLORS = [
@@ -36,60 +42,97 @@ const COLORS = [
   { value: '🟤', label: '🟤 Brown' },
 ] as const;
 
-type ColorType = typeof COLORS[number]['value'] | 'none' |  null;
-
-type SortField = 'tokenId' | 'name' | 'owner' | 'mintedAt' | 'firstSaleAmount' | 'firstSaleAt' | 'lastSaleAmount' | 'lastSaleAt' | 'priceChange' | 'isOrderMade';
+type ColorType = typeof COLORS[number]['value'] | 'none' | null;
+type SortField = 'nft_serial' | 'tokenId' | 'name' | 'owner' | 'mintedAt' | 'firstSaleAmount' | 'firstSaleAt' | 'lastSaleAmount' | 'lastSaleAt' | 'isOrderMade';
 type SortDirection = 'asc' | 'desc' | null;
 
-interface SortState {
-  field: SortField;
-  direction: SortDirection;
+const ITEMS_PER_PAGE = 100;
+
+interface NFTListProps {
+  projectId: string;
 }
 
-const NFTList: React.FC = () => {
-  const { 
-    nfts,
-    setNfts,
-    isLoading, 
-    isSyncHistory,
-    updatingNFTs,
-    error, 
-    hasMore, 
-    refreshData,
-    loadMore,
-    updateAllNFTHistory,
-    updateNFTHistory
-  } = useNFTContext();
-  const [addressGroups, setAddressGroups] = React.useState<Record<string, AddressGroup>>({});
-  const [addressInfos, setAddressInfos] = React.useState<Record<string, AddressInfo>>({});
-  const [sort, setSort] = React.useState<SortState>({ field: 'tokenId', direction: null });
-  const [filteredNfts, setFilteredNfts] = React.useState<NFToken[]>([]);
+const NFTList: React.FC<NFTListProps> = ({ projectId }) => {
+  const [nfts, setNfts] = useState<NFToken[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [addressGroups, setAddressGroups] = useState<Record<string, AddressGroup>>({});
+  const [addressInfos, setAddressInfos] = useState<Record<string, AddressInfo>>({});
+  const [sort, setSort] = useState<{
+    field: SortField;
+    direction: SortDirection;
+  }>({
+    field: 'nft_serial',
+    direction: "desc"
+  });
+  const [filters, setFilters] = useState({});
+  const { updatingNFTs, updateNFTHistory, updateAllNFTHistory } = useNFTContext();
 
-  React.useEffect(() => {
-    setFilteredNfts(nfts);
-  }, [nfts]);
+  const fetchNFTs = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await dbManager.getPaginatedNFTs({
+        projectId,
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
+        sortField: sort.field,
+        sortDirection: sort.direction,
+        includeBurned: false,
+        filters
+      });
 
-  React.useEffect(() => {
-    const loadData = async () => {
+      setNfts(result.items);
+      setTotalItems(result.total);
+    } catch (error) {
+      console.error('Failed to fetch NFTs:', error);
+      setError('Failed to load NFTs');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const loadAddressData = async () => {
       const [groups, infos] = await Promise.all([
         dbManager.getAllAddressGroups(),
         dbManager.getAllAddressInfos(),
       ]);
-
       setAddressGroups(_.keyBy(groups, 'id'));
       setAddressInfos(_.keyBy(infos, 'address'));
     };
-    loadData();
+    loadAddressData();
   }, []);
 
-  React.useEffect(() => {
-    const autoLoad = async () => {
-      if (hasMore && !isLoading) {
-        await loadMore();
-      }
-    };
-    autoLoad();
-  }, [hasMore, isLoading, loadMore]);
+  useEffect(() => {
+    fetchNFTs();
+  }, [updatingNFTs.size]);
+
+  useEffect(() => {
+    fetchNFTs();
+  }, [projectId, currentPage, sort, filters]);
+
+  const handleSort = (field: SortField) => {
+    setSort(prev => ({
+      field,
+      direction: 
+        prev.field === field
+          ? prev.direction === null 
+            ? 'asc'
+            : prev.direction === 'asc'
+              ? 'desc'
+              : null
+          : 'asc'
+    }));
+    setCurrentPage(1);
+  };
+
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  };
 
   const handleGroupSave = async (savedGroup: AddressGroup) => {
     setAddressGroups(prev => ({
@@ -120,62 +163,7 @@ const NFTList: React.FC = () => {
     }
   };
 
-  const handleSort = (field: SortField) => {
-    setSort(prev => ({
-      field,
-      direction: 
-        prev.field === field
-          ? prev.direction === null 
-            ? 'asc'
-            : prev.direction === 'asc'
-              ? 'desc'
-              : null
-          : 'asc'
-    }));
-  };
-
-  const getSortedNFTs = () => {
-    // フィルタリングされたNFTsに対してソートを適用
-    const activeNFTs = filteredNfts.filter(nft => !nft.is_burned);
-    if (!sort.direction) return activeNFTs;
-
-    return _.orderBy(
-      activeNFTs,
-      [nft => {
-        switch (sort.field) {
-          case 'tokenId':
-            return nft.nft_id.toLowerCase();
-          case 'name':
-            return nft.name?.toLowerCase() || '';
-          case 'owner':
-            return nft.owner.toLowerCase();
-          case 'mintedAt':
-              return nft.mintedAt || -1;
-          case 'firstSaleAmount':
-            return nft.firstSaleAmount || -1;
-          case 'firstSaleAt':
-            return nft.firstSaleAt || -1;
-          case 'lastSaleAmount':
-            return nft.lastSaleAmount || -1;
-          case 'lastSaleAt':
-            return nft.lastSaleAt || -1;
-          case 'priceChange':
-            const firstAmount = nft.firstSaleAmount;
-            const lastAmount = nft.lastSaleAmount;
-            if (!firstAmount || !lastAmount) return sort.direction === 'asc' ? Infinity : -Infinity;
-            return ((lastAmount - firstAmount) / firstAmount) * 100;
-          case 'isOrderMade':
-            return nft.isOrderMade;
-          default:
-            return nft.nft_id.toLowerCase();
-        }
-      }],
-      [sort.direction]
-    );
-  };
-
   const formatDate = (timestamp?: number | null) => {
-    if (timestamp === undefined) return '-';
     if (!timestamp) return '-';
     const date = new Date(timestamp);
     return date.toLocaleString('ja-JP', {
@@ -190,8 +178,7 @@ const NFTList: React.FC = () => {
   };
 
   const formatAmount = (amount?: number | null) => {
-    if (amount === undefined) return '-';
-    if (amount === null) return '-';
+    if (amount === undefined || amount === null) return '-';
     return `${amount.toLocaleString()} XRP`;
   };
 
@@ -206,8 +193,7 @@ const NFTList: React.FC = () => {
 
   const calculatePriceChange = (firstAmount?: number | null, lastAmount?: number | null) => {
     if (!firstAmount || !lastAmount) return null;
-    const change = ((lastAmount - firstAmount) / firstAmount) * 100;
-    return change;
+    return ((lastAmount - firstAmount) / firstAmount) * 100;
   };
 
   const SortIcon = ({ field }: { field: SortField }) => {
@@ -217,23 +203,24 @@ const NFTList: React.FC = () => {
     return <ArrowUpDown className="ml-2 h-4 w-4" />;
   };
 
-  /*
-  const handleNameSave = async (nft: NFToken, newName: string | null) => {
-    const updatedNFT = {
-      ...nft,
-      name: newName
-    };
-
+  const handleUpdateNFTHistory = async (nftId: string) => {
     try {
-      await dbManager.updateNFTDetails(updatedNFT);
-      setNfts(prev => prev.map(n => 
-        n.nft_id === nft.nft_id ? updatedNFT : n
-      ));
+      await updateNFTHistory(nftId);
+      await fetchNFTs();
     } catch (error) {
-      console.error('Failed to update name:', error);
+      console.error('Failed to update NFT history:', error);
     }
   };
-  */
+
+  // Handler for updating all NFT histories
+  const handleUpdateAllHistory = async () => {
+    try {
+      await updateAllNFTHistory();
+      await fetchNFTs();
+    } catch (error) {
+      console.error('Failed to update all NFT histories:', error);
+    }
+  };
 
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <TableHead>
@@ -252,47 +239,45 @@ const NFTList: React.FC = () => {
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          {error}
-        </AlertDescription>
+        <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
   }
 
-  const sortedNFTs = getSortedNFTs();
-  const burnedCount = nfts.filter(nft => nft.is_burned).length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="text-sm text-gray-500 space-y-1">
           <div>
-            Showing {sortedNFTs.length} NFTs
+            {isLoading ? (
+              "Loading..."
+            ) : (
+              `Showing ${((currentPage - 1) * ITEMS_PER_PAGE) + 1} to ${Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} of ${totalItems} NFTs`
+            )}
           </div>
           <div>
-            Total NFTs: {nfts.length.toLocaleString()} 
-            (Active: {(nfts.length - burnedCount).toLocaleString()}, 
-            Burned: {burnedCount.toLocaleString()})
+            Total NFTs: {totalItems.toLocaleString()} 
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <NFTFilters
-            activeNfts={nfts.filter(nft => !nft.is_burned)}
-            onFilterChange={setFilteredNfts}
-          />
+        <div className="flex items-center gap-4">
           <Button
             variant="outline"
             size="sm"
-            onClick={async () => {
-              await refreshData();
-              await updateAllNFTHistory();
-            }}
-            disabled={isLoading || isSyncHistory || updatingNFTs.size > 0}
-            className="flex items-center gap-2"
+            onClick={handleUpdateAllHistory}
+            disabled={updatingNFTs.size > 0 || isLoading}
+            className="relative"
           >
-            <RefreshCcw className={`h-4 w-4 ${isSyncHistory ? 'animate-spin' : ''}`} />
-            {updatingNFTs.size > 0 ? "Syncing Details..." : "Sync Details"}
+            <RefreshCcw className={`h-4 w-4 ${updatingNFTs.size > 0 ? 'animate-spin' : ''}`} />
+            Update All History
+            {updatingNFTs.size > 0 && (
+              <span className="ml-2">
+                ({totalItems - updatingNFTs.size}/{totalItems})
+              </span>
+            )}
           </Button>
+          <NFTFilters onFilterChange={handleFilterChange} />
         </div>
       </div>
 
@@ -300,20 +285,20 @@ const NFTList: React.FC = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableHeader field="tokenId">Serial</SortableHeader>
+              <SortableHeader field="nft_serial">Serial</SortableHeader>
               <SortableHeader field="tokenId">Token ID</SortableHeader>
               <SortableHeader field="owner">Owner</SortableHeader>
               <SortableHeader field="name">NFT Name</SortableHeader>
               <SortableHeader field="mintedAt">Minted At</SortableHeader>
               <SortableHeader field="lastSaleAmount">Last Sale</SortableHeader>
               <SortableHeader field="lastSaleAt">Last Sale At</SortableHeader>
-              <SortableHeader field="priceChange">Price Change</SortableHeader>
+              <TableHead>Price Change</TableHead>
               <TableHead>Color</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedNFTs.map((nft) => {
+            {nfts.map((nft) => {
               const priceChange = calculatePriceChange(nft.firstSaleAmount, nft.lastSaleAmount);
               const addressInfo = addressInfos[nft.owner];
               const group = addressInfo?.groupId ? addressGroups[addressInfo.groupId] : null;
@@ -394,8 +379,8 @@ const NFTList: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                      onClick={() => updateNFTHistory(nft.nft_id)}
-                      disabled={isLoading || updatingNFTs.has(nft.nft_id)}
+                      onClick={() => handleUpdateNFTHistory(nft.nft_id)}
+                      disabled={updatingNFTs.has(nft.nft_id)}
                     >
                       <RefreshCcw className={`h-4 w-4 ${updatingNFTs.has(nft.nft_id) ? 'animate-spin' : ''}`} />
                     </Button>
@@ -403,21 +388,39 @@ const NFTList: React.FC = () => {
                 </TableRow>
               );
             })}
-          </TableBody>
-        </Table>
-      </div>
-
-      {hasMore && (
-        <div className="flex justify-center">
-          <Button
-            variant="outline"
-            onClick={loadMore}
-            disabled={isLoading || updatingNFTs.size > 0}
-          >
-            {isLoading ? "Loading..." : "Load More"}
-          </Button>
-        </div>
-      )}
+            </TableBody>
+          </Table>
+          </div>
+          <Pagination>
+          <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+              onClick={() => currentPage > 1 && setCurrentPage(prev => prev - 1)}
+            />
+          </PaginationItem>
+          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+            const pageNumber = currentPage + i - 2;
+            if (pageNumber < 1 || pageNumber > totalPages) return null;
+            return (
+              <PaginationItem key={pageNumber}>
+                <PaginationLink
+                  onClick={() => setCurrentPage(pageNumber)}
+                  isActive={currentPage === pageNumber}
+                >
+                  {pageNumber}
+                </PaginationLink>
+              </PaginationItem>
+            );
+          })}
+          <PaginationItem>
+            <PaginationNext
+              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+              onClick={() => currentPage < totalPages && setCurrentPage(prev => prev + 1)}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
     </div>
   );
 };

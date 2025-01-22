@@ -72,6 +72,30 @@ export interface AddressInfo {
   updatedAt: number;
 }
 
+interface NFTPaginationOptions {
+  projectId: string;
+  page: number;
+  limit: number;
+  sortField: string;
+  sortDirection: 'asc' | 'desc' | null;
+  includeBurned: boolean;
+  filters?: {
+    colors?: string[];
+    minAmount?: number;
+    maxAmount?: number;
+    minDate?: number;
+    maxDate?: number;
+    minLatestSaleDate?: number;
+    maxLatestSaleDate?: number;
+    nftName?: string;
+  };
+}
+
+interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+}
+
 class DatabaseManager {
   private dbName = 'OwnerNoteDB';
   private version = 1;
@@ -517,6 +541,132 @@ class DatabaseManager {
           p => p.issuer === issuer && p.taxon === taxon
         );
         resolve(matchingProject);
+      };
+    });
+  }
+
+  async getPaginatedNFTs({
+    projectId,
+    page,
+    limit,
+    sortField,
+    sortDirection,
+    includeBurned,
+    filters = {}
+  }: NFTPaginationOptions): Promise<PaginatedResult<NFToken>> {
+    const db = await this.initDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('nfts', 'readonly');
+      const store = transaction.objectStore('nfts');
+      const index = store.index('projectId');
+      const keyRange = IDBKeyRange.only(projectId);
+  
+      // Get all items for the project first
+      const request = index.getAll(keyRange);
+  
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        let items = request.result as NFToken[];
+  
+        if (includeBurned === false) {
+          items = items.filter(nft => !nft.is_burned);
+        }
+
+        // Apply filters
+        if (filters) {
+          if (filters.colors?.length) {
+            items = items.filter(nft => 
+              filters.colors?.includes(nft.color || 'none')
+            );
+          }
+          
+          if (filters.minAmount !== undefined) {
+            items = items.filter(nft => 
+              typeof nft.lastSaleAmount === 'number' && 
+              typeof filters.minAmount === 'number' &&
+              nft.lastSaleAmount >= filters.minAmount
+            );
+          }
+          
+          if (filters.maxAmount !== undefined) {
+            items = items.filter(nft => 
+              typeof nft.lastSaleAmount === 'number' && 
+              typeof filters.maxAmount === 'number' &&
+              nft.lastSaleAmount <= filters.maxAmount
+            );
+          }
+          
+          if (filters.minDate !== undefined) {
+            items = items.filter(nft => 
+              typeof nft.mintedAt === 'number' && 
+              typeof filters.minDate === 'number' &&
+              nft.mintedAt >= filters.minDate
+            );
+          }
+          
+          if (filters.maxDate !== undefined) {
+            items = items.filter(nft => 
+              typeof nft.mintedAt === 'number' && 
+              typeof filters.maxDate === 'number' &&
+              nft.mintedAt <= filters.maxDate
+            );
+          }
+
+          if (filters.minLatestSaleDate !== undefined) {
+            items = items.filter(nft => 
+              typeof nft.lastSaleAt === 'number' && 
+              typeof filters.minLatestSaleDate === 'number' &&
+              nft.lastSaleAt >= filters.minLatestSaleDate
+            );
+          }
+          
+          if (filters.maxLatestSaleDate !== undefined) {
+            items = items.filter(nft => 
+              typeof nft.lastSaleAt === 'number' && 
+              typeof filters.maxLatestSaleDate === 'number' &&
+              nft.lastSaleAt <= filters.maxLatestSaleDate
+            );
+          }
+
+          if (filters.nftName !== undefined && filters.nftName.trim() !== '') {
+            const searchTerm = filters.nftName.toLowerCase().trim();
+            items = items.filter(nft => 
+              nft.name?.toLowerCase().includes(searchTerm)
+            );
+          }
+        }
+  
+        // Sort items
+        if (sortDirection) {
+          items.sort((a, b) => {
+            const aValue = a[sortField as keyof NFToken];
+            const bValue = b[sortField as keyof NFToken];
+  
+            // Handle null/undefined values
+            if (aValue === null || aValue === undefined) {
+              return sortDirection === 'asc' ? 1 : -1;
+            }
+            if (bValue === null || bValue === undefined) {
+              return sortDirection === 'asc' ? -1 : 1;
+            }
+  
+            // Normal comparison
+            if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+          });
+        }
+  
+        // Calculate pagination
+        const total = items.length;
+        const start = (page - 1) * limit;
+        const paginatedItems = items.slice(start, start + limit);
+  
+        resolve({
+          items: paginatedItems,
+          total
+        });
       };
     });
   }

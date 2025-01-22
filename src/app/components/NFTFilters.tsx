@@ -1,5 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react';
-import { NFToken } from '@/utils/db';
+import React, { useRef, useEffect } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -21,18 +20,19 @@ import { FilterIcon, X } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import _ from 'lodash';
 
-interface FilterState {
-  name: string;
-  color: string | null;
-  mintedAtStart: string;
-  mintedAtEnd: string;
-  lastSaleAtStart: string;
-  lastSaleAtEnd: string;
+export interface FilterState {
+  colors?: string[];
+  minAmount?: number;
+  maxAmount?: number;
+  minDate?: number;
+  maxDate?: number;
+  minLatestSaleDate?: number;
+  maxLatestSaleDate?: number;
+  nftName?: string;
 }
 
 export interface NFTFiltersProps {
-  activeNfts: NFToken[];
-  onFilterChange: (filteredNfts: NFToken[]) => void;
+  onFilterChange: (filters: FilterState) => void;
 }
 
 const COLORS = [
@@ -45,89 +45,58 @@ const COLORS = [
   { value: '🟤', label: '🟤 Brown' },
 ] as const;
 
-export const NFTFilters: React.FC<NFTFiltersProps> = ({ activeNfts, onFilterChange }) => {
+export const NFTFilters: React.FC<NFTFiltersProps> = ({ onFilterChange }) => {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [filters, setFilters] = React.useState<FilterState>({
-    name: '',
-    color: null,
-    mintedAtStart: '',
-    mintedAtEnd: '',
-    lastSaleAtStart: '',
-    lastSaleAtEnd: '',
-  });
+  const [filters, setFilters] = React.useState<FilterState>({});
 
+  // フィルターの適用数をカウント
   const activeFilterCount = Object.values(filters).filter(value => 
-    value !== '' && value !== null
+    value !== undefined && (
+      !Array.isArray(value) || value.length > 0
+    )
   ).length;
 
-  const filterNFTs = useCallback((currentFilters: FilterState): void => {
-    const filteredNfts = activeNfts.filter((nft) => {
-      // Name filter
-      if (currentFilters.name && (!nft.name || !nft.name.toLowerCase().includes(currentFilters.name.toLowerCase()))) {
-        return false;
-      }
-  
-      // Color filter
-      if (currentFilters.color && nft.color !== currentFilters.color) {
-        return false;
-      }
-  
-      // Minted date range
-      if (currentFilters.mintedAtStart && (!nft.mintedAt || new Date(nft.mintedAt) < new Date(currentFilters.mintedAtStart))) {
-        return false;
-      }
-      if (currentFilters.mintedAtEnd && (!nft.mintedAt || new Date(nft.mintedAt) > new Date(currentFilters.mintedAtEnd))) {
-        return false;
-      }
-  
-      // Last transferred date range
-      if (currentFilters.lastSaleAtStart && 
-          (!nft.lastSaleAt || new Date(nft.lastSaleAt) < new Date(currentFilters.lastSaleAtStart))) {
-        return false;
-      }
-      if (currentFilters.lastSaleAtEnd && 
-          (!nft.lastSaleAt || new Date(nft.lastSaleAt) > new Date(currentFilters.lastSaleAtEnd))) {
-        return false;
-      }
-  
-      return true;
-    });
-  
-    onFilterChange(filteredNfts);
-  }, [activeNfts, onFilterChange]);
-
-  // フィルター処理をデバウンス
+  // フィルター更新をデバウンス
   const debouncedFilterRef = useRef(
-    _.debounce((currentFilters: FilterState, callback: typeof filterNFTs) => {
-      callback(currentFilters);
+    _.debounce((currentFilters: FilterState) => {
+      onFilterChange(currentFilters);
     }, 300)
   );
 
   useEffect(() => {
     const debouncedFilter = debouncedFilterRef.current;
-    debouncedFilter(filters, filterNFTs);
+    debouncedFilter(filters);
     
     return () => {
       debouncedFilter.cancel();
     };
-  }, [filters, filterNFTs]);
+  }, [filters]);
 
   const clearFilters = () => {
-    setFilters({
-      name: '',
-      color: null,
-      mintedAtStart: '',
-      mintedAtEnd: '',
-      lastSaleAtStart: '',
-      lastSaleAtEnd: '',
+    setFilters({});
+  };
+
+  // フィルター更新のヘルパー関数
+   const updateFilter = <K extends keyof FilterState>(
+    key: K, 
+    value: FilterState[K] | undefined
+  ) => {
+    setFilters(prev => {
+      if (value === undefined || 
+         (Array.isArray(value) && value.length === 0)) {
+        const newFilters = { ...prev };
+        delete newFilters[key];
+        return newFilters;
+      }
+      return { ...prev, [key]: value };
     });
   };
 
-  const updateFilter = (key: keyof FilterState, value: string | null) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value
-    }));
+  // 日付を Unix タイムスタンプに変換
+  const dateToTimestamp = (dateStr: string): number => {
+    const date = new Date(dateStr);
+    date.setHours(0, 0, 0, 0);
+    return date.getTime();
   };
 
   return (
@@ -169,9 +138,13 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ activeNfts, onFilterChan
             <div className="space-y-2">
               <Label>NFT Name</Label>
               <Input
-                placeholder="Filter by NFT name..."
-                value={filters.name}
-                onChange={e => updateFilter('name', e.target.value)}
+                type="text"
+                placeholder="Search by name"
+                value={filters.nftName || ''}
+                onChange={e => updateFilter(
+                  'nftName',
+                  e.target.value || undefined
+                )}
               />
             </div>
 
@@ -179,64 +152,111 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ activeNfts, onFilterChan
               <Label>Color</Label>
               <div className="flex gap-2">
                 <Select
-                  value={filters.color || undefined}
-                  onValueChange={value => updateFilter('color', value)}
+                  value={filters.colors?.[0] || ''}
+                  onValueChange={value => 
+                    updateFilter('colors', value ? [value] : undefined)
+                  }
                 >
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Select color" />
                   </SelectTrigger>
                   <SelectContent>
                     {COLORS.map(color => (
-                    <SelectItem key={color.value} value={color.value}>
-                      {color.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {filters.color && (
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => updateFilter('color', null)}
-                  className="h-10 w-10"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
+                      <SelectItem key={color.value} value={color.value}>
+                        {color.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {filters.colors && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => updateFilter('colors', undefined)}
+                    className="h-10 w-10"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Minted Date Range</Label>
+              <Label>Mint Date Range</Label>
               <div className="grid grid-cols-2 gap-2">
                 <Input
                   type="date"
-                  value={filters.mintedAtStart}
-                  onChange={e => updateFilter('mintedAtStart', e.target.value)}
+                  value={filters.minDate 
+                    ? new Date(filters.minDate).toISOString().split('T')[0]
+                    : ''}
+                  onChange={e => updateFilter(
+                    'minDate',
+                    e.target.value ? dateToTimestamp(e.target.value) : undefined
+                  )}
                 />
                 <Input
                   type="date"
-                  value={filters.mintedAtEnd}
-                  onChange={e => updateFilter('mintedAtEnd', e.target.value)}
+                  value={filters.maxDate
+                    ? new Date(filters.maxDate).toISOString().split('T')[0]
+                    : ''}
+                  onChange={e => updateFilter(
+                    'maxDate',
+                    e.target.value ? dateToTimestamp(e.target.value) : undefined
+                  )}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Last Sale Date Range</Label>
+              <Label>Last Sale Amount Range (XRP)</Label>
               <div className="grid grid-cols-2 gap-2">
                 <Input
-                  type="date"
-                  value={filters.lastSaleAtStart}
-                  onChange={e => updateFilter('lastSaleAtStart', e.target.value)}
+                  type="number"
+                  placeholder="Min"
+                  value={filters.minAmount || ''}
+                  onChange={e => updateFilter(
+                    'minAmount',
+                    e.target.value ? Number(e.target.value) : undefined
+                  )}
                 />
                 <Input
-                  type="date"
-                  value={filters.lastSaleAtEnd}
-                  onChange={e => updateFilter('lastSaleAtEnd', e.target.value)}
+                  type="number"
+                  placeholder="Max"
+                  value={filters.maxAmount || ''}
+                  onChange={e => updateFilter(
+                    'maxAmount',
+                    e.target.value ? Number(e.target.value) : undefined
+                  )}
                 />
               </div>
             </div>
+
+            <div className="space-y-2">
+              <Label>Latest Sale Date Range</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="date"
+                  value={filters.minLatestSaleDate 
+                    ? new Date(filters.minLatestSaleDate).toISOString().split('T')[0]
+                    : ''}
+                  onChange={e => updateFilter(
+                    'minLatestSaleDate',
+                    e.target.value ? dateToTimestamp(e.target.value) : undefined
+                  )}
+                />
+                <Input
+                  type="date"
+                  value={filters.maxLatestSaleDate
+                    ? new Date(filters.maxLatestSaleDate).toISOString().split('T')[0]
+                    : ''}
+                  onChange={e => updateFilter(
+                    'maxLatestSaleDate',
+                    e.target.value ? dateToTimestamp(e.target.value) : undefined
+                  )}
+                />
+              </div>
+            </div>
+            
           </div>
         </SheetContent>
       </Sheet>
