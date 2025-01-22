@@ -1,6 +1,8 @@
 // app/api/ipfs-proxy/route.ts
 import { NextRequest } from 'next/server'
 
+export const runtime = 'edge';
+
 const RETRY_COUNT = 3;
 const RETRY_DELAY = 1000; // 1秒待機
 
