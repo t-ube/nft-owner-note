@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNFTContext } from '@/app/contexts/NFTContext';
 import _ from 'lodash';
 import {
@@ -16,6 +16,7 @@ import NFTSiteWalletIcons from '@/app/components/NFTSiteWalletIcons';
 import Papa from 'papaparse';
 import { Download } from 'lucide-react';
 import { Pencil, Loader2 } from "lucide-react";
+import OwnerValueEditor from '@/app/components/OwnerValueEditor';
 
 interface OwnerStats {
   address: string;
@@ -23,6 +24,8 @@ interface OwnerStats {
   nftCount: number;
   holdingRatio: number;
   nftIds: string[];
+  userValue1: number | null;
+  userValue2: number | null;
 }
 
 interface OwnerListProps {
@@ -32,27 +35,37 @@ interface OwnerListProps {
 
 const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
   const { nfts, hasMore } = useNFTContext();
-  const [addressGroups, setAddressGroups] = React.useState<Record<string, AddressGroup>>({});
-  const [addressInfos, setAddressInfos] = React.useState<Record<string, AddressInfo>>({});
+  const [addressGroups, setAddressGroups] = useState<Record<string, AddressGroup>>({});
+  const [addressInfos, setAddressInfos] = useState<Record<string, AddressInfo>>({});
+  const [editingCell, setEditingCell] = useState<{ address: string; field: 'userValue1' | 'userValue2' } | null>(null);
+  const [ownerValues, setOwnerValues] = useState<Record<string, { userValue1: number | null; userValue2: number | null }>>({});
+  const [projectId, setProjectId] = useState<string | null>(null);
 
   // データ読み込み関数
-  const loadData = React.useCallback(async (): Promise<void> => {
-    const [groups, infos] = await Promise.all([
+  const loadData = useCallback(async (): Promise<void> => {
+    const [groups, infos, project] = await Promise.all([
       dbManager.getAllAddressGroups(),
       dbManager.getAllAddressInfos(),
+      dbManager.getProjectByIssuerAndTaxon(issuer, taxon),
     ]);
 
     setAddressGroups(_.keyBy(groups, 'id'));
     setAddressInfos(_.keyBy(infos, 'address'));
-  }, []);
+
+    if (project) {
+      setProjectId(project.projectId);
+      const values = await dbManager.getProjectOwnerValues(project.projectId);
+      setOwnerValues(_.keyBy(values, 'owner'));
+    }
+  }, [issuer, taxon]);
 
   // 初期データ読み込み
-  React.useEffect(() => {
+  useEffect(() => {
     void loadData();
   }, [loadData]);
 
-    // Calculate owner statistics
-  const ownerStats = React.useMemo(() => {
+  // Calculate owner statistics
+  const ownerStats = useMemo(() => {
     const activeNFTs = nfts.filter(nft => !nft.is_burned);
     const totalActiveNFTs = activeNFTs.length;
     
@@ -61,21 +74,24 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
     const stats = Object.entries(ownerGroups).map(([address, ownerNFTs]): OwnerStats => {
       const addressInfo = addressInfos[address];
       const group = addressInfo?.groupId ? addressGroups[addressInfo.groupId] : null;
+      const ownerValue = ownerValues[address];
 
       return {
         address,
         group,
         nftCount: ownerNFTs.length,
         holdingRatio: (ownerNFTs.length / totalActiveNFTs) * 100,
-        nftIds: ownerNFTs.map(nft => nft.nft_id)
+        nftIds: ownerNFTs.map(nft => nft.nft_id),
+        userValue1: ownerValue?.userValue1 ?? null,
+        userValue2: ownerValue?.userValue2 ?? null
       };
     });
 
     return _.orderBy(stats, ['nftCount', 'address'], ['desc', 'asc']);
-  }, [nfts, addressGroups, addressInfos]);
+  }, [nfts, addressGroups, addressInfos, ownerValues]);
 
   // ランク計算用の関数
-  const calculateRank = React.useCallback((stats: OwnerStats[]): (number | string)[] => {
+  const calculateRank = useCallback((stats: OwnerStats[]): (number | string)[] => {
     const ranks: (number | string)[] = [];
     let currentRank = 1;
     let currentCount: number | null = null;
@@ -94,7 +110,36 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
     return ranks;
   }, []);
 
-  const ranks = React.useMemo(() => calculateRank(ownerStats), [ownerStats, calculateRank]);
+  const handleValueSave = async (address: string, field: 'userValue1' | 'userValue2', value: number | null) => {
+    if (!projectId) return;
+
+    try {
+      const updatedValue = await dbManager.setProjectOwnerValues(projectId, address, {
+        [field]: value
+      });
+
+      console.log(updatedValue);
+
+      setOwnerValues(prev => ({
+        ...prev,
+        [address]: {
+          userValue1: field === 'userValue1' ? value : prev[address]?.userValue1 ?? null,
+          userValue2: field === 'userValue2' ? value : prev[address]?.userValue2 ?? null,
+        }
+      }));
+    } catch (error) {
+      console.error('Failed to save owner value:', error);
+    }
+
+    setEditingCell(null);
+  };
+
+  const formatValue = (value: number | null) => {
+    if (value === null) return '-';
+    return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  };
+
+  const ranks = useMemo(() => calculateRank(ownerStats), [ownerStats, calculateRank]);
 
   const handleExportCSV = () => {
     // CSV用のデータを準備
@@ -104,8 +149,8 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
       name: stat.group?.name || '',
       xAccount: stat.group?.xAccount || '',
       nftCount: stat.nftCount,
-      userValue1: stat.group?.userValue1 || '',
-      userValue2: stat.group?.userValue2 || '',
+      userValue1: ownerValues[stat.address].userValue1 || '',
+      userValue2: ownerValues[stat.address].userValue2 || '',
       holdingPercentage: stat.holdingRatio.toFixed(2),
     }));
 
@@ -195,15 +240,15 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
               <TableHead className="w-40">Name</TableHead>
               <TableHead className="w-40">X Account</TableHead>
               <TableHead className="w-32 text-right">NFT Count</TableHead>
-              <TableHead className="w-32 text-right">User Value1</TableHead>
-              <TableHead className="w-32 text-right">User Value2</TableHead>
+              <TableHead className="w-32 text-center">User Value1</TableHead>
+              <TableHead className="w-32 text-center">User Value2</TableHead>
               <TableHead className="w-32 text-right">Holding %</TableHead>
               <TableHead className="w-40">Links</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {ownerStats.map((stat, index)  => (
-              <TableRow key={stat.address}>
+              <TableRow key={stat.address} className="group">
                 <TableCell className="text-center font-medium">
                   {ranks[index]}
                 </TableCell>
@@ -234,11 +279,47 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
                 <TableCell className="text-right">
                   {stat.nftCount.toLocaleString()}
                 </TableCell>
-                <TableCell className="text-right">
-                  {stat.group?.userValue1}
+                <TableCell className="text-center" >
+                  {editingCell?.address === stat.address && editingCell?.field === 'userValue1' ? (
+                    <OwnerValueEditor
+                      initialValue={stat.userValue1}
+                      onSave={(value) => handleValueSave(stat.address, 'userValue1', value)}
+                      onCancel={() => setEditingCell(null)}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-end gap-2 min-h-[32px]">
+                      <span>{formatValue(stat.userValue1)}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        onClick={() => setEditingCell({ address: stat.address, field: 'userValue1' })}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </TableCell>
-                <TableCell className="text-right">
-                  {stat.group?.userValue2}
+                <TableCell className="text-center">
+                  {editingCell?.address === stat.address && editingCell?.field === 'userValue2' ? (
+                    <OwnerValueEditor
+                      initialValue={stat.userValue2}
+                      onSave={(value) => handleValueSave(stat.address, 'userValue2', value)}
+                      onCancel={() => setEditingCell(null)}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-end gap-2 min-h-[32px]">
+                      <span>{formatValue(stat.userValue2)}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        onClick={() => setEditingCell({ address: stat.address, field: 'userValue2' })}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell className="text-right">
                   {stat.holdingRatio.toFixed(2)}%

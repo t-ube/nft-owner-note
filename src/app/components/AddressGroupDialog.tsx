@@ -32,8 +32,6 @@ export function AddressGroupDialog({
     name: '',
     xAccount: null,
     memo: null,
-    userValue1: null,
-    userValue2: null,
     addresses: initialAddresses,
   });
   const [newAddress, setNewAddress] = React.useState('');
@@ -138,32 +136,6 @@ export function AddressGroupDialog({
               placeholder="Enter memo"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="userValue1">User Value 1</Label>
-              <Input
-                id="userValue1"
-                type="number"
-                value={addressGroup.userValue1 || ''}
-                onChange={(e) => setAddressGroup(prev => ({ 
-                  ...prev, 
-                  userValue1: e.target.value ? Number(e.target.value) : null 
-                }))}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="userValue2">User Value 2</Label>
-              <Input
-                id="userValue2"
-                type="number"
-                value={addressGroup.userValue2 || ''}
-                onChange={(e) => setAddressGroup(prev => ({ 
-                  ...prev, 
-                  userValue2: e.target.value ? Number(e.target.value) : null 
-                }))}
-              />
-            </div>
-          </div>
           <div className="grid gap-2">
             <Label>Wallet Addresses</Label>
             <div className="flex gap-2">
@@ -172,7 +144,7 @@ export function AddressGroupDialog({
                 onChange={(e) => setNewAddress(e.target.value)}
                 placeholder="Enter wallet address"
               />
-              <Button onClick={handleAddAddress}>Add</Button>
+              <Button variant="outline" onClick={handleAddAddress}>Add</Button>
             </div>
             <div className="space-y-2">
               {addressGroup.addresses?.map((address) => (

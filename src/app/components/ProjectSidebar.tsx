@@ -113,7 +113,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
           </div>
         )}
       </div>
-      <div className="p-4 mt-auto border-t">
+      <div className="p-2 mt-auto border-t">
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-500">Developed by shirome</span>
           <a

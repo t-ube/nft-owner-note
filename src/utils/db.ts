@@ -40,6 +40,15 @@ export interface NFToken extends NFTokenBase {
   memo?: string | null;
 }
 
+export interface ProjectOwnerValue {
+  id: string;           // projectId-owner
+  projectId: string;    // プロジェクトID
+  owner: string;        // オーナーのアドレス
+  userValue1: number | null;  // ユーザー定義数値1
+  userValue2: number | null;  // ユーザー定義数値2
+  updatedAt: number;    // 更新日時
+}
+
 export interface NFTDetail {
   id: string;
   nftId: string;  // NFTokenのid（プロジェクトID-NFT_ID）と紐付け
@@ -61,8 +70,6 @@ export interface AddressGroup {
   addresses: string[];  // 所属するアドレスのリスト
   xAccount: string | null;   // Xアカウント名
   memo: string | null;       // メモ
-  userValue1: number | null; // ユーザー定義数値1
-  userValue2: number | null; // ユーザー定義数値2
   updatedAt: number;        // 更新日時
 }
 
@@ -127,6 +134,14 @@ class DatabaseManager {
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
 
+        // ProjectOwnerValues store
+        if (!db.objectStoreNames.contains('projectOwnerValues')) {
+          const store = db.createObjectStore('projectOwnerValues', { keyPath: 'id' });
+          store.createIndex('projectId', 'projectId', { unique: false });
+          store.createIndex('owner', 'owner', { unique: false });
+          store.createIndex('projectId_owner', ['projectId', 'owner'], { unique: true });
+        }
+
         // Projects store
         if (!db.objectStoreNames.contains('projects')) {
           const store = db.createObjectStore('projects', { keyPath: 'id' });
@@ -188,6 +203,90 @@ class DatabaseManager {
       request.onsuccess = () => resolve(completeProject);
     });
   }
+
+  // ProjectOwnerValue Methods
+  async setProjectOwnerValues(
+    projectId: string,
+    owner: string,
+    values: { userValue1?: number | null; userValue2?: number | null }
+  ): Promise<ProjectOwnerValue> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('projectOwnerValues', 'readwrite');
+      const store = transaction.objectStore('projectOwnerValues');
+      const id = `${projectId}-${owner}`;
+      
+      // まず既存のデータを取得
+      const getRequest = store.get(id);
+      
+      getRequest.onsuccess = () => {
+        const existingData = getRequest.result as ProjectOwnerValue | undefined;
+        const now = Date.now();
+        
+        const updatedValues: ProjectOwnerValue = {
+          id,
+          projectId,
+          owner,
+          userValue1: values.userValue1 ?? existingData?.userValue1 ?? null,
+          userValue2: values.userValue2 ?? existingData?.userValue2 ?? null,
+          updatedAt: now,
+        };
+        
+        const putRequest = store.put(updatedValues);
+        putRequest.onsuccess = () => resolve(updatedValues);
+        putRequest.onerror = () => reject(putRequest.error);
+      };
+      
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+
+  async getProjectOwnerValues(projectId: string): Promise<ProjectOwnerValue[]> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('projectOwnerValues', 'readonly');
+      const store = transaction.objectStore('projectOwnerValues');
+      const index = store.index('projectId');
+      const request = index.getAll(projectId);
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async getOwnerValues(projectId: string, owner: string): Promise<ProjectOwnerValue | undefined> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('projectOwnerValues', 'readonly');
+      const store = transaction.objectStore('projectOwnerValues');
+      const id = `${projectId}-${owner}`;
+      const request = store.get(id);
+
+      request.onsuccess = () => resolve(request.result || undefined);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async deleteProjectOwnerValues(projectId: string): Promise<void> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('projectOwnerValues', 'readwrite');
+      const store = transaction.objectStore('projectOwnerValues');
+      const index = store.index('projectId');
+      const request = index.openCursor(projectId);
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest).result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        }
+      };
+
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
   
   async getProjectByProjectId(projectId: string): Promise<Project | undefined> {
     const db = await this.initDB();
@@ -208,27 +307,47 @@ class DatabaseManager {
       const transaction = db.transaction('projects', 'readonly');
       const store = transaction.objectStore('projects');
       const request = store.getAll();
-
+  
       request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        const projects = request.result;
+        projects.sort((a, b) => a.name.localeCompare(b.name));
+        resolve(projects);
+      };
     });
   }
 
   async deleteProject(id: string): Promise<void> {
     const db = await this.initDB();
+    const project = await this.getProjectByProjectId(id);
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['projects', 'nfts'], 'readwrite');
+      const transaction = db.transaction(['projects', 'nfts', 'projectOwnerValues'], 'readwrite');
       
       // Delete the project
       const projectStore = transaction.objectStore('projects');
-      projectStore.delete(id);
+      if (project) {
+        projectStore.delete(project.id);
+      }
 
       // Delete all associated NFTs
       const nftStore = transaction.objectStore('nfts');
-      const index = nftStore.index('projectId');
-      const nftRequest = index.openCursor(id);
+      const nftIndex = nftStore.index('projectId');
+      const nftRequest = nftIndex.openCursor(id);
 
       nftRequest.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest).result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        }
+      };
+
+      // Delete all associated owner values
+      const ownerValueStore = transaction.objectStore('projectOwnerValues');
+      const ownerValueIndex = ownerValueStore.index('projectId');
+      const ownerValueRequest = ownerValueIndex.openCursor(id);
+
+      ownerValueRequest.onsuccess = (event) => {
         const cursor = (event.target as IDBRequest).result;
         if (cursor) {
           cursor.delete();

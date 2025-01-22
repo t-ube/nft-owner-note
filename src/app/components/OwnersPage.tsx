@@ -102,10 +102,6 @@ const OwnersPage: React.FC = () => {
             return owner.addresses.length;
           case 'xAccount':
             return (owner.xAccount || '').toLowerCase();
-          case 'userValue1':
-            return owner.userValue1 || -Infinity;
-          case 'userValue2':
-            return owner.userValue2 || -Infinity;
           case 'updatedAt':
             return owner.updatedAt;
           default:
@@ -221,8 +217,6 @@ const OwnersPage: React.FC = () => {
                 <SortableHeader field="addresses">Wallet Addresses</SortableHeader>
                 <SortableHeader field="xAccount">X Account</SortableHeader>
                 <TableHead>Memo</TableHead>
-                <SortableHeader field="userValue1">User Value 1</SortableHeader>
-                <SortableHeader field="userValue2">User Value 2</SortableHeader>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -246,8 +240,6 @@ const OwnersPage: React.FC = () => {
                   </TableCell>
                   <TableCell>{formatXAccount(owner.xAccount)}</TableCell>
                   <TableCell>{owner.memo || '-'}</TableCell>
-                  <TableCell className="w-24">{owner.userValue1 || '-'}</TableCell>
-                  <TableCell className="w-24">{owner.userValue2 || '-'}</TableCell>
                   <TableCell>
                     <AddressGroupDialog
                       groupId={owner.id}
