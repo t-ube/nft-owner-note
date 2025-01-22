@@ -15,8 +15,6 @@ interface AddressGroupCSV {
   addresses: string;
   xAccount: string;
   memo: string;
-  userValue1: string;
-  userValue2: string;
 }
 
 // CSVインポート時のバリデーションエラー型
@@ -38,8 +36,6 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
         addresses: group.addresses.join(';'),
         xAccount: group.xAccount || '',
         memo: group.memo || '',
-        userValue1: group.userValue1?.toString() || '',
-        userValue2: group.userValue2?.toString() || ''
       }));
 
       // Generate CSV
@@ -74,14 +70,6 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
       errors.push('At least one address is required');
     }
     
-    if (row.userValue1 && isNaN(Number(row.userValue1))) {
-      errors.push('User Value 1 must be a number');
-    }
-    
-    if (row.userValue2 && isNaN(Number(row.userValue2))) {
-      errors.push('User Value 2 must be a number');
-    }
-    
     return errors.length > 0 ? { row: index + 1, errors } : null;
   };
 
@@ -91,8 +79,6 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
       addresses: row.addresses.split(';').filter(Boolean),
       xAccount: row.xAccount?.trim() || null,
       memo: row.memo?.trim() || null,
-      userValue1: row.userValue1 ? Number(row.userValue1) : null,
-      userValue2: row.userValue2 ? Number(row.userValue2) : null
     };
   };
 
@@ -173,8 +159,6 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
         addresses: 'rAddress1;rAddress2',
         xAccount: '@sample',
         memo: 'Sample memo',
-        userValue1: '100',
-        userValue2: '200'
       }
     ];
     
