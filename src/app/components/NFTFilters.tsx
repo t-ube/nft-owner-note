@@ -26,8 +26,8 @@ interface FilterState {
   color: string | null;
   mintedAtStart: string;
   mintedAtEnd: string;
-  lastTransferredAtStart: string;
-  lastTransferredAtEnd: string;
+  lastSaleAtStart: string;
+  lastSaleAtEnd: string;
 }
 
 export interface NFTFiltersProps {
@@ -52,8 +52,8 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ activeNfts, onFilterChan
     color: null,
     mintedAtStart: '',
     mintedAtEnd: '',
-    lastTransferredAtStart: '',
-    lastTransferredAtEnd: '',
+    lastSaleAtStart: '',
+    lastSaleAtEnd: '',
   });
 
   const activeFilterCount = Object.values(filters).filter(value => 
@@ -81,12 +81,12 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ activeNfts, onFilterChan
       }
   
       // Last transferred date range
-      if (currentFilters.lastTransferredAtStart && 
-          (!nft.lastSaleAt || new Date(nft.lastSaleAt) < new Date(currentFilters.lastTransferredAtStart))) {
+      if (currentFilters.lastSaleAtStart && 
+          (!nft.lastSaleAt || new Date(nft.lastSaleAt) < new Date(currentFilters.lastSaleAtStart))) {
         return false;
       }
-      if (currentFilters.lastTransferredAtEnd && 
-          (!nft.lastSaleAt || new Date(nft.lastSaleAt) > new Date(currentFilters.lastTransferredAtEnd))) {
+      if (currentFilters.lastSaleAtEnd && 
+          (!nft.lastSaleAt || new Date(nft.lastSaleAt) > new Date(currentFilters.lastSaleAtEnd))) {
         return false;
       }
   
@@ -118,8 +118,8 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ activeNfts, onFilterChan
       color: null,
       mintedAtStart: '',
       mintedAtEnd: '',
-      lastTransferredAtStart: '',
-      lastTransferredAtEnd: '',
+      lastSaleAtStart: '',
+      lastSaleAtEnd: '',
     });
   };
 
@@ -167,9 +167,9 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ activeNfts, onFilterChan
 
           <div className="space-y-6 py-6">
             <div className="space-y-2">
-              <Label>Name</Label>
+              <Label>NFT Name</Label>
               <Input
-                placeholder="Filter by name..."
+                placeholder="Filter by NFT name..."
                 value={filters.name}
                 onChange={e => updateFilter('name', e.target.value)}
               />
@@ -223,17 +223,17 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ activeNfts, onFilterChan
             </div>
 
             <div className="space-y-2">
-              <Label>Last Transfer Date Range</Label>
+              <Label>Last Sale Date Range</Label>
               <div className="grid grid-cols-2 gap-2">
                 <Input
                   type="date"
-                  value={filters.lastTransferredAtStart}
-                  onChange={e => updateFilter('lastTransferredAtStart', e.target.value)}
+                  value={filters.lastSaleAtStart}
+                  onChange={e => updateFilter('lastSaleAtStart', e.target.value)}
                 />
                 <Input
                   type="date"
-                  value={filters.lastTransferredAtEnd}
-                  onChange={e => updateFilter('lastTransferredAtEnd', e.target.value)}
+                  value={filters.lastSaleAtEnd}
+                  onChange={e => updateFilter('lastSaleAtEnd', e.target.value)}
                 />
               </div>
             </div>

@@ -100,9 +100,11 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
     const csvData = ownerStats.map((stat, index) => ({
       rank: ranks[index],
       address: stat.address,
-      label: stat.group?.name || '',
+      name: stat.group?.name || '',
       xAccount: stat.group?.xAccount || '',
       nftCount: stat.nftCount,
+      userValue1: stat.group?.userValue1 || '',
+      userValue2: stat.group?.userValue2 || '',
       holdingPercentage: stat.holdingRatio.toFixed(2),
     }));
 
@@ -184,10 +186,12 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
           <TableHeader>
             <TableRow>
               <TableHead className="w-20">Rank</TableHead>
-              <TableHead className="w-40">Owner</TableHead>
-              <TableHead className="w-40">Label</TableHead>
+              <TableHead className="w-40">Wallet Address</TableHead>
+              <TableHead className="w-40">Owner Name</TableHead>
               <TableHead className="w-40">X Account</TableHead>
               <TableHead className="w-32 text-right">NFT Count</TableHead>
+              <TableHead className="w-32 text-right">User Value1</TableHead>
+              <TableHead className="w-32 text-right">User Value2</TableHead>
               <TableHead className="w-32 text-right">Holding %</TableHead>
               <TableHead className="w-40">Links</TableHead>
             </TableRow>
@@ -220,6 +224,12 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
                 </TableCell>
                 <TableCell className="text-right">
                   {stat.nftCount.toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  {stat.group?.userValue1}
+                </TableCell>
+                <TableCell className="text-right">
+                  {stat.group?.userValue2}
                 </TableCell>
                 <TableCell className="text-right">
                   {stat.holdingRatio.toFixed(2)}%

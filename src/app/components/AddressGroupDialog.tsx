@@ -106,12 +106,12 @@ export function AddressGroupDialog({
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="name">Owner Label</Label>
+            <Label htmlFor="name">Owner Name</Label>
             <Input
               id="name"
               value={addressGroup.name || ''}
               onChange={(e) => setAddressGroup(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Enter owner label"
+              placeholder="Enter owner name"
             />
           </div>
           <div className="grid gap-2">
@@ -140,7 +140,7 @@ export function AddressGroupDialog({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="userValue1">Custom Value 1</Label>
+              <Label htmlFor="userValue1">User Value 1</Label>
               <Input
                 id="userValue1"
                 type="number"
@@ -152,7 +152,7 @@ export function AddressGroupDialog({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="userValue2">Custom Value 2</Label>
+              <Label htmlFor="userValue2">User Value 2</Label>
               <Input
                 id="userValue2"
                 type="number"
@@ -165,12 +165,12 @@ export function AddressGroupDialog({
             </div>
           </div>
           <div className="grid gap-2">
-            <Label>Addresses</Label>
+            <Label>Wallet Addresses</Label>
             <div className="flex gap-2">
               <Input
                 value={newAddress}
                 onChange={(e) => setNewAddress(e.target.value)}
-                placeholder="Enter address"
+                placeholder="Enter wallet address"
               />
               <Button onClick={handleAddAddress}>Add</Button>
             </div>

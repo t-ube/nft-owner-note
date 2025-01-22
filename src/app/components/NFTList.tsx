@@ -299,7 +299,7 @@ const NFTList: React.FC = () => {
           <TableHeader>
             <TableRow>
               <SortableHeader field="tokenId">Token ID</SortableHeader>
-              <SortableHeader field="owner">Owner / Label</SortableHeader>
+              <SortableHeader field="owner">Owner</SortableHeader>
               <SortableHeader field="name">NFT Name</SortableHeader>
               <SortableHeader field="mintedAt">Minted At</SortableHeader>
               <SortableHeader field="lastSaleAmount">Last Sale</SortableHeader>

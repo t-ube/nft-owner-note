@@ -217,12 +217,12 @@ const OwnersPage: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <SortableHeader field="name">Owner Label</SortableHeader>
-                <SortableHeader field="addresses">Addresses</SortableHeader>
+                <SortableHeader field="name">Owner Name</SortableHeader>
+                <SortableHeader field="addresses">Wallet Addresses</SortableHeader>
                 <SortableHeader field="xAccount">X Account</SortableHeader>
                 <TableHead>Memo</TableHead>
-                <SortableHeader field="userValue1">Custom Value 1</SortableHeader>
-                <SortableHeader field="userValue2">Custom Value 2</SortableHeader>
+                <SortableHeader field="userValue1">User Value 1</SortableHeader>
+                <SortableHeader field="userValue2">User Value 2</SortableHeader>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -283,7 +283,7 @@ const OwnersPage: React.FC = () => {
             <AlertDialogTitle>Delete Owner</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete {ownerToDelete?.name}? 
-              This will remove the owner label from all associated addresses.
+              This will remove the owner name from all associated addresses.
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
