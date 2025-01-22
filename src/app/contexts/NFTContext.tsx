@@ -82,7 +82,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
   const [marker, setMarker] = useState<unknown | undefined>();
 
   const MAX_NFTS = 1000;
-  const BATCH_SIZE = 50;
+  const BATCH_SIZE = 100;
   const HISTORY_BATCH_SIZE = 5;
   const CONCURRENT_CONNECTIONS = 4;
 

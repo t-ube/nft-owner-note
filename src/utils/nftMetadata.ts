@@ -20,9 +20,9 @@ const IPFS_GATEWAYS = [
   //'https://gateway.ipfs.io/ipfs/',
 ];
 
-const TIMEOUT_DURATION = 10000; // 10 seconds
-const MAX_RETRIES = 2;
-const RETRY_DELAY = 1000;
+const TIMEOUT_DURATION = 20000; // 10 seconds
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000;
 
 async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
   try {
@@ -134,9 +134,7 @@ export async function updateNFTName(nft: NFToken): Promise<NFToken> {
   if (nft.name !== null || !nft.uri) {
     return nft;
   }
-
-  console.log(`Updating name for ${nft.nft_id}`);
-
+  // console.log(`Updating name for ${nft.nft_id}`);
   try {
     const metadata = await fetchNFTMetadata(nft.uri);
     return {

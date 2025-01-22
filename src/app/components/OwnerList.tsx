@@ -116,7 +116,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
     const blob = new Blob([bom, csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', `nft_owners_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `owners_rank_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
