@@ -20,8 +20,8 @@ const IPFS_GATEWAYS = [
   //'https://gateway.ipfs.io/ipfs/',
 ];
 
-const TIMEOUT_DURATION = 20000; // 10 seconds
-const MAX_RETRIES = 3;
+const TIMEOUT_DURATION = 5000; // 5 seconds
+const MAX_RETRIES = 2;
 const RETRY_DELAY = 2000;
 
 async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
@@ -97,6 +97,68 @@ export async function fetchNFTMetadata(uri: string): Promise<NFTMetadata | null>
   }
 }
 
+const fetchNFTMetadataSafe = async (uri: string): Promise<NFTMetadata | null> => {
+  try {
+    if (uri.startsWith('ipfs://')) {
+      const hash = uri.replace('ipfs://', '');
+      
+      for (const gateway of IPFS_GATEWAYS) {
+        // 各ゲートウェイに対して新しいコントローラーを作成
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_DURATION);
+
+        try {
+          const response = await fetchWithRetry(gateway + hash, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            mode: 'cors',
+            signal: controller.signal
+          });
+          
+          if (response.ok) {
+            clearTimeout(timeoutId);
+            return await response.json();
+          }
+        } catch (error) {
+          clearTimeout(timeoutId);
+          console.warn(`Gateway ${gateway} failed, trying next...`, error);
+          continue;
+        }
+      }
+      
+      // 全てのゲートウェイが失敗した場合
+      return null;
+    }
+    
+    if (uri.startsWith('http://') || uri.startsWith('https://')) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_DURATION);
+      
+      try {
+        const response = await fetchWithRetry(uri, {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        return await response.json();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+      }
+    }
+
+    if (uri.startsWith('data:application/json;base64,')) {
+      const base64Data = uri.replace('data:application/json;base64,', '');
+      const jsonString = atob(base64Data);
+      return JSON.parse(jsonString);
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error fetching NFT metadata:', error);
+    return null;
+  }
+}
+
 export async function updateNFTNames(nfts: NFToken[]): Promise<NFToken[]> {
   // Filter NFTs that need name updates (name is null and has a URI)
   const nftsToUpdate = nfts.filter(nft => nft.name === null && nft.uri);
@@ -136,7 +198,7 @@ export async function updateNFTName(nft: NFToken): Promise<NFToken> {
   }
   // console.log(`Updating name for ${nft.nft_id}`);
   try {
-    const metadata = await fetchNFTMetadata(nft.uri);
+    const metadata = await fetchNFTMetadataSafe(nft.uri);
     return {
       ...nft,
       name: metadata?.name || null

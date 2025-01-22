@@ -303,7 +303,6 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
     let mounted = true;
 
     const loadCachedData = async () => {
-      console.log("NFTContext: useEffect - loadCachedData");
       try {
         const cachedNFTs = await dbManager.getNFTsByProjectId(projectId);
         if (!mounted) return;
