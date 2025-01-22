@@ -103,17 +103,37 @@ const fetchNFTMetadataSafe = async (uri: string): Promise<NFTMetadata | null> =>
       const hash = uri.replace('ipfs://', '');
       
       for (const gateway of IPFS_GATEWAYS) {
-        // 各ゲートウェイに対して新しいコントローラーを作成
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_DURATION);
 
         try {
-          const response = await fetchWithRetry(gateway + hash, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' },
-            mode: 'cors',
-            signal: controller.signal
-          });
+          let response;
+          const gatewayUrl = gateway + hash;
+          
+          // Pinataゲートウェイの場合、プロキシを使用
+          if (gateway.includes('pinata')) {
+            response = await fetchWithRetry(
+              `/api/ipfs-proxy?url=${encodeURIComponent(gatewayUrl)}`,
+              { signal: controller.signal }
+            );
+            
+            // レート制限やエラーの場合、次のゲートウェイを試す
+            if (response.status === 429 || response.status === 500) {
+              const errorData = await response.json();
+              if (errorData.shouldTryNextGateway) {
+                clearTimeout(timeoutId);
+                console.warn(`Gateway ${gateway} rate limited, trying next...`);
+                continue;
+              }
+            }
+          } else {
+            response = await fetchWithRetry(gatewayUrl, {
+              method: 'GET',
+              headers: { 'Accept': 'application/json' },
+              mode: 'cors',
+              signal: controller.signal
+            });
+          }
           
           if (response.ok) {
             clearTimeout(timeoutId);
