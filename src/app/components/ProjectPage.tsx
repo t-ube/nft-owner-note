@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -44,6 +45,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     loadProjects();
@@ -100,7 +102,10 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
       const project = await dbManager.addProject(newProject);
       setProjects([...projects, project]);
       setNewProject({ name: '', issuer: '', taxon: '' });
-      setSuccessMessage('Project created successfully');
+      setSuccessMessage(dict?.project.success.created || 'Project created successfully');
+      setTimeout(() => {
+        router.push(`/${lang}/projects/${project.projectId}`);
+      }, 2000);
     } catch (error) {
       console.error('Failed to add project:', error);
       setError('Failed to create project');

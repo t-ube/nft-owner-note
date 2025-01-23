@@ -364,7 +364,7 @@ const Statistics: React.FC<StatisticsProps> = ({ lang, projectId }) => {
             ))}
             {/* Unclassified NFTs */}
             <div className="flex justify-between items-center">
-              <span className="text-sm">⚪ Unclassified</span>
+              <span className="text-sm">{dictStats.colorDistribution.colors.unclassified}</span>
               <span className="text-sm font-medium">
                 {stats.totalUnclassified.toLocaleString()} 
                 ({((stats.totalUnclassified / (stats.totalClassified + stats.totalUnclassified)) * 100).toFixed(1)}%)

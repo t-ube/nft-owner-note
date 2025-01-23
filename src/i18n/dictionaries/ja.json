@@ -31,11 +31,11 @@
       "loading": "プロジェクトデータを読み込み中...",
       "notFound": "プロジェクトが見つかりません",
       "ownerRank": "オーナーランク",
-      "nftList": "NFT一覧",
+      "nftList": "NFTリスト",
       "statistics": "統計情報",
       "tabs": {
         "owners": "オーナーランク",
-        "nfts": "NFT一覧",
+        "nfts": "NFTリスト",
         "stats": "統計情報"
       },
       "info": {
