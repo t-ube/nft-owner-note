@@ -17,6 +17,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { getDictionary } from '@/i18n/get-dictionary';
+import { Dictionary } from '@/i18n/dictionaries/index';
 
 interface ProjectFormData {
   name: string;
@@ -24,7 +26,11 @@ interface ProjectFormData {
   taxon: string;
 }
 
-const ProjectPage: React.FC = () => {
+interface ProjectPageProps {
+  lang: string;
+}
+
+const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [newProject, setNewProject] = useState<ProjectFormData>({
     name: '',
@@ -37,10 +43,20 @@ const ProjectPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [dict, setDict] = useState<Dictionary | null>(null);
 
   useEffect(() => {
     loadProjects();
   }, []);
+
+  useEffect(() => {
+    const loadDictionary = async () => {
+      const dictionary = await getDictionary(lang as 'en' | 'ja');
+      setDict(dictionary);
+      console.log(dictionary);
+    };
+    loadDictionary();
+  }, [lang]);
 
   useEffect(() => {
     if (error || successMessage) {
@@ -133,7 +149,7 @@ const ProjectPage: React.FC = () => {
       <div className="flex-1 p-8">
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
-            <CardTitle>Create New Project</CardTitle>
+            <CardTitle>{dict?.project.title}</CardTitle>
           </CardHeader>
           <CardContent>
             {error && (
@@ -149,7 +165,7 @@ const ProjectPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Project Name
+                  {dict?.project.name}
                 </label>
                 <Input
                   value={newProject.name}
@@ -164,7 +180,7 @@ const ProjectPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Issuer Address
+                  {dict?.project.issuerAddress}
                 </label>
                 <Input
                   value={newProject.issuer}
@@ -179,7 +195,7 @@ const ProjectPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Taxon
+                  {dict?.project.taxon}
                 </label>
                 <Input
                   value={newProject.taxon}
@@ -195,7 +211,7 @@ const ProjectPage: React.FC = () => {
               </div>
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 <Plus className="h-4 w-4 mr-2" />
-                {isSubmitting ? 'Creating...' : 'Create Project'}
+                {isSubmitting ? dict?.project.creating : dict?.project.createButton}
               </Button>
             </form>
           </CardContent>
@@ -205,16 +221,14 @@ const ProjectPage: React.FC = () => {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>{dict?.project.deleteConfirm}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the project 
-              &quot;{projectToDelete?.name}&quot;.
-              This action cannot be undone.
+              {dict?.project.deleteDescription.replace('{name}', projectToDelete?.name || '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{dict?.project.cancel}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>{dict?.project.delete}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -5,6 +5,8 @@ import { dbManager } from '@/utils/db';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import _ from 'lodash';
+import { getDictionary } from '@/i18n/get-dictionary';
+import { Dictionary } from '@/i18n/dictionaries/index';
 
 const COLORS = [
   { value: '🔴', label: '🔴 Red' },
@@ -18,6 +20,7 @@ const COLORS = [
 
 interface StatisticsProps {
   projectId: string;
+  lang: string;
 }
 
 interface ColorStats {
@@ -82,8 +85,9 @@ const getDistributionStatus = (percentage: number): DistributionStatus => {
   }
 };
 
-const Statistics: React.FC<StatisticsProps> = ({ projectId }) => {
+const Statistics: React.FC<StatisticsProps> = ({ lang, projectId }) => {
   const [error, setError] = useState<string | null>(null);
+  const [dict, setDict] = useState<Dictionary | null>(null);
   const [stats, setStats] = useState<StatisticsState>({
     mintLast7Days: 0,
     salesLast7Days: 0,
@@ -106,6 +110,15 @@ const Statistics: React.FC<StatisticsProps> = ({ projectId }) => {
     totalUnclassified: 0,
     classificationRate: 0
   });
+
+  useEffect(() => {
+    const loadDictionary = async () => {
+      const dictionary = await getDictionary(lang as 'en' | 'ja');
+      setDict(dictionary);
+      console.log(dictionary);
+    };
+    loadDictionary();
+  }, [lang]);
 
   useEffect(() => {
     const loadNFTData = async () => {
@@ -229,16 +242,20 @@ const Statistics: React.FC<StatisticsProps> = ({ projectId }) => {
     );
   }
 
+  if (!dict) return null;
+
+  const dictStats = dict.project.detail.stats;
+
   return (
     <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
       <Card>
         <CardHeader>
-          <CardTitle>7 Day Mints</CardTitle>
+          <CardTitle>{dictStats.sevenDayMints.title}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-3xl font-bold">{stats.mintLast7Days}</div>
           <p className="text-xs text-muted-foreground">
-            Total Mints: {stats.totalMints}
+            {dictStats.sevenDayMints.totalMints}: {stats.totalMints}
           </p>
         </CardContent>
       </Card>

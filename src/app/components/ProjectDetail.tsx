@@ -18,15 +18,19 @@ import NFTList from '@/app/components/NFTList';
 import OwnerList from '@/app/components/OwnerList';
 import Statistics from '@/app/components/Statistics';
 import { NFTContextProvider } from '@/app/contexts/NFTContext';
+import { getDictionary } from '@/i18n/get-dictionary';
+import { Dictionary } from '@/i18n/dictionaries/index';
 
 interface ProjectDetailProps {
   projectId: string;
+  lang: string;
   onProjectsUpdated: () => void;
 }
 
-const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onProjectsUpdated }) => {
+const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjectsUpdated }) => {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [dict, setDict] = useState<Dictionary | null>(null);
 
   const loadProjectData = useCallback(async () => {
     setIsLoading(true);
@@ -45,6 +49,15 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onProjectsUpda
   useEffect(() => {
     loadProjectData();
   }, [loadProjectData]);
+  
+  useEffect(() => {
+    const loadDictionary = async () => {
+      const dictionary = await getDictionary(lang as 'en' | 'ja');
+      setDict(dictionary);
+      console.log(dictionary);
+    };
+    loadDictionary();
+  }, [lang]);
 
   const handleProjectUpdate = (updatedProject: Project) => {
     setProject(updatedProject);
@@ -56,7 +69,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onProjectsUpda
       <div className="flex-1 p-6 flex items-center justify-center">
         <div className="flex items-center space-x-2">
           <RefreshCcw className="h-5 w-5 animate-spin" />
-          <span>Loading project data...</span>
+          <span>{dict?.project.detail.loading}</span>
         </div>
       </div>
     );
@@ -67,7 +80,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onProjectsUpda
       <div className="flex-1 p-6 flex items-center justify-center">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>Project not found</AlertDescription>
+          <AlertDescription>{dict?.project.detail.notFound}</AlertDescription>
         </Alert>
       </div>
     );
@@ -104,28 +117,28 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onProjectsUpda
             </div>
           </div>
 
-          <ProjectInfo project={project} onProjectUpdate={handleProjectUpdate} />
+          <ProjectInfo lang={lang} project={project} onProjectUpdate={handleProjectUpdate} />
 
           <Tabs defaultValue="owners" className="space-y-4">
             <TabsList>
               <TabsTrigger value="owners">
                 <Users className="h-4 w-4 mr-2" />
-                Owner Rank
+                {dict?.project.detail.ownerRank}
               </TabsTrigger>
               <TabsTrigger value="nfts">
                 <List className="h-4 w-4 mr-2" />
-                NFT List
+                {dict?.project.detail.nftList}
               </TabsTrigger>
               <TabsTrigger value="stats">
                 <BarChart3 className="h-4 w-4 mr-2" />
-                Statistics
+                {dict?.project.detail.statistics}
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="owners" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Owner Rank</CardTitle>
+                  <CardTitle>{dict?.project.detail.ownerRank}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <OwnerList 
@@ -139,7 +152,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onProjectsUpda
             <TabsContent value="nfts" className="space-y-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>NFT List</CardTitle>
+                  <CardTitle>{dict?.project.detail.nftList}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <NFTList projectId={projectId}/>
@@ -149,7 +162,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onProjectsUpda
 
             <TabsContent value="stats" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <Statistics projectId={projectId} />
+                <Statistics lang={lang} projectId={projectId} />
               </div>
             </TabsContent>
           </Tabs>

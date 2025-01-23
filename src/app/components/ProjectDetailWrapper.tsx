@@ -17,12 +17,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import ProjectSidebar from '@/app/components/ProjectSidebar';
+import { getDictionary } from '@/i18n/get-dictionary';
+import { Dictionary } from '@/i18n/dictionaries/index';
 
 interface ProjectDetailWrapperProps {
   projectId: string;
+  lang: string;
 }
 
-const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }) => {
+const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, lang }) => {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +33,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [dict, setDict] = useState<Dictionary | null>(null);
 
   const loadAllProjects = useCallback(async () => {
     try {
@@ -43,6 +47,15 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
   useEffect(() => {
     loadAllProjects();
   }, [loadAllProjects]);
+
+  useEffect(() => {
+    const loadDictionary = async () => {
+      const dictionary = await getDictionary(lang as 'en' | 'ja');
+      setDict(dictionary);
+      console.log(dictionary);
+    };
+    loadDictionary();
+  }, [lang]);
 
   const handleDeleteClick = (e: React.MouseEvent, project: Project) => {
     e.stopPropagation();
@@ -102,7 +115,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
         <div className="flex-1 p-6 flex items-center justify-center">
           <div className="flex items-center space-x-2">
             <RefreshCcw className="h-5 w-5 animate-spin" />
-            <span>Loading project data...</span>
+            <span>{dict?.project.detail.loading}</span>
           </div>
         </div>
       </div>
@@ -144,7 +157,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
         <div className="flex-1 p-6 flex items-center justify-center">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>Project not found</AlertDescription>
+            <AlertDescription>{dict?.project.detail.notFound}</AlertDescription>
           </Alert>
         </div>
       </div>
@@ -166,21 +179,19 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId }
         issuer={project.issuer}
         taxon={project.taxon}
       >
-        <ProjectDetail projectId={projectId} onProjectsUpdated={refreshProjects}/>
+        <ProjectDetail projectId={projectId} lang={lang} onProjectsUpdated={refreshProjects}/>
       </NFTContextProvider>
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>{dict?.project.deleteConfirm}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the project 
-              &quot;{projectToDelete?.name}&quot; (#{projectToDelete?.projectId}).
-              This action cannot be undone.
+              {dict?.project.deleteDescription.replace('{name}', projectToDelete?.name || '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{dict?.project.cancel}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>{dict?.project.delete}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

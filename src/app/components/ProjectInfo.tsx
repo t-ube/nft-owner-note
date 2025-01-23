@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,17 +12,30 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { getDictionary } from '@/i18n/get-dictionary';
+import { Dictionary } from '@/i18n/dictionaries/index';
 
 interface ProjectInfoProps {
+  lang: string;
   project: Project;
   onProjectUpdate: (updatedProject: Project) => void;
 }
 
-const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, onProjectUpdate }) => {
+const ProjectInfo: React.FC<ProjectInfoProps> = ({ lang, project, onProjectUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(project.name);
   const [error, setError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [dict, setDict] = useState<Dictionary | null>(null);
+
+  useEffect(() => {
+    const loadDictionary = async () => {
+      const dictionary = await getDictionary(lang as 'en' | 'ja');
+      setDict(dictionary);
+      console.log(dictionary);
+    };
+    loadDictionary();
+  }, [lang]);
 
   const handleSave = async () => {
     try {
@@ -64,7 +77,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, onProjectUpdate }) =
             variant="ghost"
             className="w-full flex items-center justify-between p-4 hover:bg-gray-100"
           >
-            <span className="font-semibold">Project Information</span>
+            <span className="font-semibold">{dict?.project.detail.info.title}</span>
             <ChevronDown
               className={`h-4 w-4 transition-transform ${
                 isOpen ? 'transform rotate-180' : ''
@@ -84,7 +97,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, onProjectUpdate }) =
               )}
               
               <div className="space-y-2">
-                <label className="text-sm font-medium">Project Name</label>
+                <label className="text-sm font-medium">{dict?.project.detail.info.name}</label>
                 <div className="flex items-center gap-2">
                   {isEditing ? (
                     <>
@@ -100,11 +113,11 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, onProjectUpdate }) =
                         disabled={!editedName.trim() || editedName.trim() === project.name}
                       >
                         <Save className="h-4 w-4 mr-2" />
-                        Save
+                        {dict?.project.detail.info.save}
                       </Button>
                       <Button size="sm" variant="outline" onClick={handleCancel}>
                         <X className="h-4 w-4 mr-2" />
-                        Cancel
+                        {dict?.project.detail.info.cancel}
                       </Button>
                     </>
                   ) : (
@@ -112,7 +125,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, onProjectUpdate }) =
                       <span className="flex-1">{project.name}</span>
                       <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
                         <Edit2 className="h-4 w-4 mr-2" />
-                        Edit
+                        {dict?.project.detail.info.edit}
                       </Button>
                     </>
                   )}
@@ -121,13 +134,13 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, onProjectUpdate }) =
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Issuer Address</label>
+                  <label className="text-sm font-medium">{dict?.project.detail.info.issuerAddress}</label>
                   <div className="p-2 bg-gray-50 rounded-md break-all">
                     {project.issuer}
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Taxon</label>
+                  <label className="text-sm font-medium">{dict?.project.detail.info.taxon}</label>
                   <div className="p-2 bg-gray-50 rounded-md">
                     {project.taxon}
                   </div>
@@ -135,7 +148,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, onProjectUpdate }) =
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Project ID</label>
+                <label className="text-sm font-medium">{dict?.project.detail.info.projectId}</label>
                 <div className="p-2 bg-gray-50 rounded-md">
                   {project.projectId}
                 </div>
@@ -143,10 +156,10 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, onProjectUpdate }) =
 
               <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-500">
                 <div>
-                  Created: {new Date(project.createdAt).toLocaleString()}
+                  {dict?.project.detail.info.created}: {new Date(project.createdAt).toLocaleString()}
                 </div>
                 <div>
-                  Updated: {new Date(project.updatedAt).toLocaleString()}
+                  {dict?.project.detail.info.updated}: {new Date(project.updatedAt).toLocaleString()}
                 </div>
               </div>
             </div>

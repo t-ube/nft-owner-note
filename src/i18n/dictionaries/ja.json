@@ -1,0 +1,107 @@
+{
+  "project": {
+    "title": "新規プロジェクト作成",
+    "name": "プロジェクト名",
+    "issuerAddress": "発行者アドレス",
+    "taxon": "タクソン",
+    "createButton": "プロジェクトを作成",
+    "creating": "作成中...",
+    "deleteConfirm": "削除してもよろしいですか？",
+    "deleteDescription": "プロジェクト「{name}」を完全に削除します。この操作は取り消せません。",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "errors": {
+      "loadFailed": "プロジェクトの読み込みに失敗しました",
+      "createFailed": "プロジェクトの作成に失敗しました",
+      "deleteFailed": "プロジェクトの削除に失敗しました",
+      "duplicateProject": "同じ発行者とタクソンの組み合わせが既に存在します：{name}"
+    },
+    "success": {
+      "created": "プロジェクトが作成されました",
+      "deleted": "プロジェクトが削除されました"
+    },
+    "detail": {
+      "loading": "プロジェクトデータを読み込み中...",
+      "notFound": "プロジェクトが見つかりません",
+      "ownerRank": "所有者ランク",
+      "nftList": "NFT一覧",
+      "statistics": "統計情報",
+      "tabs": {
+        "owners": "所有者ランク",
+        "nfts": "NFT一覧",
+        "stats": "統計情報"
+      },
+      "info": {
+        "title": "プロジェクト情報",
+        "name": "プロジェクト名",
+        "issuerAddress": "発行者アドレス",
+        "taxon": "タクソン",
+        "projectId": "プロジェクトID",
+        "created": "作成日時",
+        "updated": "更新日時",
+        "edit": "編集",
+        "save": "保存",
+        "cancel": "キャンセル",
+        "enterName": "プロジェクト名を入力",
+        "updateError": "プロジェクト名の更新に失敗しました"
+      },
+      "stats": {
+        "error": "NFTデータの読み込みに失敗しました",
+        "sevenDayMints": {
+          "title": "7日間のミント数",
+          "totalMints": "総ミント数"
+        },
+        "sevenDayFirstSales": {
+          "title": "7日間の初回販売数",
+          "totalFirstSales": "総初回販売数"
+        },
+        "sevenDayUniqueBuyers": {
+          "title": "7日間の購入者数",
+          "description": "初回購入の異なるアドレス数"
+        },
+        "avgTimeToFirstSale": {
+          "title": "初回販売までの平均時間",
+          "description": "ミントから初回販売までの日数"
+        },
+        "colorClassification": {
+          "title": "カラー分類の進捗",
+          "classified": "分類済み",
+          "unclassified": "未分類",
+          "nfts": "NFT",
+          "lastUpdated": "最終更新"
+        },
+        "colorDistribution": {
+          "title": "カラー分布",
+          "colors": {
+            "red": "🔴 赤",
+            "orange": "🟠 オレンジ",
+            "yellow": "🟡 黄",
+            "green": "🟢 緑",
+            "blue": "🔵 青",
+            "purple": "🟣 紫",
+            "brown": "🟤 茶",
+            "unclassified": "⚪ 未分類"
+          }
+        },
+        "paretoAnalysis": {
+          "title": "パレート分析",
+          "status": {
+            "wellDistributed": {
+              "label": "分散型分布",
+              "description": "一般的なパレート分布(80/20)より均等に分散しています"
+            },
+            "typical": {
+              "label": "一般的な分布",
+              "description": "一般的なパレート分布に近い分布です"
+            },
+            "concentrated": {
+              "label": "集中型分布",
+              "description": "一般的なパレート分布(80/20)より集中しています"
+            }
+          },
+          "holdersInfo": "上位20%の保有者（{totalHolders}人中{topHolders}人）が保有するNFTの割合"
+        }
+      }
+    }
+  }
+}

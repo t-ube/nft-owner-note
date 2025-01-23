@@ -5,6 +5,6 @@ import ProjectDetailWrapper from '@/app/components/ProjectDetailWrapper';
 
 export default function ProjectDetailPage({ params }: { params: { projectId: string } }) {
   return (
-    <ProjectDetailWrapper projectId={params.projectId} />
+    <ProjectDetailWrapper lang='en' projectId={params.projectId} />
   );
 }

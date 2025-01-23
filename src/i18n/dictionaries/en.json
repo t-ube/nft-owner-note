@@ -1,0 +1,107 @@
+{
+  "project": {
+    "title": "Create New Project",
+    "name": "Project Name",
+    "issuerAddress": "Issuer Address",
+    "taxon": "Taxon",
+    "createButton": "Create Project",
+    "creating": "Creating...",
+    "deleteConfirm": "Are you sure?",
+    "deleteDescription": "This will permanently delete the project \"{name}\". This action cannot be undone.",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "errors": {
+      "loadFailed": "Failed to load projects",
+      "createFailed": "Failed to create project",
+      "deleteFailed": "Failed to delete project",
+      "duplicateProject": "A project with the same issuer and taxon already exists: {name}"
+    },
+    "success": {
+      "created": "Project created successfully",
+      "deleted": "Project deleted successfully"
+    },
+    "detail": {
+      "loading": "Loading project data...",
+      "notFound": "Project not found",
+      "ownerRank": "Owner Rank",
+      "nftList": "NFT List",
+      "statistics": "Statistics",
+      "tabs": {
+        "owners": "Owner Rank",
+        "nfts": "NFT List",
+        "stats": "Statistics"
+      },
+      "info": {
+        "title": "Project Information",
+        "name": "Project Name",
+        "issuerAddress": "Issuer Address",
+        "taxon": "Taxon",
+        "projectId": "Project ID",
+        "created": "Created",
+        "updated": "Updated",
+        "edit": "Edit",
+        "save": "Save",
+        "cancel": "Cancel",
+        "enterName": "Enter project name",
+        "updateError": "Failed to update project name"
+      },
+      "stats": {
+        "error": "Failed to load NFT data",
+        "sevenDayMints": {
+          "title": "7 Day Mints",
+          "totalMints": "Total Mints"
+        },
+        "sevenDayFirstSales": {
+          "title": "7 Day First Sales",
+          "totalFirstSales": "Total First Sales"
+        },
+        "sevenDayUniqueBuyers": {
+          "title": "7 Day Unique Buyers",
+          "description": "Distinct addresses making first purchases"
+        },
+        "avgTimeToFirstSale": {
+          "title": "Avg. Time to First Sale",
+          "description": "Days from mint to first sale"
+        },
+        "colorClassification": {
+          "title": "Color Classification Progress",
+          "classified": "Classified",
+          "unclassified": "Unclassified",
+          "nfts": "NFTs",
+          "lastUpdated": "Last updated"
+        },
+        "colorDistribution": {
+          "title": "Color Distribution",
+          "colors": {
+            "red": "🔴 Red",
+            "orange": "🟠 Orange",
+            "yellow": "🟡 Yellow",
+            "green": "🟢 Green",
+            "blue": "🔵 Blue",
+            "purple": "🟣 Purple",
+            "brown": "🟤 Brown",
+            "unclassified": "⚪ Unclassified"
+          }
+        },
+        "paretoAnalysis": {
+          "title": "Pareto Analysis",
+          "status": {
+            "wellDistributed": {
+              "label": "Well Distributed",
+              "description": "More evenly distributed than typical Pareto (80/20)"
+            },
+            "typical": {
+              "label": "Typical Distribution",
+              "description": "Close to typical Pareto distribution"
+            },
+            "concentrated": {
+              "label": "Highly Concentrated",
+              "description": "More concentrated than typical Pareto (80/20)"
+            }
+          },
+          "holdersInfo": "NFTs held by top 20% holders ({topHolders} out of {totalHolders} holders)"
+        }
+      }
+    }
+  }
+}
