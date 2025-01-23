@@ -32,7 +32,6 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ lang, project, onProjectUpdat
     const loadDictionary = async () => {
       const dictionary = await getDictionary(lang as 'en' | 'ja');
       setDict(dictionary);
-      console.log(dictionary);
     };
     loadDictionary();
   }, [lang]);

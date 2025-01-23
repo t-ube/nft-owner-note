@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Upload, Download, AlertCircle, FileDown } from 'lucide-react';
 import Papa, { ParseResult } from 'papaparse';
 import { dbManager, AddressGroup } from '@/utils/db';
+import { getDictionary } from '@/i18n/get-dictionary';
+import { Dictionary } from '@/i18n/dictionaries/index';
 
 interface CSVImportExportProps {
   onGroupsUpdated: () => void;
+  lang: string;
 }
 
 // CSV形式のデータ型を定義
@@ -23,8 +26,21 @@ interface ValidationError {
   errors: string[];
 }
 
-const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) => {
-  const [error, setError] = React.useState<string | null>(null);
+const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang }) => {
+  const [error, setError] = useState<string | null>(null);
+  const [dict, setDict] = useState<Dictionary | null>(null);
+
+  useEffect(() => {
+    const loadDictionary = async () => {
+      const dictionary = await getDictionary(lang as 'en' | 'ja');
+      setDict(dictionary);
+    };
+    loadDictionary();
+  }, [lang]);
+
+  if (!dict) return null;
+
+  const { csvImportExport: t } = dict.project.owners;
 
   const handleExport = async (): Promise<void> => {
     try {
@@ -62,12 +78,12 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
     const errors: string[] = [];
     
     if (!row.name?.trim()) {
-      errors.push('Name is required');
+      errors.push(t.validation.nameRequired);
     }
     
     const addresses = row.addresses.split(';').filter(Boolean);
     if (addresses.length === 0) {
-      errors.push('At least one address is required');
+      errors.push(t.validation.addressRequired);
     }
     
     return errors.length > 0 ? { row: index + 1, errors } : null;
@@ -190,7 +206,7 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
           className="flex items-center gap-2"
         >
           <Download className="h-4 w-4" />
-          Export CSV
+          {t.buttons.exportCSV}
         </Button>
 
         <div className="relative">
@@ -206,7 +222,7 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
             className="flex items-center gap-2"
           >
             <Upload className="h-4 w-4" />
-            Import CSV
+            {t.buttons.importCSV}
           </Button>
         </div>
 
@@ -217,7 +233,7 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated }) =>
           className="flex items-center gap-2"
         >
           <FileDown className="h-4 w-4" />
-          Download Sample
+          {t.buttons.downloadSample}
         </Button>
       </div>
     </div>

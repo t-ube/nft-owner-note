@@ -53,7 +53,6 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
     const loadDictionary = async () => {
       const dictionary = await getDictionary(lang as 'en' | 'ja');
       setDict(dictionary);
-      console.log(dictionary);
     };
     loadDictionary();
   }, [lang]);
@@ -144,6 +143,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
         onSearchChange={setSearchTerm}
         onDeleteClick={handleDeleteClick}
         onProjectsUpdated={refreshProjects}
+        lang={lang}
       />
 
       <div className="flex-1 p-8">
@@ -173,7 +173,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
                     ...newProject,
                     name: e.target.value
                   })}
-                  placeholder="Enter project name"
+                  placeholder={dict?.project.newProject.placeholders.enterProjectName}
                   required
                   disabled={isSubmitting}
                 />
@@ -188,7 +188,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
                     ...newProject,
                     issuer: e.target.value
                   })}
-                  placeholder="Enter issuer address"
+                  placeholder={dict?.project.newProject.placeholders.enterIssuerAddress}
                   required
                   disabled={isSubmitting}
                 />
@@ -203,7 +203,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
                     ...newProject,
                     taxon: e.target.value
                   })}
-                  placeholder="Enter taxon"
+                  placeholder={dict?.project.newProject.placeholders.enterTaxon}
                   required
                   type="number"
                   disabled={isSubmitting}

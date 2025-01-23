@@ -188,8 +188,6 @@ export async function updateNFTNames(nfts: NFToken[]): Promise<NFToken[]> {
     return nfts;
   }
 
-  console.log(`Updating names for ${nftsToUpdate.length} NFTs`);
-
   const updatedNFTs = await Promise.all(
     nftsToUpdate.map(async (nft) => {
       try {
@@ -216,7 +214,9 @@ export async function updateNFTName(nft: NFToken): Promise<NFToken> {
   if (nft.name !== null || !nft.uri) {
     return nft;
   }
-  // console.log(`Updating name for ${nft.nft_id}`);
+  if (nft.is_burned) {
+    return nft;
+  }
   try {
     const metadata = await fetchNFTMetadataSafe(nft.uri);
     return {

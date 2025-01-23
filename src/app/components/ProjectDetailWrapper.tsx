@@ -52,7 +52,6 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
     const loadDictionary = async () => {
       const dictionary = await getDictionary(lang as 'en' | 'ja');
       setDict(dictionary);
-      console.log(dictionary);
     };
     loadDictionary();
   }, [lang]);
@@ -111,6 +110,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
           onSearchChange={setSearchTerm}
           onDeleteClick={handleDeleteClick}
           onProjectsUpdated={refreshProjects}
+          lang={lang}
         />
         <div className="flex-1 p-6 flex items-center justify-center">
           <div className="flex items-center space-x-2">
@@ -132,6 +132,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
           onSearchChange={setSearchTerm}
           onDeleteClick={handleDeleteClick}
           onProjectsUpdated={refreshProjects}
+          lang={lang}
         />
         <div className="flex-1 p-6 flex items-center justify-center">
           <Alert variant="destructive">
@@ -153,6 +154,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
           onSearchChange={setSearchTerm}
           onDeleteClick={handleDeleteClick}
           onProjectsUpdated={refreshProjects}
+          lang={lang}
         />
         <div className="flex-1 p-6 flex items-center justify-center">
           <Alert variant="destructive">
@@ -173,6 +175,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
         onSearchChange={setSearchTerm}
         onDeleteClick={handleDeleteClick}
         onProjectsUpdated={refreshProjects}
+        lang={lang}
       />
       <NFTContextProvider 
         projectId={projectId}

@@ -19,13 +19,13 @@ const NFTSiteWalletIcons: React.FC<NFTSiteWalletIconsProps> = ({ wallet, issuer,
     {
       name: 'Bithomp',
       url: `https://xrplexplorer.com/en/nft-explorer?issuer=${issuer}&owner=${wallet}&taxon=${taxon}&includeWithoutMediaData=true`,
-      icon: 'bithomp.png',
+      icon: 'images/bithomp.png',
       description: 'View on Bithomp'
     },
     {
       name: 'XRPCAFE',
       url: `https://xrp.cafe/usercollection/${wallet}/${issuer}/${taxon}`,
-      icon: 'xrpcafe.jpg',
+      icon: 'images/xrpcafe.jpg',
       description: 'View on XRPCAFE'
     }
   ];

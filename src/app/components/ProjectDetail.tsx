@@ -1,4 +1,5 @@
 "use client";
+
 // ProjectDetail.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -54,7 +55,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjec
     const loadDictionary = async () => {
       const dictionary = await getDictionary(lang as 'en' | 'ja');
       setDict(dictionary);
-      console.log(dictionary);
     };
     loadDictionary();
   }, [lang]);
@@ -109,66 +109,67 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjec
       taxon={project.taxon}
     >
       <NFTWrapper>
-      <div className="flex-1 overflow-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-2xl font-bold">{project.name}</h1>
-            </div>
-          </div>
-
-          <ProjectInfo lang={lang} project={project} onProjectUpdate={handleProjectUpdate} />
-
-          <Tabs defaultValue="owners" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="owners">
-                <Users className="h-4 w-4 mr-2" />
-                {dict?.project.detail.ownerRank}
-              </TabsTrigger>
-              <TabsTrigger value="nfts">
-                <List className="h-4 w-4 mr-2" />
-                {dict?.project.detail.nftList}
-              </TabsTrigger>
-              <TabsTrigger value="stats">
-                <BarChart3 className="h-4 w-4 mr-2" />
-                {dict?.project.detail.statistics}
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="owners" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>{dict?.project.detail.ownerRank}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <OwnerList 
-                    issuer={project.issuer} 
-                    taxon={project.taxon}
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="nfts" className="space-y-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>{dict?.project.detail.nftList}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <NFTList projectId={projectId}/>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="stats" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Statistics lang={lang} projectId={projectId} />
+        <div className="flex-1 overflow-auto">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h1 className="text-2xl font-bold">{project.name}</h1>
               </div>
-            </TabsContent>
-          </Tabs>
+            </div>
+
+            <ProjectInfo lang={lang} project={project} onProjectUpdate={handleProjectUpdate} />
+
+            <Tabs defaultValue="owners" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="owners">
+                  <Users className="h-4 w-4 mr-2" />
+                  {dict?.project.detail.ownerRank}
+                </TabsTrigger>
+                <TabsTrigger value="nfts">
+                  <List className="h-4 w-4 mr-2" />
+                  {dict?.project.detail.nftList}
+                </TabsTrigger>
+                <TabsTrigger value="stats">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  {dict?.project.detail.statistics}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="owners" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{dict?.project.detail.ownerRank}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <OwnerList 
+                      lang={lang}
+                      issuer={project.issuer} 
+                      taxon={project.taxon}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="nfts" className="space-y-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>{dict?.project.detail.nftList}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <NFTList lang={lang} projectId={projectId}/>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="stats" className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Statistics lang={lang} projectId={projectId} />
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
-      </div>
-          </NFTWrapper>
+      </NFTWrapper>
     </NFTContextProvider>
   );
 };

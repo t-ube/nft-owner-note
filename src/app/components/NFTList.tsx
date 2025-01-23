@@ -31,6 +31,9 @@ import { AddressGroupDialog } from '@/app/components/AddressGroupDialog';
 import NFTSiteIcons from '@/app/components/NFTSiteIcons';
 import { NFTFilters, FilterState } from '@/app/components/NFTFilters';
 import _ from 'lodash';
+import { getDictionary } from '@/i18n/get-dictionary';
+import { Dictionary } from '@/i18n/dictionaries/index';
+
 
 const COLORS = [
   { value: '🔴', label: '🔴 Red' },
@@ -49,10 +52,12 @@ type SortDirection = 'asc' | 'desc' | null;
 const ITEMS_PER_PAGE = 100;
 
 interface NFTListProps {
+  lang: string;
   projectId: string;
 }
 
-const NFTList: React.FC<NFTListProps> = ({ projectId }) => {
+const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
+  const [dict, setDict] = useState<Dictionary | null>(null);
   const [nfts, setNfts] = useState<NFToken[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -93,6 +98,14 @@ const NFTList: React.FC<NFTListProps> = ({ projectId }) => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const loadDictionary = async () => {
+      const dictionary = await getDictionary(lang as 'en' | 'ja');
+      setDict(dictionary);
+    };
+    loadDictionary();
+  }, [lang]);
 
   useEffect(() => {
     const loadAddressData = async () => {
@@ -176,10 +189,14 @@ const NFTList: React.FC<NFTListProps> = ({ projectId }) => {
       hour12: false
     }).replace(/\//g, '/').replace(',', '');
   };
+  
+  if (!dict) return null;
+
+  const nftListPage = dict.project.detail.nftListPage;
 
   const formatAmount = (amount?: number | null) => {
     if (amount === undefined || amount === null) return '-';
-    return `${amount.toLocaleString()} XRP`;
+    return nftListPage.format.amount.replace('{amount}', amount.toLocaleString());
   };
 
   const formatTokenId = (tokenId: string) => {
@@ -239,10 +256,11 @@ const NFTList: React.FC<NFTListProps> = ({ projectId }) => {
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
+        <AlertDescription>{nftListPage.errors.loadFailed}</AlertDescription>
       </Alert>
     );
   }
+
 
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
@@ -251,12 +269,14 @@ const NFTList: React.FC<NFTListProps> = ({ projectId }) => {
       <div className="flex justify-between items-center">
         <div className="text-sm text-gray-500 space-y-1">
           <div>
-            {
-              `Showing ${((currentPage - 1) * ITEMS_PER_PAGE) + 1} to ${Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} of ${totalItems} NFTs`
+            {nftListPage.status.showing
+              .replace('{start}', ((currentPage - 1) * ITEMS_PER_PAGE + 1).toLocaleString())
+              .replace('{end}', Math.min(currentPage * ITEMS_PER_PAGE, totalItems).toLocaleString())
+              .replace('{total}', totalItems.toLocaleString())
             }
           </div>
           <div>
-            Total NFTs: {totalItems.toLocaleString()} 
+            {nftListPage.status.totalNFTs.replace('{count}', totalItems.toLocaleString())}
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -269,13 +289,16 @@ const NFTList: React.FC<NFTListProps> = ({ projectId }) => {
             <RefreshCcw className={`h-4 w-4 mr-2 ${updatingNFTs.size > 0 ? 'animate-spin' : ''}`} />
             {updatingNFTs.size > 0 ? (
               <span>
-                Updating ({updatingNFTs.size})
+              {updatingNFTs.size > 0 
+                ? nftListPage.actions.updating.replace('{count}', updatingNFTs.size.toString())
+                : nftListPage.actions.updateSaleInfo
+              }
               </span>
             ) : (
-              "Update Sale Info"
+              nftListPage.actions.updateSaleInfo
             )}
           </Button>
-          <NFTFilters onFilterChange={handleFilterChange} />
+          <NFTFilters lang={lang} onFilterChange={handleFilterChange} />
         </div>
       </div>
 
@@ -283,16 +306,16 @@ const NFTList: React.FC<NFTListProps> = ({ projectId }) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableHeader field="nft_serial">Serial</SortableHeader>
-              <SortableHeader field="tokenId">Token ID</SortableHeader>
-              <SortableHeader field="owner">Owner</SortableHeader>
-              <SortableHeader field="name">NFT Name</SortableHeader>
-              <SortableHeader field="mintedAt">Minted At</SortableHeader>
-              <SortableHeader field="lastSaleAmount">Last Sale</SortableHeader>
-              <SortableHeader field="lastSaleAt">Last Sale At</SortableHeader>
-              <TableHead>Price Change</TableHead>
-              <TableHead>Color</TableHead>
-              <TableHead>Actions</TableHead>
+              <SortableHeader field="nft_serial">{nftListPage.table.serial}</SortableHeader>
+              <SortableHeader field="tokenId">{nftListPage.table.tokenId}</SortableHeader>
+              <SortableHeader field="owner">{nftListPage.table.owner}</SortableHeader>
+              <SortableHeader field="name">{nftListPage.table.nftName}</SortableHeader>
+              <SortableHeader field="mintedAt">{nftListPage.table.mintedAt}</SortableHeader>
+              <SortableHeader field="lastSaleAmount">{nftListPage.table.lastSale}</SortableHeader>
+              <SortableHeader field="lastSaleAt">{nftListPage.table.lastSaleAt}</SortableHeader>
+              <TableHead>{nftListPage.table.priceChange}</TableHead>
+              <TableHead>{nftListPage.table.color}</TableHead>
+              <TableHead>{nftListPage.table.actions}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -317,6 +340,7 @@ const NFTList: React.FC<NFTListProps> = ({ projectId }) => {
                         initialAddresses={[nft.owner]}
                         groupId={group?.id}
                         onSave={handleGroupSave}
+                        lang={lang}
                       >
                         <Button 
                           variant="ghost" 
@@ -392,10 +416,14 @@ const NFTList: React.FC<NFTListProps> = ({ projectId }) => {
           <Pagination>
           <PaginationContent>
           <PaginationItem>
-            <PaginationPrevious
-              className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+            <Button
+              variant="outline"
+              size="sm"
+              className={`${currentPage === 1 ? 'pointer-events-none opacity-50' : ''}`}
               onClick={() => currentPage > 1 && setCurrentPage(prev => prev - 1)}
-            />
+            >
+              {nftListPage.pagination.previous}
+            </Button>
           </PaginationItem>
           {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
             const pageNumber = currentPage + i - 2;
@@ -412,10 +440,14 @@ const NFTList: React.FC<NFTListProps> = ({ projectId }) => {
             );
           })}
           <PaginationItem>
-            <PaginationNext
-              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+            <Button
+              variant="outline"
+              size="sm"
+              className={`${currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}`}
               onClick={() => currentPage < totalPages && setCurrentPage(prev => prev + 1)}
-            />
+            >
+              {nftListPage.pagination.next}
+            </Button>
           </PaginationItem>
         </PaginationContent>
       </Pagination>

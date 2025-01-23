@@ -60,26 +60,28 @@ interface DistributionStatus {
   className: string;
 }
 
-const getDistributionStatus = (percentage: number): DistributionStatus => {
+const getDistributionStatus = (dict:Dictionary, percentage: number): DistributionStatus => {
+  const paretoSts = dict.project.detail.stats.paretoAnalysis.status;
+
   if (percentage < 70) {
     return {
-      label: 'Well Distributed',
+      label: paretoSts.wellDistributed.label,
       variant: 'secondary',
-      description: 'More evenly distributed than typical Pareto (80/20)',
+      description: paretoSts.wellDistributed.description,
       className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
     };
   } else if (percentage < 85) {
     return {
-      label: 'Typical Distribution',
+      label: paretoSts.typical.label,
       variant: 'outline',
-      description: 'Close to typical Pareto distribution',
+      description: paretoSts.typical.label,
       className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
     };
   } else {
     return {
-      label: 'Highly Concentrated',
+      label: paretoSts.concentrated.label,
       variant: 'destructive',
-      description: 'More concentrated than typical Pareto (80/20)',
+      description: paretoSts.concentrated.label,
       className: ''
     };
   }
@@ -115,7 +117,6 @@ const Statistics: React.FC<StatisticsProps> = ({ lang, projectId }) => {
     const loadDictionary = async () => {
       const dictionary = await getDictionary(lang as 'en' | 'ja');
       setDict(dictionary);
-      console.log(dictionary);
     };
     loadDictionary();
   }, [lang]);
@@ -254,53 +255,76 @@ const Statistics: React.FC<StatisticsProps> = ({ lang, projectId }) => {
         </CardHeader>
         <CardContent>
           <div className="text-3xl font-bold">{stats.mintLast7Days}</div>
-          <p className="text-xs text-muted-foreground">
-            {dictStats.sevenDayMints.totalMints}: {stats.totalMints}
-          </p>
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              {dictStats.sevenDayMints.totalMints}: {stats.totalMints}
+            </p>
+            <p className="text-xs text-muted-foreground italic">
+              {dictStats.notice.noSalesData}
+            </p>
+          </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>7 Day First Sales</CardTitle>
+          <CardTitle>{dictStats.sevenDayFirstSales.title}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-3xl font-bold">{stats.salesLast7Days}</div>
-          <p className="text-xs text-muted-foreground">
-            Total First Sales: {stats.totalSales}
-          </p>
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              {dictStats.sevenDayFirstSales.totalFirstSales}: {stats.totalSales}
+            </p>
+            <p className="text-xs text-muted-foreground italic">
+              {dictStats.notice.noSalesData}
+            </p>
+          </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>7 Day Unique Buyers</CardTitle>
+          <CardTitle>{dictStats.sevenDayUniqueBuyers.title}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-3xl font-bold">{stats.uniqueBuyersLast7Days}</div>
-          <p className="text-xs text-muted-foreground">
-            Distinct addresses making first purchases
-          </p>
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              {dictStats.sevenDayUniqueBuyers.description}
+            </p>
+            <p className="text-xs text-muted-foreground italic">
+              {dictStats.notice.noSalesData}
+            </p>
+          </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Avg. Time to First Sale</CardTitle>
+          <CardTitle>{dictStats.avgTimeToFirstSale.title}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-3xl font-bold">
-            {stats.avgTimeToFirstSale.toFixed(1)}
+            {stats.totalSales > 0 
+              ? `${stats.avgTimeToFirstSale.toFixed(1)}`
+              : dictStats.notice.noSalesDataYet
+            }
           </div>
-          <p className="text-xs text-muted-foreground">
-            Days from mint to first sale
-          </p>
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              {dictStats.avgTimeToFirstSale.description}
+            </p>
+            <p className="text-xs text-muted-foreground italic">
+              {dictStats.notice.noSalesData}
+            </p>
+          </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Color Classification Progress</CardTitle>
+          <CardTitle>{dictStats.colorClassification.title}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-3xl font-bold">
@@ -308,16 +332,16 @@ const Statistics: React.FC<StatisticsProps> = ({ lang, projectId }) => {
           </div>
           <div className="space-y-2 mt-4">
             <p className="text-sm">
-              Classified: {stats.totalClassified.toLocaleString()}
-              <span className="text-muted-foreground ml-1">NFTs</span>
+              {dictStats.colorClassification.classified}: {stats.totalClassified.toLocaleString()}
+              <span className="text-muted-foreground ml-1">{dictStats.colorClassification.nfts}</span>
             </p>
             <p className="text-sm">
-              Unclassified: {stats.totalUnclassified.toLocaleString()}
-              <span className="text-muted-foreground ml-1">NFTs</span>
+              {dictStats.colorClassification.unclassified}: {stats.totalUnclassified.toLocaleString()}
+              <span className="text-muted-foreground ml-1">{dictStats.colorClassification.nfts}</span>
             </p>
             {stats.recentColorActivity.lastUpdated && (
               <p className="text-xs text-muted-foreground mt-2">
-                Last updated: {stats.recentColorActivity.lastUpdated}
+                {dictStats.colorClassification.lastUpdated}: {stats.recentColorActivity.lastUpdated}
               </p>
             )}
           </div>
@@ -326,7 +350,7 @@ const Statistics: React.FC<StatisticsProps> = ({ lang, projectId }) => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Color Distribution</CardTitle>
+          <CardTitle>{dictStats.colorDistribution.title}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -352,12 +376,12 @@ const Statistics: React.FC<StatisticsProps> = ({ lang, projectId }) => {
 
       <Card>
         <CardHeader className="space-y-2">
-          <CardTitle>Pareto Analysis</CardTitle>
+          <CardTitle>{dictStats.paretoAnalysis.title}</CardTitle>
           <Badge 
-            variant={getDistributionStatus(stats.paretoMetrics.topHoldersPercentage).variant}
-            className={`text-xs ${getDistributionStatus(stats.paretoMetrics.topHoldersPercentage).className}`}
+            variant={getDistributionStatus(dict,stats.paretoMetrics.topHoldersPercentage).variant}
+            className={`text-xs ${getDistributionStatus(dict,stats.paretoMetrics.topHoldersPercentage).className}`}
           >
-            {getDistributionStatus(stats.paretoMetrics.topHoldersPercentage).label}
+            {getDistributionStatus(dict,stats.paretoMetrics.topHoldersPercentage).label}
           </Badge>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -365,10 +389,12 @@ const Statistics: React.FC<StatisticsProps> = ({ lang, projectId }) => {
             {stats.paretoMetrics.topHoldersPercentage.toFixed(1)}%
           </div>
           <p className="text-xs text-muted-foreground">
-            NFTs held by top 20% holders ({stats.paretoMetrics.topHoldersCount} out of {stats.paretoMetrics.totalHolders} holders)
+            {dictStats.paretoAnalysis.holdersInfo
+              .replace('{topHolders}', stats.paretoMetrics.topHoldersCount.toString())
+              .replace('{totalHolders}', stats.paretoMetrics.totalHolders.toString())}
           </p>
           <p className="text-xs text-muted-foreground">
-            {getDistributionStatus(stats.paretoMetrics.topHoldersPercentage).description}
+            {getDistributionStatus(dict,stats.paretoMetrics.topHoldersPercentage).description}
           </p>
         </CardContent>
       </Card>

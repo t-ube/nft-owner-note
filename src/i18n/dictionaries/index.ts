@@ -23,6 +23,13 @@ export interface Dictionary {
       deleteFailed: string;
       duplicateProject: string;
     };
+    newProject: {
+      placeholders: {
+        enterProjectName: string;
+        enterIssuerAddress: string;
+        enterTaxon: string;
+      }
+    },
     success: {
       created: string;
       deleted: string;
@@ -108,6 +115,221 @@ export interface Dictionary {
           };
           holdersInfo: string;
         };
+        notice: {
+          noSalesData: string;
+          noSalesDataYet: string;
+        }
+      };
+      ownerList: {
+        status: {
+          showingOwners: string;
+          loadingMore: string;
+          totalNFTs: string;
+        };
+        actions: {
+          exportRank: string;
+          edit: string;
+        };
+        table: {
+          rank: string;
+          owner: string;
+          name: string;
+          xAccount: string;
+          nftCount: string;
+          userValue1: string;
+          userValue2: string;
+          holdingPercentage: string;
+          links: string;
+        };
+        placeholders: {
+          noName: string;
+          noValue: string;
+          noXAccount: string;
+        };
+      };
+      nftListPage: {
+        status: {
+          showing: string;
+          totalNFTs: string;
+        };
+        actions: {
+          updateSaleInfo: string;
+          updating: string;
+          refresh: string;
+        };
+        table: {
+          serial: string;
+          tokenId: string;
+          owner: string;
+          nftName: string;
+          mintedAt: string;
+          lastSale: string;
+          lastSaleAt: string;
+          priceChange: string;
+          color: string;
+          actions: string;
+        };
+        colors: {
+          noColor: string;
+          red: string;
+          orange: string;
+          yellow: string;
+          green: string;
+          blue: string;
+          purple: string;
+          brown: string;
+        };
+        errors: {
+          loadFailed: string;
+        };
+        placeholders: {
+          noDate: string;
+          noAmount: string;
+          noChange: string;
+        };
+        format: {
+          amount: string;
+        };
+        pagination: {
+          previous: string;
+          next: string;
+        };
+      };
+      filters: {
+        title: string;
+        clearAll: string;
+        button: string;
+        labels: {
+          nftName: string;
+          color: string;
+          mintDateRange: string;
+          lastSaleAmount: string;
+          lastSaleDate: string;
+        };
+        placeholders: {
+          searchByName: string;
+          selectColor: string;
+          min: string;
+          max: string;
+        };
+        colors: {
+          red: string;
+          orange: string;
+          yellow: string;
+          green: string;
+          blue: string;
+          purple: string;
+          brown: string;
+        };
+      };
+    };
+    owners: {
+      title: string;
+      search: {
+        placeholder: string;
+      };
+      actions: {
+        newOwner: string;
+        edit: string;
+        delete: string;
+      };
+      loading: string;
+      table: {
+        ownerName: string;
+        walletAddresses: string;
+        xAccount: string;
+        memo: string;
+        actions: string;
+        more: string;
+      };
+      deleteDialog: {
+        title: string;
+        description: string;
+        cancel: string;
+        confirm: string;
+      };
+      placeholders: {
+        noXAccount: string;
+        noMemo: string;
+        noAddresses: string;
+      };
+      dialog: {
+        title: {
+          create: string;
+          edit: string;
+        };
+        labels: {
+          ownerName: string;
+          xAccount: string;
+          memo: string;
+          walletAddresses: string;
+        };
+        placeholders: {
+          name: string;
+          xAccount: string;
+          memo: string;
+          address: string;
+        };
+        actions: {
+          add: string;
+          save: string;
+          remove: string;
+        };
+      };
+      csvImportExport: {
+        buttons: {
+          exportCSV: string;
+          importCSV: string;
+          downloadSample: string;
+        };
+        errors: {
+          export: string;
+          import: string;
+          parse: string;
+          read: string;
+        };
+        validation: {
+          nameRequired: string;
+          addressRequired: string;
+          errorPrefix: string;
+        };
+        sampleData: {
+          name: string;
+          xAccount: string;
+          memo: string;
+        };
+      };
+    };
+    csvImportExport: {
+      buttons: {
+        exportCSV: string;
+        importCSV: string;
+      };
+      errors: {
+        export: string;
+        import: string;
+        parse: string;
+        read: string;
+      };
+      validation: {
+        projectIdRequired: string;
+        nameRequired: string;
+        issuerRequired: string;
+        taxonRequired: string;
+        errorPrefix: string;
+      };
+    };
+    sidebar: {
+      title: string;
+      ownersList: string;
+      projectsTitle: string;
+      search: {
+        placeholder: string;
+      };
+      noProjects: string;
+      footer: {
+        developedBy: string;
+        followOnX: string;
       };
     };
   };

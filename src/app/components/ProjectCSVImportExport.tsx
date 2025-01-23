@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Upload, Download, AlertCircle } from 'lucide-react';
 import Papa from 'papaparse';
 import { dbManager, Project } from '@/utils/db';
+import { getDictionary } from '@/i18n/get-dictionary';
+import { Dictionary } from '@/i18n/dictionaries/index';
 
 interface ProjectCSVImportExportProps {
   onProjectsUpdated: () => void;
+  lang: string;
 }
 
 // CSV形式のデータ型を定義
@@ -23,8 +26,17 @@ interface ValidationError {
   errors: string[];
 }
 
-const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProjectsUpdated }) => {
-  const [error, setError] = React.useState<string | null>(null);
+const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProjectsUpdated, lang }) => {
+  const [dict, setDict] = useState<Dictionary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadDictionary = async () => {
+      const dictionary = await getDictionary(lang as 'en' | 'ja');
+      setDict(dictionary);
+    };
+    loadDictionary();
+  }, [lang]);
 
   const handleExport = async (): Promise<void> => {
     try {
@@ -153,6 +165,10 @@ const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProje
     event.target.value = '';
   };
 
+  if (!dict) return null;
+
+  const { csvImportExport: t } = dict.project;
+
   return (
     <div>
       {error && (
@@ -170,7 +186,7 @@ const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProje
           className="flex items-center gap-2"
         >
           <Download className="h-4 w-4" />
-          Export CSV
+          {t.buttons.exportCSV}
         </Button>
 
         <div className="relative">
@@ -186,7 +202,7 @@ const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProje
             className="flex items-center gap-2"
           >
             <Upload className="h-4 w-4" />
-            Import CSV
+            {t.buttons.importCSV}
           </Button>
         </div>
       </div>

@@ -17,6 +17,8 @@ import Papa from 'papaparse';
 import { Download } from 'lucide-react';
 import { Pencil, Loader2 } from "lucide-react";
 import OwnerValueEditor from '@/app/components/OwnerValueEditor';
+import { getDictionary } from '@/i18n/get-dictionary';
+import { Dictionary } from '@/i18n/dictionaries/index';
 
 interface OwnerStats {
   address: string;
@@ -29,17 +31,19 @@ interface OwnerStats {
 }
 
 interface OwnerListProps {
+  lang: string;
   issuer: string;
   taxon: string;
 }
 
-const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
+const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
   const { nfts, hasMore } = useNFTContext();
   const [addressGroups, setAddressGroups] = useState<Record<string, AddressGroup>>({});
   const [addressInfos, setAddressInfos] = useState<Record<string, AddressInfo>>({});
   const [editingCell, setEditingCell] = useState<{ address: string; field: 'userValue1' | 'userValue2' } | null>(null);
   const [ownerValues, setOwnerValues] = useState<Record<string, { userValue1: number | null; userValue2: number | null }>>({});
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [dict, setDict] = useState<Dictionary | null>(null);
 
   // データ読み込み関数
   const loadData = useCallback(async (): Promise<void> => {
@@ -63,6 +67,14 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    const loadDictionary = async () => {
+      const dictionary = await getDictionary(lang as 'en' | 'ja');
+      setDict(dictionary);
+    };
+    loadDictionary();
+  }, [lang]);
 
   // Calculate owner statistics
   const ownerStats = useMemo(() => {
@@ -114,11 +126,9 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
     if (!projectId) return;
 
     try {
-      const updatedValue = await dbManager.setProjectOwnerValues(projectId, address, {
+      await dbManager.setProjectOwnerValues(projectId, address, {
         [field]: value
       });
-
-      console.log(updatedValue);
 
       setOwnerValues(prev => ({
         ...prev,
@@ -203,21 +213,25 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
 
   const burnedCount = nfts.filter(nft => nft.is_burned).length;
 
+  if (!dict) return null;
+
+  const { ownerList } = dict.project.detail;
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="text-sm text-gray-500 space-y-1">
           <div>
-            Showing {ownerStats.length} owners
+            {ownerList.status.showingOwners.replace('{count}', ownerStats.length.toLocaleString())}
             {hasMore && (
               <span className="ml-2 inline-flex items-center gap-1 text-gray-500">
                 <Loader2 className="h-3 w-3 animate-spin" />
-                Loading more data...
+                {ownerList.status.loadingMore}
               </span>
             )}
           </div>
           <div>
-            Total NFTs: {(nfts.length - burnedCount).toLocaleString()}
+            {ownerList.status.totalNFTs.replace('{count}', (nfts.length - burnedCount).toLocaleString())}
           </div>
         </div>
         <Button
@@ -227,7 +241,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
           className="flex items-center gap-2"
         >
           <Download className="h-4 w-4" />
-          Export Owner Rank
+          {ownerList.actions.exportRank}
         </Button>
       </div>
 
@@ -235,15 +249,15 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-20">Rank</TableHead>
-              <TableHead className="w-40">Owner</TableHead>
-              <TableHead className="w-40">Name</TableHead>
-              <TableHead className="w-40">X Account</TableHead>
-              <TableHead className="w-32 text-right">NFT Count</TableHead>
-              <TableHead className="w-32 text-center">User Value1</TableHead>
-              <TableHead className="w-32 text-center">User Value2</TableHead>
-              <TableHead className="w-32 text-right">Holding %</TableHead>
-              <TableHead className="w-40">Links</TableHead>
+              <TableHead className="w-20">{ownerList.table.rank}</TableHead>
+              <TableHead className="w-40">{ownerList.table.owner}</TableHead>
+              <TableHead className="w-40">{ownerList.table.name}</TableHead>
+              <TableHead className="w-40">{ownerList.table.xAccount}</TableHead>
+              <TableHead className="w-32 text-right">{ownerList.table.nftCount}</TableHead>
+              <TableHead className="w-32 text-center">{ownerList.table.userValue1}</TableHead>
+              <TableHead className="w-32 text-center">{ownerList.table.userValue2}</TableHead>
+              <TableHead className="w-32 text-right">{ownerList.table.holdingPercentage}</TableHead>
+              <TableHead className="w-40">{ownerList.table.links}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -259,6 +273,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ issuer, taxon }) => {
                       initialAddresses={[stat.address]}
                       groupId={stat.group?.id}
                       onSave={handleGroupSave}
+                      lang={lang}
                     >
                       <Button 
                         variant="ghost" 

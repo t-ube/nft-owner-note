@@ -17,13 +17,13 @@ const NFTSiteIcons: React.FC<NFTSiteIconsProps> = ({ tokenId }) => {
     {
       name: 'Bithomp',
       url: `https://bithomp.com/en/nft/${tokenId}`,
-      icon: 'bithomp.png',
+      icon: 'images/bithomp.png',
       description: 'View on Bithomp'
     },
     {
       name: 'XRPCAFE',
       url: `https://xrp.cafe/nft/${tokenId}`,
-      icon: 'xrpcafe.jpg',
+      icon: 'images/xrpcafe.jpg',
       description: 'View on XRPCAFE'
     }
   ];

@@ -147,7 +147,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
     try {
       setIsSyncHistory(true);
 
-      const nftIds = nfts.map(nft => nft.nft_id);
+      const nftIds = nfts.filter(nft => !nft.is_burned).map(nft => nft.nft_id);
       setUpdatingNFTs(new Set(Array.from(nftIds)));
       
       // NFTsをバッチに分割

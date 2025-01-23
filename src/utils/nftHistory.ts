@@ -244,6 +244,12 @@ export async function updateNFTTransferHistories(
   const updatedNFTs: NFToken[] = [];
 
   for (const nft of nfts) {
+    // バーンされたNFTはスキップ
+    if (nft.is_burned) {
+      updatedNFTs.push(nft);
+      continue;
+    }
+
     try {
       const history = await fetchNFTTransferHistory(client, nft);
       

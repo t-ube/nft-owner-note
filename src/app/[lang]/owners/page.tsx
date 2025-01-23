@@ -14,8 +14,17 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { dbManager, Project } from '@/utils/db';
+import { getDictionary } from '@/i18n/get-dictionary';
+import { Dictionary } from '@/i18n/dictionaries/index';
 
-export default function OwnerListPage() {
+interface OwnerListPageProps {
+  params: {
+    lang: string;
+  };
+}
+
+export default function OwnerListPage({ params }: OwnerListPageProps) {
+  const [dict, setDict] = useState<Dictionary | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -33,6 +42,14 @@ export default function OwnerListPage() {
   useEffect(() => {
     loadAllProjects();
   }, [loadAllProjects]);
+
+  useEffect(() => {
+    const loadDictionary = async () => {
+      const dictionary = await getDictionary(params.lang as 'en' | 'ja');
+      setDict(dictionary);
+    };
+    loadDictionary();
+  }, [params.lang]);
 
   const handleDeleteClick = (e: React.MouseEvent, project: Project) => {
     e.stopPropagation();
@@ -67,24 +84,22 @@ export default function OwnerListPage() {
         onSearchChange={setSearchTerm}
         onDeleteClick={handleDeleteClick}
         onProjectsUpdated={refreshProjects}
-        lang='en'
+        lang={params.lang}
       />
       <div className="flex-1 overflow-auto">
-        <OwnersPage lang='en'/>
+        <OwnersPage lang={params.lang} />
       </div>
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>{dict?.project.deleteConfirm}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the project 
-              &quot;{projectToDelete?.name}&quot; (#{projectToDelete?.projectId}).
-              This action cannot be undone.
+            {dict?.project.deleteDescription.replace('{name}', projectToDelete?.name || '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{dict?.project.cancel}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>{dict?.project.delete}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

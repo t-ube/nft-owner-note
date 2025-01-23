@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -19,6 +19,8 @@ import { Label } from "@/components/ui/label";
 import { FilterIcon, X } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import _ from 'lodash';
+import { getDictionary } from '@/i18n/get-dictionary';
+import { Dictionary } from '@/i18n/dictionaries/index';
 
 export interface FilterState {
   colors?: string[];
@@ -32,6 +34,7 @@ export interface FilterState {
 }
 
 export interface NFTFiltersProps {
+  lang: string;
   onFilterChange: (filters: FilterState) => void;
 }
 
@@ -45,9 +48,10 @@ const COLORS = [
   { value: '🟤', label: '🟤 Brown' },
 ] as const;
 
-export const NFTFilters: React.FC<NFTFiltersProps> = ({ onFilterChange }) => {
-  const [isOpen, setIsOpen] = React.useState(false);
-  const [filters, setFilters] = React.useState<FilterState>({});
+export const NFTFilters: React.FC<NFTFiltersProps> = ({ lang, onFilterChange }) => {
+  const [dict, setDict] = useState<Dictionary | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({});
 
   // フィルターの適用数をカウント
   const activeFilterCount = Object.values(filters).filter(value => 
@@ -62,6 +66,14 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ onFilterChange }) => {
       onFilterChange(currentFilters);
     }, 300)
   );
+
+  useEffect(() => {
+    const loadDictionary = async () => {
+      const dictionary = await getDictionary(lang as 'en' | 'ja');
+      setDict(dictionary);
+    };
+    loadDictionary();
+  }, [lang]);
 
   useEffect(() => {
     const debouncedFilter = debouncedFilterRef.current;
@@ -99,13 +111,17 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ onFilterChange }) => {
     return date.getTime();
   };
 
+  if (!dict) return null;
+
+  const { filters: t } = dict.project.detail;
+
   return (
     <div>
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild>
           <Button variant="outline" size="sm" className="relative">
             <FilterIcon className="h-4 w-4 mr-2" />
-            Filter
+            {t.button}
             {activeFilterCount > 0 && (
               <Badge 
                 variant="secondary" 
@@ -119,7 +135,7 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ onFilterChange }) => {
         <SheetContent>
           <SheetHeader>
             <div className="flex justify-between items-center">
-              <SheetTitle>Filter NFTs</SheetTitle>
+              <SheetTitle>{t.title}</SheetTitle>
               {activeFilterCount > 0 && (
                 <Button 
                   variant="ghost" 
@@ -128,7 +144,7 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ onFilterChange }) => {
                   className="h-8 px-2 lg:px-3"
                 >
                   <X className="h-4 w-4 mr-2" />
-                  Clear All
+                  {t.clearAll}
                 </Button>
               )}
             </div>
@@ -136,10 +152,10 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ onFilterChange }) => {
 
           <div className="space-y-6 py-6">
             <div className="space-y-2">
-              <Label>NFT Name</Label>
+              <Label>{t.labels.nftName}</Label>
               <Input
                 type="text"
-                placeholder="Search by name"
+                placeholder={t.placeholders.searchByName}
                 value={filters.nftName || ''}
                 onChange={e => updateFilter(
                   'nftName',
@@ -149,7 +165,7 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ onFilterChange }) => {
             </div>
 
             <div className="space-y-2">
-              <Label>Color</Label>
+              <Label>{t.labels.color}</Label>
               <div className="flex gap-2">
                 <Select
                   value={filters.colors?.[0] || ''}
@@ -158,7 +174,7 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ onFilterChange }) => {
                   }
                 >
                   <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select color" />
+                    <SelectValue placeholder={t.placeholders.selectColor} />
                   </SelectTrigger>
                   <SelectContent>
                     {COLORS.map(color => (
@@ -182,7 +198,7 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ onFilterChange }) => {
             </div>
 
             <div className="space-y-2">
-              <Label>Mint Date Range</Label>
+              <Label>{t.labels.mintDateRange}</Label>
               <div className="grid grid-cols-2 gap-2">
                 <Input
                   type="date"
@@ -208,11 +224,11 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ onFilterChange }) => {
             </div>
 
             <div className="space-y-2">
-              <Label>Last Sale Amount Range (XRP)</Label>
+              <Label>{t.labels.lastSaleAmount}</Label>
               <div className="grid grid-cols-2 gap-2">
                 <Input
                   type="number"
-                  placeholder="Min"
+                  placeholder={t.placeholders.min}
                   value={filters.minAmount || ''}
                   onChange={e => updateFilter(
                     'minAmount',
@@ -221,7 +237,7 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ onFilterChange }) => {
                 />
                 <Input
                   type="number"
-                  placeholder="Max"
+                  placeholder={t.placeholders.max}
                   value={filters.maxAmount || ''}
                   onChange={e => updateFilter(
                     'maxAmount',
@@ -232,7 +248,7 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ onFilterChange }) => {
             </div>
 
             <div className="space-y-2">
-              <Label>Latest Sale Date Range</Label>
+              <Label>{t.labels.lastSaleDate}</Label>
               <div className="grid grid-cols-2 gap-2">
                 <Input
                   type="date"

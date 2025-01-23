@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Folder, Search, Trash2, Users } from 'lucide-react';
@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Project } from '@/utils/db';
 import ProjectCSVImportExport from '@/app/components/ProjectCSVImportExport';
+import { getDictionary } from '@/i18n/get-dictionary';
+import { Dictionary } from '@/i18n/dictionaries/index';
 
 interface ProjectSidebarProps {
   projects: Project[];
@@ -14,6 +16,7 @@ interface ProjectSidebarProps {
   onSearchChange: (term: string) => void;
   onDeleteClick: (e: React.MouseEvent, project: Project) => void;
   onProjectsUpdated: () => void;
+  lang: string;
 }
 
 const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
@@ -23,8 +26,18 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   onSearchChange,
   onDeleteClick,
   onProjectsUpdated,
+  lang,
 }) => {
   const router = useRouter();
+  const [dict, setDict] = useState<Dictionary | null>(null);
+
+  useEffect(() => {
+    const loadDictionary = async () => {
+      const dictionary = await getDictionary(lang as 'en' | 'ja');
+      setDict(dictionary);
+    };
+    loadDictionary();
+  }, [lang]);
 
   const handleProjectClick = (projectId: string) => {
     router.push(`/projects/${projectId}`);
@@ -43,6 +56,10 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     project.projectId.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  if (!dict) return null;
+
+  const { sidebar: t } = dict.project;
+
   return (
     <aside className="w-64 bg-white border-r flex-shrink-0 overflow-hidden flex flex-col h-screen">
       <div className="p-4 flex-shrink-0">
@@ -50,7 +67,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
           className="text-2xl font-bold mb-8 cursor-pointer hover:text-gray-600 transition-colors"
           onClick={handleOwnerNoteClick}
         >
-          Owner Note
+          {t.title}
         </h1>
 
         <Button
@@ -59,18 +76,18 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
           onClick={handleOwnersClick}
         >
           <Users className="h-4 w-4 mr-2" />
-          Owners List
+          {t.ownersList}
         </Button>
 
         <div className="space-y-4">
-          <h2 className="text-xl font-bold">Projects</h2>
+          <h2 className="text-xl font-bold">{t.projectsTitle}</h2>
           
-          <ProjectCSVImportExport onProjectsUpdated={onProjectsUpdated} />
+          <ProjectCSVImportExport onProjectsUpdated={onProjectsUpdated} lang={lang}/>
           
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />
             <Input
-              placeholder="Search projects"
+              placeholder={t.search.placeholder}
               className="pl-8 w-full"
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
@@ -81,7 +98,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
       <div className="flex-1 overflow-y-auto">
         {filteredProjects.length === 0 ? (
           <div className="px-4 py-2 text-gray-500 text-sm">
-            No projects found
+            {t.noProjects}
           </div>
         ) : (
           <div className="space-y-0.5">
@@ -124,7 +141,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
             title="Follow on X"
           >
             <Image 
-              src="/x-logo-black.png" 
+              src="/images/x-logo-black.png" 
               alt="X (Twitter)" 
               width={20}
               height={20}

@@ -16,6 +16,13 @@
       "deleteFailed": "Failed to delete project",
       "duplicateProject": "A project with the same issuer and taxon already exists: {name}"
     },
+    "newProject": {
+      "placeholders": {
+        "enterProjectName": "Enter project name",
+        "enterIssuerAddress": "Enter issuer address",
+        "enterTaxon": "Enter taxon"
+      }
+    },
     "success": {
       "created": "Project created successfully",
       "deleted": "Project deleted successfully"
@@ -100,7 +107,222 @@
             }
           },
           "holdersInfo": "NFTs held by top 20% holders ({topHolders} out of {totalHolders} holders)"
+        },
+        "notice": {
+          "noSalesData": "* This statistic requires sales data to be displayed correctly.",
+          "noSalesDataYet": "No sales data yet"
         }
+      },
+      "ownerList": {
+        "status": {
+          "showingOwners": "Showing {count} owners",
+          "loadingMore": "Loading more data...",
+          "totalNFTs": "Total NFTs: {count}"
+        },
+        "actions": {
+          "exportRank": "Export Owner Rank",
+          "edit": "Edit"
+        },
+        "table": {
+          "rank": "Rank",
+          "owner": "Owner",
+          "name": "Name",
+          "xAccount": "X Account",
+          "nftCount": "NFT Count",
+          "userValue1": "User Value1",
+          "userValue2": "User Value2",
+          "holdingPercentage": "Holding %",
+          "links": "Links"
+        },
+        "placeholders": {
+          "noName": "-",
+          "noValue": "-",
+          "noXAccount": "-"
+        }
+      },
+      "nftListPage": {
+        "status": {
+          "showing": "Showing {start} to {end} of {total} NFTs",
+          "totalNFTs": "Total NFTs: {count}"
+        },
+        "actions": {
+          "updateSaleInfo": "Update Sale Info",
+          "updating": "Updating ({count})",
+          "refresh": "Refresh"
+        },
+        "table": {
+          "serial": "Serial",
+          "tokenId": "Token ID",
+          "owner": "Owner",
+          "nftName": "NFT Name",
+          "mintedAt": "Minted At",
+          "lastSale": "Last Sale",
+          "lastSaleAt": "Last Sale At",
+          "priceChange": "Price Change",
+          "color": "Color",
+          "actions": "Actions"
+        },
+        "colors": {
+          "noColor": "No Color",
+          "red": "🔴 Red",
+          "orange": "🟠 Orange",
+          "yellow": "🟡 Yellow",
+          "green": "🟢 Green",
+          "blue": "🔵 Blue",
+          "purple": "🟣 Purple",
+          "brown": "🟤 Brown"
+        },
+        "errors": {
+          "loadFailed": "Failed to load NFTs"
+        },
+        "placeholders": {
+          "noDate": "-",
+          "noAmount": "-",
+          "noChange": "-"
+        },
+        "format": {
+          "amount": "{amount} XRP"
+        },
+        "pagination": {
+          "previous": "Previous",
+          "next": "Next"
+        }
+      },
+      "filters": {
+        "title": "Filter NFTs",
+        "clearAll": "Clear All",
+        "button": "Filter",
+        "labels": {
+          "nftName": "NFT Name",
+          "color": "Color",
+          "mintDateRange": "Mint Date Range",
+          "lastSaleAmount": "Last Sale Amount Range (XRP)",
+          "lastSaleDate": "Latest Sale Date Range"
+        },
+        "placeholders": {
+          "searchByName": "Search by name",
+          "selectColor": "Select color",
+          "min": "Min",
+          "max": "Max"
+        },
+        "colors": {
+          "red": "🔴 Red",
+          "orange": "🟠 Orange",
+          "yellow": "🟡 Yellow",
+          "green": "🟢 Green",
+          "blue": "🔵 Blue",
+          "purple": "🟣 Purple",
+          "brown": "🟤 Brown"
+        }
+      }
+    },
+    "owners": {
+      "title": "Owners List",
+      "search": {
+        "placeholder": "Search owners..."
+      },
+      "actions": {
+        "newOwner": "New Owner",
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "loading": "Loading owners...",
+      "table": {
+        "ownerName": "Owner Name",
+        "walletAddresses": "Wallet Addresses",
+        "xAccount": "X Account",
+        "memo": "Memo",
+        "actions": "Actions",
+        "more": "(+{count})"
+      },
+      "deleteDialog": {
+        "title": "Delete Owner",
+        "description": "Are you sure you want to delete {name}? This will remove the owner name from all associated addresses. This action cannot be undone.",
+        "cancel": "Cancel",
+        "confirm": "Delete"
+      },
+      "placeholders": {
+        "noXAccount": "-",
+        "noMemo": "-",
+        "noAddresses": "-"
+      },
+      "dialog": {
+        "title": {
+          "create": "Create Owner",
+          "edit": "Edit Owner"
+        },
+        "labels": {
+          "ownerName": "Owner Name",
+          "xAccount": "X Account",
+          "memo": "Memo",
+          "walletAddresses": "Wallet Addresses"
+        },
+        "placeholders": {
+          "name": "Enter owner name",
+          "xAccount": "@username",
+          "memo": "Enter memo",
+          "address": "Enter wallet address"
+        },
+        "actions": {
+          "add": "Add",
+          "save": "Save",
+          "remove": "Remove"
+        }
+      },
+      "csvImportExport": {
+        "buttons": {
+          "exportCSV": "Export CSV",
+          "importCSV": "Import CSV",
+          "downloadSample": "Download Sample"
+        },
+        "errors": {
+          "export": "Failed to export groups",
+          "import": "Failed to import some groups",
+          "parse": "Failed to parse CSV file",
+          "read": "Failed to read file"
+        },
+        "validation": {
+          "nameRequired": "Name is required",
+          "addressRequired": "At least one address is required",
+          "errorPrefix": "Row {row}: {errors}"
+        },
+        "sampleData": {
+          "name": "Sample Group",
+          "xAccount": "@sample",
+          "memo": "Sample memo"
+        }
+      }
+    },
+    "csvImportExport": {
+      "buttons": {
+        "exportCSV": "Export CSV",
+        "importCSV": "Import CSV"
+      },
+      "errors": {
+        "export": "Failed to export projects",
+        "import": "Failed to import some projects",
+        "parse": "Failed to parse CSV file",
+        "read": "Failed to read file"
+      },
+      "validation": {
+        "projectIdRequired": "Project ID is required",
+        "nameRequired": "Name is required",
+        "issuerRequired": "Issuer is required",
+        "taxonRequired": "Taxon is required",
+        "errorPrefix": "Row {row}: {errors}"
+      }
+    },
+    "sidebar": {
+      "title": "Owner Note",
+      "ownersList": "Owners List",
+      "projectsTitle": "Projects",
+      "search": {
+        "placeholder": "Search projects"
+      },
+      "noProjects": "No projects found",
+      "footer": {
+        "developedBy": "Developed by shirome",
+        "followOnX": "Follow on X"
       }
     }
   }

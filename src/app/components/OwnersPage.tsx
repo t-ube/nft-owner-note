@@ -31,6 +31,8 @@ import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import CSVImportExport from '@/app/components/CSVImportExport';
 import _ from 'lodash';
+import { getDictionary } from '@/i18n/get-dictionary';
+import { Dictionary } from '@/i18n/dictionaries/index';
 
 type SortField = 'name' | 'addresses' | 'xAccount' | 'userValue1' | 'userValue2' | 'updatedAt';
 type SortDirection = 'asc' | 'desc' | null;
@@ -40,7 +42,11 @@ interface SortState {
   direction: SortDirection;
 }
 
-const OwnersPage: React.FC = () => {
+interface OwnersPageProps {
+  lang: string;
+}
+
+const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
   const [owners, setOwners] = useState<AddressGroup[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -49,6 +55,7 @@ const OwnersPage: React.FC = () => {
   const [, setAddressInfos] = React.useState<Record<string, AddressInfo>>({});
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [ownerToDelete, setOwnerToDelete] = useState<AddressGroup | null>(null);
+  const [dict, setDict] = useState<Dictionary | null>(null);
   
   // データ読み込み関数
   const loadData = React.useCallback(async () => {
@@ -70,6 +77,14 @@ const OwnersPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    const loadDictionary = async () => {
+      const dictionary = await getDictionary(lang as 'en' | 'ja');
+      setDict(dictionary);
+    };
+    loadDictionary();
+  }, [lang]);
 
   const handleSort = (field: SortField) => {
     setSort(prev => ({
@@ -176,11 +191,15 @@ const OwnersPage: React.FC = () => {
       <div className="p-8">
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>Loading owners...</AlertDescription>
+          <AlertDescription>{dict?.project.owners.loading}</AlertDescription>
         </Alert>
       </div>
     );
   }
+
+  if (!dict) return null;
+
+  const { owners: t } = dict.project;
 
   return (
     <div className="p-8">
@@ -188,36 +207,36 @@ const OwnersPage: React.FC = () => {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Owners List
+            {t.title}
           </CardTitle>
           <div className="flex items-center gap-4">
             <div className="relative w-64">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />
               <Input
-                placeholder="Search owners..."
+                placeholder={t.search.placeholder}
                 className="pl-8"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <AddressGroupDialog onSave={handleGroupSave}>
+            <AddressGroupDialog onSave={handleGroupSave} lang={lang}>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                New Owner
+                {t.actions.newOwner}
               </Button>
             </AddressGroupDialog>
-            <CSVImportExport onGroupsUpdated={loadData} />
+            <CSVImportExport onGroupsUpdated={loadData} lang={lang} />
           </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <SortableHeader field="name">Owner Name</SortableHeader>
-                <SortableHeader field="addresses">Wallet Addresses</SortableHeader>
-                <SortableHeader field="xAccount">X Account</SortableHeader>
-                <TableHead>Memo</TableHead>
-                <TableHead>Actions</TableHead>
+                <SortableHeader field="name">{t.table.ownerName}</SortableHeader>
+                <SortableHeader field="addresses">{t.table.walletAddresses}</SortableHeader>
+                <SortableHeader field="xAccount">{t.table.xAccount}</SortableHeader>
+                <TableHead>{t.table.memo}</TableHead>
+                <TableHead>{t.table.actions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -244,6 +263,7 @@ const OwnersPage: React.FC = () => {
                     <AddressGroupDialog
                       groupId={owner.id}
                       onSave={handleGroupSave}
+                      lang={lang}
                     >
                       <Button 
                           variant="ghost" 
@@ -272,20 +292,18 @@ const OwnersPage: React.FC = () => {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Owner</AlertDialogTitle>
+            <AlertDialogTitle>{dict?.project.owners.deleteDialog.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {ownerToDelete?.name}? 
-              This will remove the owner name from all associated addresses.
-              This action cannot be undone.
+              {dict?.project.owners.deleteDialog.description.replace('{name}', ownerToDelete?.name || '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{dict?.project.owners.deleteDialog.cancel}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDeleteConfirm}
               className="bg-red-500 hover:bg-red-600"
             >
-              Delete
+              {dict?.project.owners.deleteDialog.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
