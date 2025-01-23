@@ -50,7 +50,7 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
   const [owners, setOwners] = useState<AddressGroup[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [sort, setSort] = useState<SortState>({ field: 'updatedAt', direction: 'desc' });
+  const [sort, setSort] = useState<SortState>({ field: 'name', direction: 'asc' });
   const [, setAddressGroups] = React.useState<Record<string, AddressGroup>>({});
   const [, setAddressInfos] = React.useState<Record<string, AddressInfo>>({});
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
