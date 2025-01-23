@@ -65,7 +65,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
   const handleDeleteConfirm = async () => {
     if (projectToDelete) {
       try {
-        await dbManager.deleteProject(projectToDelete.id);
+        await dbManager.deleteProject(projectToDelete.projectId);
         await loadAllProjects();
       } catch (error) {
         console.error('Failed to delete project:', error);

@@ -123,7 +123,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
   const handleDeleteConfirm = async () => {
     if (projectToDelete) {
       try {
-        await dbManager.deleteProject(projectToDelete.id);
+        await dbManager.deleteProject(projectToDelete.projectId);
         setProjects(projects.filter(p => p.id !== projectToDelete.id));
         setSuccessMessage('Project deleted successfully');
       } catch (error) {
