@@ -205,10 +205,15 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
     <div className="p-8">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            {t.title}
-          </CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              {t.title}
+            </CardTitle>
+            <span className="text-sm text-muted-foreground">
+              ({filteredOwners.length} {searchTerm ? t.matchingOwners : t.totalOwners})
+            </span>
+          </div>
           <div className="flex items-center gap-4">
             <div className="relative w-64">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />

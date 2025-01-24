@@ -269,6 +269,8 @@
           "remove": "Remove"
         }
       },
+      "totalOwners": "Total Owners",
+      "matchingOwners": "Matching Owners",
       "csvImportExport": {
         "buttons": {
           "exportCSV": "Export CSV",

@@ -269,6 +269,8 @@
           "remove": "削除"
         }
       },
+      "totalOwners": "件のオーナー",
+      "matchingOwners": "件表示中",
       "csvImportExport": {
         "buttons": {
           "exportCSV": "CSV出力",

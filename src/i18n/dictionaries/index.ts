@@ -276,6 +276,8 @@ export interface Dictionary {
           remove: string;
         };
       };
+      totalOwners: string;
+      matchingOwners: string;
       csvImportExport: {
         buttons: {
           exportCSV: string;
