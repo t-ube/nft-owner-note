@@ -40,15 +40,15 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   }, [lang]);
 
   const handleProjectClick = (projectId: string) => {
-    router.push(`/projects/${projectId}`);
+    router.push(`/${lang}/projects/${projectId}`);
   };
 
   const handleOwnerNoteClick = () => {
-    router.push('/');
+    router.push(`/${lang}/`);
   };
 
   const handleOwnersClick = () => {
-    router.push('/owners');
+    router.push(`/${lang}/owners`);
   };
 
   const filteredProjects = projects.filter(project =>

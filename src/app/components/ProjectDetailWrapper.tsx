@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { NFTContextProvider } from '@/app/contexts/NFTContext';
 import ProjectDetail from './ProjectDetail';
 import { dbManager, Project } from '@/utils/db';
@@ -34,6 +35,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
+  const router = useRouter();
 
   const loadAllProjects = useCallback(async () => {
     try {
@@ -66,7 +68,10 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
     if (projectToDelete) {
       try {
         await dbManager.deleteProject(projectToDelete.projectId);
-        await loadAllProjects();
+        setProjects(projects.filter(p => p.id !== projectToDelete.id));
+        router.push(`/${lang}`);
+        //await dbManager.deleteProject(projectToDelete.projectId);
+        //await loadAllProjects();
       } catch (error) {
         console.error('Failed to delete project:', error);
       }
