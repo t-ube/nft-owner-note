@@ -238,7 +238,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
             <AlertDialogCancel className="dark:bg-gray-700 dark:text-gray-200">
               {dict?.project.cancel}
             </AlertDialogCancel>
-            <AlertDialogAction>{dict?.project.delete}</AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteConfirm}>{dict?.project.delete}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
