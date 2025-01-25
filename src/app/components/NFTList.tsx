@@ -282,7 +282,7 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
             size="sm"
             onClick={handleUpdateAllHistory}
             disabled={updatingNFTs.size > 0 || isLoading}
-            className="relative bg-black hover:bg-gray-800"
+            className="relative bg-primary hover:bg-primary/90"
           >
             <RefreshCcw className={`h-4 w-4 mr-2 ${updatingNFTs.size > 0 ? 'animate-spin' : ''}`} />
             {updatingNFTs.size > 0 ? (
