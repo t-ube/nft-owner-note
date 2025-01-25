@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { Plus, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 
@@ -216,6 +224,42 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
                   disabled={isSubmitting}
                   className="dark:bg-gray-800 dark:text-gray-200 dark:placeholder-gray-400"
                 />
+                <Dialog>
+                  <DialogTrigger>
+                    <div className="flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                      <HelpCircle className="h-4 w-4 mr-1" />
+                      <span>{dict?.project.taxonHelp.trigger}</span>
+                    </div>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto w-[95vw] sm:w-full absolute left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]">
+                    <DialogHeader>
+                      <DialogTitle>{dict?.project.taxonHelp.title}</DialogTitle>
+                      <DialogDescription>
+                        <div className="mt-4 space-y-4 px-1"> 
+                          <div className="p-2 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <h3 className="text-sm sm:text-base font-medium mb-2">{dict?.project.taxonHelp.step1.title}</h3>
+                            <img 
+                              src="/images/help/taxon-1.png" 
+                              alt="XRP Ledger Explorer" 
+                              className="rounded-lg border dark:border-gray-700"
+                            />
+                            <p className="mt-2 text-sm">{dict?.project.taxonHelp.step1.description}</p>
+                          </div>
+                          <div className="p-2 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <h3 className="text-sm sm:text-base font-medium mb-2">{dict?.project.taxonHelp.step2.title}</h3>
+                            <img 
+                              src="/images/help/taxon-2.png" 
+                              alt="Taxon ID Location" 
+                              className="rounded-lg border dark:border-gray-700"
+                            />
+                            <p className="mt-2 text-sm">{dict?.project.taxonHelp.step2.description}</p>
+                          </div>
+                        </div>
+                      </DialogDescription>
+                    </DialogHeader>
+                  </DialogContent>
+                </Dialog>
+                
               </div>
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 <Plus className="h-4 w-4 mr-2" />

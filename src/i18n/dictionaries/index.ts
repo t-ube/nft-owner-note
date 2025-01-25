@@ -17,6 +17,18 @@ export interface Dictionary {
     deleteDescription: string;
     cancel: string;
     delete: string;
+    taxonHelp: {
+      trigger: string;
+      title: string;
+      step1: {
+        title: string;
+        description: string;
+      };
+      step2: {
+        title: string;
+        description: string;
+      };
+    };
     errors: {
       loadFailed: string;
       createFailed: string;

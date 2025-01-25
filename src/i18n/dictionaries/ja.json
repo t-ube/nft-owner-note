@@ -10,6 +10,18 @@
     "deleteDescription": "プロジェクト「{name}」を完全に削除します。この操作は取り消せません。",
     "cancel": "キャンセル",
     "delete": "削除",
+    "taxonHelp": {
+      "trigger": "タクソン（Taxon）の調べ方",
+      "title": "タクソン（Taxon）の調べ方",
+      "step1": {
+        "title": "1. xrp.cafeでNFTのToken IDを見つける",
+        "description": "xrp.cafeでNFTを選択し、詳細情報からToken IDをクリックします。"
+      },
+      "step2": {
+        "title": "2. 移動先のbithomp.comでTaxonを確認",
+        "description": "bithomp.comのLEDGER-DATAからTaxonを確認できます。"
+      }
+    },
     "errors": {
       "loadFailed": "プロジェクトの読み込みに失敗しました",
       "createFailed": "プロジェクトの作成に失敗しました",

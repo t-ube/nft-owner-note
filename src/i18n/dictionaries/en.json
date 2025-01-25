@@ -10,6 +10,18 @@
     "deleteDescription": "This will permanently delete the project \"{name}\". This action cannot be undone.",
     "cancel": "Cancel",
     "delete": "Delete",
+    "taxonHelp": {
+      "trigger": "How to find Taxon",
+      "title": "How to find Taxon",
+      "step1": {
+        "title": "1. Find NFT Token ID on xrp.cafe",
+        "description": "Select an NFT on xrp.cafe and click the Token ID in the details."
+      },
+      "step2": {
+        "title": "2. Check Taxon on bithomp.com",
+        "description": "Find Taxon under LEDGER-DATA on bithomp.com."
+      }
+    },
     "errors": {
       "loadFailed": "Failed to load projects",
       "createFailed": "Failed to create project",
