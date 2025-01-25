@@ -14,18 +14,16 @@ export function LanguageSwitcher() {
   };
 
   return (
-    <div className="fixed top-4 right-4">
-      <select
-        onChange={(e) => handleLanguageChange(e.target.value)}
-        value={pathname.split('/')[1]}
-        className="p-2 rounded border border-gray-300"
-      >
-        {i18n.locales.map((locale) => (
-          <option key={locale} value={locale}>
-            {locale === 'en' ? 'English' : '日本語'}
-          </option>
-        ))}
-      </select>
-    </div>
+    <select
+      onChange={(e) => handleLanguageChange(e.target.value)}
+      value={pathname.split('/')[1]}
+      className="p-2 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+    >
+      {i18n.locales.map((locale) => (
+        <option key={locale} value={locale}>
+          {locale === 'en' ? 'English' : '日本語'}
+        </option>
+      ))}
+    </select>
   );
 }

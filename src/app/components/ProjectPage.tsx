@@ -141,7 +141,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       <ProjectSidebar
         projects={projects}
         searchTerm={searchTerm}
@@ -150,7 +150,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
         onProjectsUpdated={refreshProjects}
         lang={lang}
       />
-
+  
       <div className="flex-1 p-8">
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
@@ -158,18 +158,18 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
           </CardHeader>
           <CardContent>
             {error && (
-              <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+              <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-400 rounded">
                 {error}
               </div>
             )}
             {successMessage && (
-              <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+              <div className="mb-4 p-4 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-800 text-green-700 dark:text-green-400 rounded">
                 {successMessage}
               </div>
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className="block text-sm font-medium mb-1 dark:text-gray-200">
                   {dict?.project.name}
                 </label>
                 <Input
@@ -181,10 +181,11 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
                   placeholder={dict?.project.newProject.placeholders.enterProjectName}
                   required
                   disabled={isSubmitting}
+                  className="dark:bg-gray-800 dark:text-gray-200 dark:placeholder-gray-400"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className="block text-sm font-medium mb-1 dark:text-gray-200">
                   {dict?.project.issuerAddress}
                 </label>
                 <Input
@@ -196,10 +197,11 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
                   placeholder={dict?.project.newProject.placeholders.enterIssuerAddress}
                   required
                   disabled={isSubmitting}
+                  className="dark:bg-gray-800 dark:text-gray-200 dark:placeholder-gray-400"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className="block text-sm font-medium mb-1 dark:text-gray-200">
                   {dict?.project.taxon}
                 </label>
                 <Input
@@ -212,6 +214,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
                   required
                   type="number"
                   disabled={isSubmitting}
+                  className="dark:bg-gray-800 dark:text-gray-200 dark:placeholder-gray-400"
                 />
               </div>
               <Button type="submit" className="w-full" disabled={isSubmitting}>
@@ -222,18 +225,20 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
           </CardContent>
         </Card>
       </div>
-
+  
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="dark:bg-gray-800">
           <AlertDialogHeader>
-            <AlertDialogTitle>{dict?.project.deleteConfirm}</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="dark:text-gray-200">{dict?.project.deleteConfirm}</AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-400">
               {dict?.project.deleteDescription.replace('{name}', projectToDelete?.name || '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{dict?.project.cancel}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>{dict?.project.delete}</AlertDialogAction>
+            <AlertDialogCancel className="dark:bg-gray-700 dark:text-gray-200">
+              {dict?.project.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction>{dict?.project.delete}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -167,12 +167,13 @@ export function AddressGroupDialog({
             </div>
             <div className="space-y-2">
               {addressGroup.addresses?.map((address) => (
-                <div key={address} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                  <span className="flex-1 font-mono text-sm">{address}</span>
+                <div key={address} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                  <span className="flex-1 font-mono text-sm dark:text-gray-200">{address}</span>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => handleRemoveAddress(address)}
+                    className="dark:hover:bg-gray-600"
                   >
                     <X className="h-4 w-4" />
                   </Button>

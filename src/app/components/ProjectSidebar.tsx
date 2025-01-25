@@ -60,11 +60,12 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
 
   const { sidebar: t } = dict.project;
 
+  // ProjectSidebar.tsx の return 部分を更新
   return (
-    <aside className="w-64 bg-white border-r flex-shrink-0 overflow-hidden flex flex-col h-screen">
+    <aside className="w-64 bg-white dark:bg-gray-800 border-r dark:border-gray-700 flex-shrink-0 overflow-hidden flex flex-col h-screen">
       <div className="p-4 flex-shrink-0">
         <h1 
-          className="text-2xl font-bold mb-8 cursor-pointer hover:text-gray-600 transition-colors"
+          className="text-2xl font-bold mb-8 cursor-pointer hover:text-gray-600 dark:text-white dark:hover:text-gray-300 transition-colors"
           onClick={handleOwnerNoteClick}
         >
           {t.title}
@@ -72,7 +73,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
 
         <Button
           variant="outline"
-          className="w-full mb-4 justify-start"
+          className="w-full mb-4 justify-start dark:border-gray-600 dark:text-gray-200"
           onClick={handleOwnersClick}
         >
           <Users className="h-4 w-4 mr-2" />
@@ -80,15 +81,15 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
         </Button>
 
         <div className="space-y-4">
-          <h2 className="text-xl font-bold">{t.projectsTitle}</h2>
+          <h2 className="text-xl font-bold dark:text-white">{t.projectsTitle}</h2>
           
           <ProjectCSVImportExport onProjectsUpdated={onProjectsUpdated} lang={lang}/>
           
           <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400 pointer-events-none" />
             <Input
               placeholder={t.search.placeholder}
-              className="pl-8 w-full"
+              className="pl-8 w-full dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
             />
@@ -97,7 +98,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
       </div>
       <div className="flex-1 overflow-y-auto">
         {filteredProjects.length === 0 ? (
-          <div className="px-4 py-2 text-gray-500 text-sm">
+          <div className="px-4 py-2 text-gray-500 dark:text-gray-400 text-sm">
             {t.noProjects}
           </div>
         ) : (
@@ -108,7 +109,10 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                 className={`
                   flex items-center justify-between px-4 py-2 cursor-pointer
                   transition-colors duration-200 relative group
-                  ${project.projectId === currentProjectId ? 'bg-gray-100' : 'hover:bg-gray-50'}
+                  ${project.projectId === currentProjectId 
+                    ? 'bg-gray-100 dark:bg-gray-700' 
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700'}
+                  dark:text-gray-200
                 `}
                 onClick={() => handleProjectClick(project.projectId)}
               >
@@ -121,7 +125,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                 <button
                   onClick={(e) => onDeleteClick(e, project)}
                   className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 ml-2 p-1
-                    hover:bg-gray-200 rounded"
+                    hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
                 >
                   <Trash2 className="h-4 w-4 text-gray-400 hover:text-red-500 transition-colors" />
                 </button>
@@ -130,14 +134,14 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
           </div>
         )}
       </div>
-      <div className="p-2 mt-auto border-t">
+      <div className="p-2 mt-auto border-t dark:border-gray-700">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-500">Developed by shirome</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">Developed by shirome</span>
           <a
             href="https://x.com/shirome_x"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             title="Follow on X"
           >
             <Image 
@@ -145,7 +149,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
               alt="X (Twitter)" 
               width={20}
               height={20}
-              className="opacity-75 hover:opacity-100 transition-opacity" 
+              className="opacity-75 hover:opacity-100 transition-opacity dark:invert" 
             />
           </a>
         </div>

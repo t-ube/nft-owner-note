@@ -3,7 +3,7 @@
     "title": "新規プロジェクト作成",
     "name": "プロジェクト名",
     "issuerAddress": "発行者アドレス",
-    "taxon": "タクソン",
+    "taxon": "タクソン（Taxon）",
     "createButton": "プロジェクトを作成",
     "creating": "作成中...",
     "deleteConfirm": "削除してもよろしいですか？",
@@ -20,7 +20,7 @@
       "placeholders": {
         "enterProjectName": "プロジェクト名を入力",
         "enterIssuerAddress": "発行者アドレスを入力",
-        "enterTaxon": "タクソンを入力"
+        "enterTaxon": "タクソン（Taxon）を入力"
       }
     },
     "success": {
@@ -42,7 +42,7 @@
         "title": "プロジェクト情報",
         "name": "プロジェクト名",
         "issuerAddress": "発行者アドレス",
-        "taxon": "タクソン",
+        "taxon": "タクソン（Taxon）",
         "projectId": "プロジェクトID",
         "created": "作成日時",
         "updated": "更新日時",
@@ -310,7 +310,7 @@
         "projectIdRequired": "プロジェクトIDは必須です",
         "nameRequired": "名前は必須です",
         "issuerRequired": "発行者アドレスは必須です",
-        "taxonRequired": "タクソンは必須です",
+        "taxonRequired": "タクソン（Taxon）は必須です",
         "errorPrefix": "{row}行目: {errors}"
       }
     },

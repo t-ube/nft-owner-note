@@ -70,11 +70,11 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ lang, project, onProjectUpdat
       onOpenChange={setIsOpen}
       className="mb-6"
     >
-      <Card>
+      <Card className="dark:border-gray-700">
         <CollapsibleTrigger asChild>
           <Button
             variant="ghost"
-            className="w-full flex items-center justify-between p-4 hover:bg-gray-100"
+            className="w-full flex items-center justify-between p-4 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-200"
           >
             <span className="font-semibold">{dict?.project.detail.info.title}</span>
             <ChevronDown
@@ -84,7 +84,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ lang, project, onProjectUpdat
             />
           </Button>
         </CollapsibleTrigger>
-
+  
         <CollapsibleContent>
           <CardContent>
             <div className="space-y-4">
@@ -96,7 +96,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ lang, project, onProjectUpdat
               )}
               
               <div className="space-y-2">
-                <label className="text-sm font-medium">{dict?.project.detail.info.name}</label>
+                <label className="text-sm font-medium dark:text-gray-200">{dict?.project.detail.info.name}</label>
                 <div className="flex items-center gap-2">
                   {isEditing ? (
                     <>
@@ -104,7 +104,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ lang, project, onProjectUpdat
                         value={editedName}
                         onChange={(e) => setEditedName(e.target.value)}
                         placeholder="Enter project name"
-                        className="flex-1"
+                        className="flex-1 dark:bg-gray-700 dark:text-gray-200"
                       />
                       <Button
                         size="sm"
@@ -114,15 +114,15 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ lang, project, onProjectUpdat
                         <Save className="h-4 w-4 mr-2" />
                         {dict?.project.detail.info.save}
                       </Button>
-                      <Button size="sm" variant="outline" onClick={handleCancel}>
+                      <Button size="sm" variant="outline" onClick={handleCancel} className="dark:border-gray-600 dark:text-gray-200">
                         <X className="h-4 w-4 mr-2" />
                         {dict?.project.detail.info.cancel}
                       </Button>
                     </>
                   ) : (
                     <>
-                      <span className="flex-1">{project.name}</span>
-                      <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
+                      <span className="flex-1 dark:text-gray-200">{project.name}</span>
+                      <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} className="dark:border-gray-600 dark:text-gray-200">
                         <Edit2 className="h-4 w-4 mr-2" />
                         {dict?.project.detail.info.edit}
                       </Button>
@@ -130,30 +130,30 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ lang, project, onProjectUpdat
                   )}
                 </div>
               </div>
-
+  
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{dict?.project.detail.info.issuerAddress}</label>
-                  <div className="p-2 bg-gray-50 rounded-md break-all">
+                  <label className="text-sm font-medium dark:text-gray-200">{dict?.project.detail.info.issuerAddress}</label>
+                  <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded-md break-all dark:text-gray-200">
                     {project.issuer}
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{dict?.project.detail.info.taxon}</label>
-                  <div className="p-2 bg-gray-50 rounded-md">
+                  <label className="text-sm font-medium dark:text-gray-200">{dict?.project.detail.info.taxon}</label>
+                  <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded-md dark:text-gray-200">
                     {project.taxon}
                   </div>
                 </div>
               </div>
-
+  
               <div className="space-y-2">
-                <label className="text-sm font-medium">{dict?.project.detail.info.projectId}</label>
-                <div className="p-2 bg-gray-50 rounded-md">
+                <label className="text-sm font-medium dark:text-gray-200">{dict?.project.detail.info.projectId}</label>
+                <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded-md dark:text-gray-200">
                   {project.projectId}
                 </div>
               </div>
-
-              <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-500">
+  
+              <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-500 dark:text-gray-400">
                 <div>
                   {dict?.project.detail.info.created}: {new Date(project.createdAt).toLocaleString()}
                 </div>
