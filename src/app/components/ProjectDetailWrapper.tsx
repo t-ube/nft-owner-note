@@ -69,9 +69,12 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
       try {
         await dbManager.deleteProject(projectToDelete.projectId);
         setProjects(projects.filter(p => p.id !== projectToDelete.id));
-        router.push(`/${lang}`);
-        //await dbManager.deleteProject(projectToDelete.projectId);
-        //await loadAllProjects();
+        if (projectId === projectToDelete.projectId) {
+          router.push(`/${lang}`);
+        } else {
+          //await dbManager.deleteProject(projectToDelete.projectId);
+          await loadAllProjects();
+        }
       } catch (error) {
         console.error('Failed to delete project:', error);
       }
