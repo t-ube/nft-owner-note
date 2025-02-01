@@ -202,10 +202,10 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
   const { owners: t } = dict.project;
 
   return (
-    <div className="p-8">
+    <div className="p-4 lg:p-8">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2">
+        <CardHeader className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-2">
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
               {t.title}
@@ -214,8 +214,8 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
               ({filteredOwners.length} {searchTerm ? t.matchingOwners : t.totalOwners})
             </span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="relative w-64">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 w-full lg:w-auto">
+            <div className="relative flex-1 lg:w-64">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />
               <Input
                 placeholder={t.search.placeholder}
@@ -224,13 +224,15 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <AddressGroupDialog onSave={handleGroupSave} lang={lang}>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                {t.actions.newOwner}
-              </Button>
-            </AddressGroupDialog>
-            <CSVImportExport onGroupsUpdated={loadData} lang={lang} />
+            <div className="flex items-center gap-2">
+              <AddressGroupDialog onSave={handleGroupSave} lang={lang}>
+                <Button className="flex-1 lg:flex-none">
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t.actions.newOwner}
+                </Button>
+              </AddressGroupDialog>
+              <CSVImportExport onGroupsUpdated={loadData} lang={lang} />
+            </div>
           </div>
         </CardHeader>
         <CardContent>

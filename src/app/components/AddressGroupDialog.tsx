@@ -65,10 +65,11 @@ export function AddressGroupDialog({
   }, [groupId, open]);
 
   const handleAddAddress = () => {
-    if (newAddress && !addressGroup.addresses?.includes(newAddress)) {
+    const trimmedAddress = newAddress.trim();
+    if (trimmedAddress && !addressGroup.addresses?.includes(trimmedAddress)) {
       setAddressGroup(prev => ({
         ...prev,
-        addresses: [...(prev.addresses || []), newAddress]
+        addresses: [...(prev.addresses || []), trimmedAddress]
       }));
       setNewAddress('');
     }
@@ -90,12 +91,17 @@ export function AddressGroupDialog({
     try {
       let savedGroup: AddressGroup;
       if (groupId) {
-        savedGroup = await dbManager.updateAddressGroup(addressGroup as AddressGroup);
+        // アドレス全体に対してもtrimを適用
+        const trimmedAddresses = addressGroup.addresses?.map(addr => addr.trim()) || [];
+        savedGroup = await dbManager.updateAddressGroup({
+          ...addressGroup,
+          addresses: trimmedAddresses
+        } as AddressGroup);
       } else {
-        // 新規作成時は空の配列をデフォルトとして設定
+        // 新規作成時も同様にtrimを適用
         const groupToSave = {
           ...addressGroup,
-          addresses: addressGroup.addresses || []
+          addresses: addressGroup.addresses?.map(addr => addr.trim()) || []
         };
         savedGroup = await dbManager.createAddressGroup(groupToSave as Omit<AddressGroup, 'id' | 'updatedAt'>);
       }

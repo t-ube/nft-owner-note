@@ -7,6 +7,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import _ from 'lodash';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
+import { useNFTContext } from '@/app/contexts/NFTContext';
+import { RefreshCcw } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 const COLORS = [
   { value: '🔴', label: '🔴 Red' },
@@ -112,6 +115,7 @@ const Statistics: React.FC<StatisticsProps> = ({ lang, projectId }) => {
     totalUnclassified: 0,
     classificationRate: 0
   });
+  const { updatingNFTs, updateAllNFTHistory } = useNFTContext();
 
   useEffect(() => {
     const loadDictionary = async () => {
@@ -121,118 +125,127 @@ const Statistics: React.FC<StatisticsProps> = ({ lang, projectId }) => {
     loadDictionary();
   }, [lang]);
 
+  const loadNFTData = async () => {
+    try {
+      const nftData = await dbManager.getNFTsByProjectId(projectId);
+      
+      // Basic stats calculation
+      const now = Date.now();
+      const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+      // Pareto analysis
+      const holderCounts = _.chain(nftData)
+      .filter(nft => !nft.is_burned)
+      .groupBy('owner')
+      .mapValues(nfts => nfts.length)
+      .values()
+      .orderBy(count => -count)
+      .value();
+
+      const totalHolders = holderCounts.length;
+      const totalNFTs = _.sum(holderCounts);
+
+      const cumulativeDistribution: number[] = [];
+      let cumulativeSum = 0;
+
+      holderCounts.forEach(count => {
+      cumulativeSum += count;
+      cumulativeDistribution.push((cumulativeSum / totalNFTs) * 100);
+      });
+
+      const topHoldersCount = Math.ceil(totalHolders * 0.2);
+      const paretoIndex = Math.floor(holderCounts.length * 0.2);
+      const topHoldersPercentage = cumulativeDistribution[paretoIndex] || 0;
+
+      // Activity stats
+      const mintLast7Days = nftData.filter(nft => 
+      nft.mintedAt && nft.mintedAt >= sevenDaysAgo
+      ).length;
+
+      const recentSales = nftData.filter(nft => 
+      nft.firstSaleAt && nft.firstSaleAt >= sevenDaysAgo
+      );
+      const salesLast7Days = recentSales.length;
+      const uniqueBuyersLast7Days = _.uniqBy(recentSales, 'owner').length;
+
+      const totalMints = nftData.filter(nft => nft.mintedAt).length;
+      const totalSales = nftData.filter(nft => nft.firstSaleAt).length;
+
+      const timeToFirstSale = nftData
+      .filter(nft => nft.mintedAt && nft.firstSaleAt)
+      .map(nft => {
+        const mintDate = nft.mintedAt!;
+        const saleDate = nft.firstSaleAt!;
+        return (saleDate - mintDate) / (24 * 60 * 60 * 1000);
+      });
+
+      const avgTimeToFirstSale = timeToFirstSale.length > 0
+      ? _.mean(timeToFirstSale)
+      : 0;
+
+      // Color stats
+      const activeNFTs = nftData.filter(nft => !nft.is_burned);
+      const colorCounts = _.countBy(activeNFTs, 'color');
+      const colorDistribution = COLORS.map(({ value, label }) => ({
+      color: label,
+      count: colorCounts[value] || 0,
+      percentage: ((colorCounts[value] || 0) / activeNFTs.length) * 100
+      }));
+
+      const totalUnclassified = activeNFTs.filter(nft => !nft.color).length;
+      const totalClassified = activeNFTs.length - totalUnclassified;
+      const classificationRate = (totalClassified / activeNFTs.length) * 100;
+
+      const recentlyColored = activeNFTs.filter(nft => 
+      nft.updatedAt >= sevenDaysAgo && nft.color
+      );
+
+      const lastColorUpdate = activeNFTs
+      .filter(nft => nft.color && nft.updatedAt !== null)
+      .map(nft => nft.updatedAt!)
+      .sort((a, b) => b - a)[0] || null;
+
+      // Update all stats
+      setStats({
+        mintLast7Days,
+        salesLast7Days,
+        uniqueBuyersLast7Days,
+        totalMints,
+        totalSales,
+        avgTimeToFirstSale,
+        paretoMetrics: {
+          topHoldersPercentage,
+          topHoldersCount,
+          totalHolders
+        },
+        colorDistribution,
+        recentColorActivity: {
+          total: recentlyColored.length,
+          byColor: _.countBy(recentlyColored, 'color'),
+          lastUpdated: lastColorUpdate ? new Date(lastColorUpdate).toLocaleString() : null
+        },
+        totalClassified,
+        totalUnclassified,
+        classificationRate
+      });
+    } catch (err) {
+      setError('Failed to load NFT data');
+      console.error(err);
+    }
+  };
+  
   useEffect(() => {
-    const loadNFTData = async () => {
-      try {
-        const nftData = await dbManager.getNFTsByProjectId(projectId);
-        
-        // Basic stats calculation
-        const now = Date.now();
-        const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-
-        // Pareto analysis
-        const holderCounts = _.chain(nftData)
-          .filter(nft => !nft.is_burned)
-          .groupBy('owner')
-          .mapValues(nfts => nfts.length)
-          .values()
-          .orderBy(count => -count)
-          .value();
-
-        const totalHolders = holderCounts.length;
-        const totalNFTs = _.sum(holderCounts);
-        
-        const cumulativeDistribution: number[] = [];
-        let cumulativeSum = 0;
-
-        holderCounts.forEach(count => {
-          cumulativeSum += count;
-          cumulativeDistribution.push((cumulativeSum / totalNFTs) * 100);
-        });
-
-        const topHoldersCount = Math.ceil(totalHolders * 0.2);
-        const paretoIndex = Math.floor(holderCounts.length * 0.2);
-        const topHoldersPercentage = cumulativeDistribution[paretoIndex] || 0;
-
-        // Activity stats
-        const mintLast7Days = nftData.filter(nft => 
-          nft.mintedAt && nft.mintedAt >= sevenDaysAgo
-        ).length;
-
-        const recentSales = nftData.filter(nft => 
-          nft.firstSaleAt && nft.firstSaleAt >= sevenDaysAgo
-        );
-        const salesLast7Days = recentSales.length;
-        const uniqueBuyersLast7Days = _.uniqBy(recentSales, 'owner').length;
-
-        const totalMints = nftData.filter(nft => nft.mintedAt).length;
-        const totalSales = nftData.filter(nft => nft.firstSaleAt).length;
-
-        const timeToFirstSale = nftData
-          .filter(nft => nft.mintedAt && nft.firstSaleAt)
-          .map(nft => {
-            const mintDate = nft.mintedAt!;
-            const saleDate = nft.firstSaleAt!;
-            return (saleDate - mintDate) / (24 * 60 * 60 * 1000);
-          });
-        
-        const avgTimeToFirstSale = timeToFirstSale.length > 0
-          ? _.mean(timeToFirstSale)
-          : 0;
-
-        // Color stats
-        const activeNFTs = nftData.filter(nft => !nft.is_burned);
-        const colorCounts = _.countBy(activeNFTs, 'color');
-        const colorDistribution = COLORS.map(({ value, label }) => ({
-          color: label,
-          count: colorCounts[value] || 0,
-          percentage: ((colorCounts[value] || 0) / activeNFTs.length) * 100
-        }));
-
-        const totalUnclassified = activeNFTs.filter(nft => !nft.color).length;
-        const totalClassified = activeNFTs.length - totalUnclassified;
-        const classificationRate = (totalClassified / activeNFTs.length) * 100;
-
-        const recentlyColored = activeNFTs.filter(nft => 
-          nft.updatedAt >= sevenDaysAgo && nft.color
-        );
-
-        const lastColorUpdate = activeNFTs
-          .filter(nft => nft.color && nft.updatedAt !== null)
-          .map(nft => nft.updatedAt!)
-          .sort((a, b) => b - a)[0] || null;
-
-        // Update all stats
-        setStats({
-          mintLast7Days,
-          salesLast7Days,
-          uniqueBuyersLast7Days,
-          totalMints,
-          totalSales,
-          avgTimeToFirstSale,
-          paretoMetrics: {
-            topHoldersPercentage,
-            topHoldersCount,
-            totalHolders
-          },
-          colorDistribution,
-          recentColorActivity: {
-            total: recentlyColored.length,
-            byColor: _.countBy(recentlyColored, 'color'),
-            lastUpdated: lastColorUpdate ? new Date(lastColorUpdate).toLocaleString() : null
-          },
-          totalClassified,
-          totalUnclassified,
-          classificationRate
-        });
-      } catch (err) {
-        setError('Failed to load NFT data');
-        console.error(err);
-      }
-    };
-
     loadNFTData();
   }, [projectId]);
+
+  const handleUpdateAllHistory = async () => {
+    try {
+      await updateAllNFTHistory();
+      await loadNFTData();
+    } catch (error) {
+      console.error('Failed to update all NFT histories:', error);
+    }
+  };
 
   if (error) {
     return (
@@ -248,156 +261,175 @@ const Statistics: React.FC<StatisticsProps> = ({ lang, projectId }) => {
   const dictStats = dict.project.detail.stats;
 
   return (
-    <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
-      <Card>
-        <CardHeader>
-          <CardTitle>{dictStats.sevenDayMints.title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold">{stats.mintLast7Days}</div>
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              {dictStats.sevenDayMints.totalMints}: {stats.totalMints}
-            </p>
-            <p className="text-xs text-muted-foreground italic">
-              {dictStats.notice.noSalesData}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{dictStats.sevenDayFirstSales.title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold">{stats.salesLast7Days}</div>
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              {dictStats.sevenDayFirstSales.totalFirstSales}: {stats.totalSales}
-            </p>
-            <p className="text-xs text-muted-foreground italic">
-              {dictStats.notice.noSalesData}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{dictStats.sevenDayUniqueBuyers.title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold">{stats.uniqueBuyersLast7Days}</div>
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              {dictStats.sevenDayUniqueBuyers.description}
-            </p>
-            <p className="text-xs text-muted-foreground italic">
-              {dictStats.notice.noSalesData}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{dictStats.avgTimeToFirstSale.title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold">
-            {stats.totalSales > 0 
-              ? `${stats.avgTimeToFirstSale.toFixed(1)}`
-              : dictStats.notice.noSalesDataYet
-            }
-          </div>
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              {dictStats.avgTimeToFirstSale.description}
-            </p>
-            <p className="text-xs text-muted-foreground italic">
-              {dictStats.notice.noSalesData}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{dictStats.colorClassification.title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold">
-            {stats.classificationRate.toFixed(1)}%
-          </div>
-          <div className="space-y-2 mt-4">
-            <p className="text-sm">
-              {dictStats.colorClassification.classified}: {stats.totalClassified.toLocaleString()}
-              <span className="text-muted-foreground ml-1">{dictStats.colorClassification.nfts}</span>
-            </p>
-            <p className="text-sm">
-              {dictStats.colorClassification.unclassified}: {stats.totalUnclassified.toLocaleString()}
-              <span className="text-muted-foreground ml-1">{dictStats.colorClassification.nfts}</span>
-            </p>
-            {stats.recentColorActivity.lastUpdated && (
-              <p className="text-xs text-muted-foreground mt-2">
-                {dictStats.colorClassification.lastUpdated}: {stats.recentColorActivity.lastUpdated}
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button
+          size="sm"
+          onClick={handleUpdateAllHistory}
+          disabled={updatingNFTs.size > 0}
+          className="relative bg-primary hover:bg-primary/90"
+        >
+          <RefreshCcw className={`h-4 w-4 mr-2 ${updatingNFTs.size > 0 ? 'animate-spin' : ''}`} />
+          {updatingNFTs.size > 0 ? (
+            <span>
+              {dictStats.actions.updating.replace('{count}', updatingNFTs.size.toString())}
+            </span>
+          ) : (
+            dictStats.actions.updateSaleInfo
+          )}
+        </Button>
+      </div>
+      <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>{dictStats.sevenDayMints.title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.mintLast7Days}</div>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                {dictStats.sevenDayMints.totalMints}: {stats.totalMints}
               </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              <p className="text-xs text-muted-foreground italic">
+                {dictStats.notice.noSalesData}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{dictStats.colorDistribution.title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {stats.colorDistribution.map(({ color, count, percentage }) => (
-              <div key={color} className="flex justify-between items-center">
-                <span className="text-sm">{color}</span>
+        <Card>
+          <CardHeader>
+            <CardTitle>{dictStats.sevenDayFirstSales.title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.salesLast7Days}</div>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                {dictStats.sevenDayFirstSales.totalFirstSales}: {stats.totalSales}
+              </p>
+              <p className="text-xs text-muted-foreground italic">
+                {dictStats.notice.noSalesData}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{dictStats.sevenDayUniqueBuyers.title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.uniqueBuyersLast7Days}</div>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                {dictStats.sevenDayUniqueBuyers.description}
+              </p>
+              <p className="text-xs text-muted-foreground italic">
+                {dictStats.notice.noSalesData}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{dictStats.avgTimeToFirstSale.title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              {stats.totalSales > 0 
+                ? `${stats.avgTimeToFirstSale.toFixed(1)}`
+                : dictStats.notice.noSalesDataYet
+              }
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                {dictStats.avgTimeToFirstSale.description}
+              </p>
+              <p className="text-xs text-muted-foreground italic">
+                {dictStats.notice.noSalesData}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{dictStats.colorClassification.title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              {stats.classificationRate.toFixed(1)}%
+            </div>
+            <div className="space-y-2 mt-4">
+              <p className="text-sm">
+                {dictStats.colorClassification.classified}: {stats.totalClassified.toLocaleString()}
+                <span className="text-muted-foreground ml-1">{dictStats.colorClassification.nfts}</span>
+              </p>
+              <p className="text-sm">
+                {dictStats.colorClassification.unclassified}: {stats.totalUnclassified.toLocaleString()}
+                <span className="text-muted-foreground ml-1">{dictStats.colorClassification.nfts}</span>
+              </p>
+              {stats.recentColorActivity.lastUpdated && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  {dictStats.colorClassification.lastUpdated}: {stats.recentColorActivity.lastUpdated}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{dictStats.colorDistribution.title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {stats.colorDistribution.map(({ color, count, percentage }) => (
+                <div key={color} className="flex justify-between items-center">
+                  <span className="text-sm">{color}</span>
+                  <span className="text-sm font-medium">
+                    {count.toLocaleString()} ({percentage.toFixed(1)}%)
+                  </span>
+                </div>
+              ))}
+              {/* Unclassified NFTs */}
+              <div className="flex justify-between items-center">
+                <span className="text-sm">{dictStats.colorDistribution.colors.unclassified}</span>
                 <span className="text-sm font-medium">
-                  {count.toLocaleString()} ({percentage.toFixed(1)}%)
+                  {stats.totalUnclassified.toLocaleString()} 
+                  ({((stats.totalUnclassified / (stats.totalClassified + stats.totalUnclassified)) * 100).toFixed(1)}%)
                 </span>
               </div>
-            ))}
-            {/* Unclassified NFTs */}
-            <div className="flex justify-between items-center">
-              <span className="text-sm">{dictStats.colorDistribution.colors.unclassified}</span>
-              <span className="text-sm font-medium">
-                {stats.totalUnclassified.toLocaleString()} 
-                ({((stats.totalUnclassified / (stats.totalClassified + stats.totalUnclassified)) * 100).toFixed(1)}%)
-              </span>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="space-y-2">
-          <CardTitle>{dictStats.paretoAnalysis.title}</CardTitle>
-          <Badge 
-            variant={getDistributionStatus(dict,stats.paretoMetrics.topHoldersPercentage).variant}
-            className={`text-xs ${getDistributionStatus(dict,stats.paretoMetrics.topHoldersPercentage).className}`}
-          >
-            {getDistributionStatus(dict,stats.paretoMetrics.topHoldersPercentage).label}
-          </Badge>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="text-3xl font-bold">
-            {stats.paretoMetrics.topHoldersPercentage.toFixed(1)}%
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {dictStats.paretoAnalysis.holdersInfo
-              .replace('{topHolders}', stats.paretoMetrics.topHoldersCount.toString())
-              .replace('{totalHolders}', stats.paretoMetrics.totalHolders.toString())}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {getDistributionStatus(dict,stats.paretoMetrics.topHoldersPercentage).description}
-          </p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="space-y-2">
+            <CardTitle>{dictStats.paretoAnalysis.title}</CardTitle>
+            <Badge 
+              variant={getDistributionStatus(dict,stats.paretoMetrics.topHoldersPercentage).variant}
+              className={`text-xs ${getDistributionStatus(dict,stats.paretoMetrics.topHoldersPercentage).className}`}
+            >
+              {getDistributionStatus(dict,stats.paretoMetrics.topHoldersPercentage).label}
+            </Badge>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="text-3xl font-bold">
+              {stats.paretoMetrics.topHoldersPercentage.toFixed(1)}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {dictStats.paretoAnalysis.holdersInfo
+                .replace('{topHolders}', stats.paretoMetrics.topHoldersCount.toString())
+                .replace('{totalHolders}', stats.paretoMetrics.totalHolders.toString())}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {getDistributionStatus(dict,stats.paretoMetrics.topHoldersPercentage).description}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

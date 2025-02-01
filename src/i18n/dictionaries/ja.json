@@ -44,11 +44,11 @@
       "notFound": "プロジェクトが見つかりません",
       "ownerRank": "オーナーランク",
       "nftList": "NFTリスト",
-      "statistics": "統計情報",
+      "statistics": "統計",
       "tabs": {
         "owners": "オーナーランク",
         "nfts": "NFTリスト",
-        "stats": "統計情報"
+        "stats": "統計"
       },
       "info": {
         "title": "プロジェクト情報",
@@ -123,6 +123,10 @@
         "notice": {
           "noSalesData": "* この統計は販売データがある場合のみ正しく表示されます。",
           "noSalesDataYet": "販売データなし"
+        },
+        "actions": {
+          "updateSaleInfo": "最新の販売データを取得",
+          "updating": "更新中（{count}）"
         }
       },
       "ownerList": {

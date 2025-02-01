@@ -130,7 +130,11 @@ export interface Dictionary {
         notice: {
           noSalesData: string;
           noSalesDataYet: string;
-        }
+        },
+        actions: {
+          updateSaleInfo: string;
+          updating: string;
+        };
       };
       ownerList: {
         status: {

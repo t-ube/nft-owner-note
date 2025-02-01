@@ -123,6 +123,10 @@
         "notice": {
           "noSalesData": "* This statistic requires sales data to be displayed correctly.",
           "noSalesDataYet": "No sales data yet"
+        },
+        "actions": {
+          "updateSaleInfo": "Update Sale Info",
+          "updating": "Updating ({count})"
         }
       },
       "ownerList": {

@@ -219,7 +219,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="text-sm text-gray-500 space-y-1">
           <div>
             {ownerList.status.showingOwners.replace('{count}', ownerStats.length.toLocaleString())}
@@ -245,7 +245,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
         </Button>
       </div>
 
-      <div className="border rounded-md">
+      <div className="border rounded-md overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -255,18 +255,18 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
               <TableHead className="w-40">{ownerList.table.xAccount}</TableHead>
               <TableHead className="w-32 text-right">{ownerList.table.nftCount}</TableHead>
               <TableHead className="w-32 text-center">{ownerList.table.userValue1}</TableHead>
-              <TableHead className="w-32 text-center">{ownerList.table.userValue2}</TableHead>
-              <TableHead className="w-32 text-right">{ownerList.table.holdingPercentage}</TableHead>
+              <TableHead className="hidden lg:table-cell w-32 text-center">{ownerList.table.userValue2}</TableHead>
+              <TableHead className="hidden lg:table-cell w-32 text-right">{ownerList.table.holdingPercentage}</TableHead>
               <TableHead className="w-40">{ownerList.table.links}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {ownerStats.map((stat, index)  => (
+            {ownerStats.map((stat, index) => (
               <TableRow key={stat.address} className="group">
                 <TableCell className="text-center font-medium">
                   {ranks[index]}
                 </TableCell>
-                <TableCell className="font-mono group relative">
+                <TableCell className="font-mono">
                   <div className="flex items-center gap-2">
                     <span className="font-mono">{formatAddress(stat.address)}</span>
                     <AddressGroupDialog
@@ -294,7 +294,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
                 <TableCell className="text-right">
                   {stat.nftCount.toLocaleString()}
                 </TableCell>
-                <TableCell className="text-center" >
+                <TableCell>
                   {editingCell?.address === stat.address && editingCell?.field === 'userValue1' ? (
                     <OwnerValueEditor
                       initialValue={stat.userValue1}
@@ -315,7 +315,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
                     </div>
                   )}
                 </TableCell>
-                <TableCell className="text-center">
+                <TableCell className="hidden lg:table-cell">
                   {editingCell?.address === stat.address && editingCell?.field === 'userValue2' ? (
                     <OwnerValueEditor
                       initialValue={stat.userValue2}
@@ -336,7 +336,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
                     </div>
                   )}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="hidden lg:table-cell text-right">
                   {stat.holdingRatio.toFixed(2)}%
                 </TableCell>
                 <TableCell>

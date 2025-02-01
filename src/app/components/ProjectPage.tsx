@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
+import IconTitle from '@/app/components/IconTitle';
 
 interface ProjectFormData {
   name: string;
@@ -160,6 +161,8 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
       />
   
       <div className="flex-1 p-8">
+        <IconTitle/>
+
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle>{dict?.project.title}</CardTitle>
