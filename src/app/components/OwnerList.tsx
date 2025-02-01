@@ -159,8 +159,8 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
       name: stat.group?.name || '',
       xAccount: stat.group?.xAccount || '',
       nftCount: stat.nftCount,
-      userValue1: ownerValues[stat.address].userValue1 || '',
-      userValue2: ownerValues[stat.address].userValue2 || '',
+      userValue1: stat.userValue1 ?? '',
+      userValue2: stat.userValue2 ?? '',
       holdingPercentage: stat.holdingRatio.toFixed(2),
     }));
 
