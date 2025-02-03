@@ -137,7 +137,8 @@
         },
         "actions": {
           "exportRank": "オーナーランクを出力",
-          "edit": "編集"
+          "edit": "編集",
+          "showGrouped": "同じオーナーをまとめる"
         },
         "table": {
           "rank": "ランク",

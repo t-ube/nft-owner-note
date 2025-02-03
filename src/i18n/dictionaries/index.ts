@@ -145,6 +145,7 @@ export interface Dictionary {
         actions: {
           exportRank: string;
           edit: string;
+          showGrouped: string;
         };
         table: {
           rank: string;

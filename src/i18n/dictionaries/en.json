@@ -137,7 +137,8 @@
         },
         "actions": {
           "exportRank": "Export Owner Rank",
-          "edit": "Edit"
+          "edit": "Edit",
+          "showGrouped": "Group by owners"
         },
         "table": {
           "rank": "Rank",
