@@ -21,7 +21,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -237,28 +236,35 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
                   <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto w-[95vw] sm:w-full absolute left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]">
                     <DialogHeader>
                       <DialogTitle>{dict?.project.taxonHelp.title}</DialogTitle>
-                      <DialogDescription>
-                        <div className="mt-4 space-y-4 px-1"> 
-                          <div className="p-2 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <h3 className="text-sm sm:text-base font-medium mb-2">{dict?.project.taxonHelp.step1.title}</h3>
-                            <img 
-                              src="/images/help/taxon-1.png" 
-                              alt="XRP Ledger Explorer" 
-                              className="rounded-lg border dark:border-gray-700"
-                            />
-                            <p className="mt-2 text-sm">{dict?.project.taxonHelp.step1.description}</p>
-                          </div>
-                          <div className="p-2 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <h3 className="text-sm sm:text-base font-medium mb-2">{dict?.project.taxonHelp.step2.title}</h3>
-                            <img 
-                              src="/images/help/taxon-2.png" 
-                              alt="Taxon ID Location" 
-                              className="rounded-lg border dark:border-gray-700"
-                            />
-                            <p className="mt-2 text-sm">{dict?.project.taxonHelp.step2.description}</p>
-                          </div>
+                      {/* Remove the wrapping p tag that DialogDescription creates by default */}
+                      <div className="mt-4 space-y-4 px-1">
+                        <div className="p-2 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <h3 className="text-sm sm:text-base font-medium mb-2">
+                            {dict?.project.taxonHelp.step1.title}
+                          </h3>
+                          <img 
+                            src="/images/help/taxon-1.png" 
+                            alt="XRP Ledger Explorer" 
+                            className="rounded-lg border dark:border-gray-700"
+                          />
+                          <p className="mt-2 text-sm">
+                            {dict?.project.taxonHelp.step1.description}
+                          </p>
                         </div>
-                      </DialogDescription>
+                        <div className="p-2 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <h3 className="text-sm sm:text-base font-medium mb-2">
+                            {dict?.project.taxonHelp.step2.title}
+                          </h3>
+                          <img 
+                            src="/images/help/taxon-2.png" 
+                            alt="Taxon ID Location" 
+                            className="rounded-lg border dark:border-gray-700"
+                          />
+                          <p className="mt-2 text-sm">
+                            {dict?.project.taxonHelp.step2.description}
+                          </p>
+                        </div>
+                      </div>
                     </DialogHeader>
                   </DialogContent>
                 </Dialog>

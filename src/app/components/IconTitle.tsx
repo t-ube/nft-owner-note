@@ -5,18 +5,15 @@ const IconTitle = () => (
     <div className="flex items-center justify-center gap-2 mb-2">
       <div className="flex items-center justify-center">
         <Image 
-          src="/images/owner-note-icon.png" 
+          src="/images/owner_note_logo.png" 
           alt="Owner Note" 
-          width={80}
-          height={80}
+          width={256}
+          height={152}
           className="opacity-75 hover:opacity-100 transition-opacity dark:invert"
           draggable={false}
         />
       </div>
     </div>
-    <h1 className="text-2xl font-bold dark:text-white">
-      Owner Note
-    </h1>
   </div>
 );
 
