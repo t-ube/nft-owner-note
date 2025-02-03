@@ -239,42 +239,6 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
     return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
   };
   
-
-  // グループ表示時のデータ作成
-  const createGroupedExportData = (
-    groupedStats: GroupedStats[],
-    ungroupedStats: OwnerStats[],
-    ranks: (number | string)[]
-  ): GroupedExportData[] => {
-    // グループ化されたデータの作成
-    const groupedData = groupedStats.map((stat, index) => ({
-      rank: ranks[index],
-      addresses: stat.addresses,
-      addressCount: stat.addresses.length,
-      name: stat.groupName || 'Ungrouped',
-      xAccount: stat.xAccount || '',
-      nftCount: stat.nftCount,
-      userValue1: stat.userValue1,
-      userValue2: stat.userValue2,
-      holdingPercentage: stat.holdingRatio.toFixed(2),
-    }));
-  
-    // グループ化されていないデータの作成
-    const ungroupedData = ungroupedStats.map((stat, index) => ({
-      rank: ranks[index + groupedStats.length],
-      addresses: [stat.address],
-      addressCount: 1,
-      name: '-',
-      xAccount: stat.group?.xAccount || '',
-      nftCount: stat.nftCount,
-      userValue1: stat.userValue1 || 0,
-      userValue2: stat.userValue2 || 0,
-      holdingPercentage: stat.holdingRatio.toFixed(2),
-    }));
-  
-    return [...groupedData, ...ungroupedData];
-  };
-
   // 個別表示時のデータ作成
   const createIndividualExportData = (
     ownerStats: OwnerStats[],
@@ -381,8 +345,6 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
       </a>
     );
   };
-
-  const burnedCount = nfts.filter(nft => nft.is_burned).length;
 
   if (!dict) return null;
 
