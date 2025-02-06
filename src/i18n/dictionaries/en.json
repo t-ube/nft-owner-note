@@ -35,6 +35,20 @@
         "enterTaxon": "Enter taxon"
       }
     },
+    "bulkCreate": {
+      "button": "Bulk Create Projects",
+      "title": "Create Multiple Projects",
+      "placeholder": "Enter issuer address",
+      "fetch": "Fetch Collections",
+      "create": "Create All Projects",
+      "fetchError": "Failed to fetch collections. Please check the address and try again.",
+      "createError": "Failed to create some projects. Please try again.",
+      "noNewProjects": "All collections have already been added as projects.",
+      "table": {
+        "name": "Collection Name",
+        "taxon": "Taxon"
+      }
+    },
     "success": {
       "created": "Project created successfully",
       "deleted": "Project deleted successfully"

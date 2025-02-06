@@ -42,6 +42,20 @@ export interface Dictionary {
         enterTaxon: string;
       }
     },
+    bulkCreate: {
+      button: string;
+      title: string;
+      placeholder: string;
+      fetch: string;
+      create: string;
+      fetchError: string;
+      createError: string;
+      noNewProjects: string;
+      table: {
+        name: string;
+        taxon: string;
+      }
+    }
     success: {
       created: string;
       deleted: string;

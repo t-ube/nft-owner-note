@@ -6,8 +6,10 @@ import { Plus, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { dbManager, Project } from '@/utils/db';
 import ProjectSidebar from '@/app/components/ProjectSidebar';
+import BulkProjectCreation from '@/app/components/BulkProjectCreation';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -236,7 +238,6 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
                   <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto w-[95vw] sm:w-full absolute left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]">
                     <DialogHeader>
                       <DialogTitle>{dict?.project.taxonHelp.title}</DialogTitle>
-                      {/* Remove the wrapping p tag that DialogDescription creates by default */}
                       <div className="mt-4 space-y-4 px-1">
                         <div className="p-2 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                           <h3 className="text-sm sm:text-base font-medium mb-2">
@@ -268,13 +269,19 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
                     </DialogHeader>
                   </DialogContent>
                 </Dialog>
-                
               </div>
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 <Plus className="h-4 w-4 mr-2" />
                 {isSubmitting ? dict?.project.creating : dict?.project.createButton}
               </Button>
             </form>
+
+            <Separator className="my-4" />
+            
+            <BulkProjectCreation
+              onProjectsCreated={refreshProjects}
+              dictionary={dict}
+            />
           </CardContent>
         </Card>
       </div>
