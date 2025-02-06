@@ -50,6 +50,7 @@ export interface Dictionary {
       create: string;
       fetchError: string;
       createError: string;
+      success: string;
       noNewProjects: string;
       table: {
         name: string;

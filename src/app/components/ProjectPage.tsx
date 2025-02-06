@@ -113,6 +113,9 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
       setProjects([...projects, project]);
       setNewProject({ name: '', issuer: '', taxon: '' });
       setSuccessMessage(dict?.project.success.created || 'Project created successfully');
+      
+      // フォームをリセットし、遷移を遅延実行
+      setIsSubmitting(false);
       setTimeout(() => {
         router.push(`/${lang}/projects/${project.projectId}`);
       }, 2000);
@@ -135,7 +138,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
       try {
         await dbManager.deleteProject(projectToDelete.projectId);
         setProjects(projects.filter(p => p.id !== projectToDelete.id));
-        setSuccessMessage('Project deleted successfully');
+        setSuccessMessage(dict?.project.success.deleted || 'Project deleted successfully');
       } catch (error) {
         console.error('Failed to delete project:', error);
         setError('Failed to delete project');
@@ -204,7 +207,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
                   value={newProject.issuer}
                   onChange={(e) => setNewProject({
                     ...newProject,
-                    issuer: e.target.value
+                    issuer: e.target.value.trim()
                   })}
                   placeholder={dict?.project.newProject.placeholders.enterIssuerAddress}
                   required
@@ -281,6 +284,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
             <BulkProjectCreation
               onProjectsCreated={refreshProjects}
               dictionary={dict}
+              lang={lang}
             />
           </CardContent>
         </Card>

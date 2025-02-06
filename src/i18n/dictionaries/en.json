@@ -43,6 +43,7 @@
       "create": "Create All Projects",
       "fetchError": "Failed to fetch collections. Please check the address and try again.",
       "createError": "Failed to create some projects. Please try again.",
+      "success": "{count} projects have been created successfully. Redirecting...",
       "noNewProjects": "All collections have already been added as projects.",
       "table": {
         "name": "Collection Name",
@@ -50,7 +51,7 @@
       }
     },
     "success": {
-      "created": "Project created successfully",
+      "created": "Project has been created successfully. Redirecting...",
       "deleted": "Project deleted successfully"
     },
     "detail": {
