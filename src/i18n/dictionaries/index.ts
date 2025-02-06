@@ -341,6 +341,7 @@ export interface Dictionary {
     sidebar: {
       title: string;
       ownersList: string;
+      crossProjectAnalysis: string;
       projectsTitle: string;
       search: {
         placeholder: string;
@@ -349,6 +350,34 @@ export interface Dictionary {
       footer: {
         developedBy: string;
         followOnX: string;
+      };
+    };
+    aggregatedOwnerList: {
+      title: string;
+      placeholders: {
+        searchProjects: string;
+        selectProject: string;
+        selectProjectToAnalyze: string;
+      };
+      status: {
+        loading: string;
+        showingOwners: string;
+        updatingProject: string;
+        updateComplete: string;
+      };
+      actions: {
+        updateNFTs: string;
+        exportRank: string;
+        showGrouped: string;
+      };
+      table: {
+        rank: string;
+        owner: string;
+        name: string;
+        xAccount: string;
+        totalNfts: string;
+        share: string;
+        title: string;
       };
     };
   };

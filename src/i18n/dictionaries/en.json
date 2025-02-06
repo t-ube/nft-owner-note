@@ -334,6 +334,7 @@
     "sidebar": {
       "title": "Owner Note",
       "ownersList": "Owners List",
+      "crossProjectAnalysis": "Cross-Project Analysis",
       "projectsTitle": "Projects",
       "search": {
         "placeholder": "Search projects"
@@ -342,6 +343,34 @@
       "footer": {
         "developedBy": "Developed by shirome",
         "followOnX": "Follow on X"
+      }
+    },
+    "aggregatedOwnerList": {
+      "title": "Cross-Project Analysis",
+      "placeholders": {
+        "searchProjects": "Search projects...",
+        "selectProject": "Select project",
+        "selectProjectToAnalyze": "Please select projects to analyze"
+      },
+      "status": {
+        "loading": "Loading data...",
+        "showingOwners": "Showing {count} owners",
+        "updatingProject": "Updating project: {current}/{total} - {project}",
+        "updateComplete": "Update complete"
+      },
+      "actions": {
+        "updateNFTs": "Get Latest Rank",
+        "exportRank": "Export Owner Rank",
+        "showGrouped": "Group by owners"
+      },
+      "table": {
+        "rank": "Rank",
+        "owner": "Owner",
+        "name": "Name",  
+        "xAccount": "X Account",
+        "totalNfts": "Total NFTs",
+        "share": "Holding %",
+        "title": "Owner Rank"
       }
     }
   }

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from "next-themes";
 import Image from 'next/image';
-import { Folder, Search, Trash2, Users, Menu, X, Moon, Sun } from 'lucide-react';
+import { Folder, Search, Trash2, Users, Menu, X, Moon, Sun, BarChart3 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Project } from '@/utils/db';
@@ -115,6 +115,18 @@ const ProjectSidebar = ({
           </Button>
 
           <div className="space-y-4">
+            <Button
+              variant="outline"
+              className="w-full justify-start dark:border-gray-600 dark:text-gray-200"
+              onClick={() => {
+                router.push(`/${lang}/cross-project`);
+                setIsOpen(false);
+              }}
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              {t.crossProjectAnalysis}
+            </Button>
+
             <h2 className="text-xl font-bold dark:text-white">{t.projectsTitle}</h2>
             
             <ProjectCSVImportExport onProjectsUpdated={onProjectsUpdated} lang={lang} />

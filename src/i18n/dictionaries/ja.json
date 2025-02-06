@@ -334,6 +334,7 @@
     "sidebar": {
       "title": "Owner Note",
       "ownersList": "オーナーリスト",
+      "crossProjectAnalysis": "プロジェクト横断分析",
       "projectsTitle": "プロジェクト",
       "search": {
         "placeholder": "プロジェクトを検索"
@@ -342,6 +343,34 @@
       "footer": {
         "developedBy": "開発者：shirome",
         "followOnX": "Xでフォロー"
+      }
+    },
+    "aggregatedOwnerList": {
+      "title": "プロジェクト横断分析",
+      "placeholders": {
+        "searchProjects": "プロジェクトを検索...",
+        "selectProject": "プロジェクトを選択",
+        "selectProjectToAnalyze": "分析するプロジェクトを選択してください"
+      },
+      "status": {
+        "loading": "データを読み込み中...",
+        "showingOwners": "{count}人のオーナーを表示中",
+        "updatingProject": "プロジェクト更新中: {current}/{total} - {project}",
+        "updateComplete": "更新完了"
+      },
+      "actions": {
+        "updateNFTs": "最新のランキングを取得",
+        "exportRank": "ランキングをエクスポート",
+        "showGrouped": "同じオーナーをまとめる"
+      },
+      "table": {
+        "rank": "ランク",
+        "owner": "オーナー",
+        "name": "名前",
+        "xAccount": "Xアカウント",
+        "totalNfts": "NFT合計",
+        "share": "保有率",
+        "title": "オーナーランク"
       }
     }
   }
