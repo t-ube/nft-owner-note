@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from "next-themes";
 import Image from 'next/image';
-import { Folder, Search, Trash2, Users, Menu, X, Moon, Sun, BarChart3 } from 'lucide-react';
+import { Folder, Search, Trash2, Users, Menu, X, Moon, Sun, BarChart3, ChevronDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Project } from '@/utils/db';
 import ProjectCSVImportExport from '@/app/components/ProjectCSVImportExport';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
+import { CONTRIBUTORS } from '@/constants/contributors';
 
 interface ProjectSidebarProps {
   projects: Project[];
@@ -32,6 +33,7 @@ const ProjectSidebar = ({
   const router = useRouter();
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [isCreditsOpen, setIsCreditsOpen] = useState(false);
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
 
@@ -182,7 +184,7 @@ const ProjectSidebar = ({
           )}
         </div>
 
-        <div className="p-4 mt-auto border-t dark:border-gray-700 space-y-4">
+        <div className="p-4 pb-0 mt-auto border-t dark:border-gray-700">
           <div className="flex items-center justify-between gap-2">
             <select
               onChange={(e) => {
@@ -206,22 +208,62 @@ const ProjectSidebar = ({
             </Button>
           </div>
           
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500 dark:text-gray-400">Developed by shirome</span>
-            <a
-              href="https://x.com/shirome_x"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              <Image 
-                src="/images/x-logo-black.png" 
-                alt="X (Twitter)" 
-                width={20}
-                height={20}
-                className="opacity-75 hover:opacity-100 transition-opacity dark:invert" 
-              />
-            </a>
+          <div className="relative">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-500 dark:text-gray-400">Developed by shirome</span>
+              <a
+                href="https://x.com/shirome_x"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Image 
+                  src="/images/x-logo-black.png" 
+                  alt="X (Twitter)" 
+                  width={20}
+                  height={20}
+                  className="opacity-75 hover:opacity-100 transition-opacity dark:invert" 
+                />
+              </a>
+            </div>
+
+            <div>
+              <button
+                onClick={() => setIsCreditsOpen(!isCreditsOpen)}
+                className={`
+                  px-2 py-1 text-xs font-medium
+                  bg-gray-100 dark:bg-gray-700 
+                  text-gray-600 dark:text-gray-300
+                  rounded-t-lg shadow-sm
+                  transition-all
+                  hover:bg-gray-200 dark:hover:bg-gray-600
+                  ${isCreditsOpen ? 'bg-gray-200 dark:bg-gray-600' : ''}
+                  inline-flex items-center gap-1
+                `}
+              >
+                XRPL Community Contributors
+                <ChevronDown 
+                  className={`h-3 w-3 transition-transform duration-200 ${
+                    isCreditsOpen ? 'transform rotate-180' : ''
+                  }`}
+                />
+              </button>
+            </div>
+            
+            <div className={`
+              overflow-hidden transition-all duration-500 ease-in-out
+              ${isCreditsOpen ? 'max-h-32 mt-2 opacity-100' : 'max-h-0 opacity-0 mb-0'}
+            `}>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                <div className="flex flex-wrap gap-1">
+                  {CONTRIBUTORS.map((contributor, index) => (
+                    <span key={index} className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                      {contributor}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </aside>
