@@ -114,6 +114,7 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang
       
       Papa.parse<AddressGroupCSV>(text, {
         header: true,
+        skipEmptyLines: true,
         complete: async (results: ParseResult<AddressGroupCSV>) => {
           try {
             // バリデーション
