@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X, Copy, Check } from "lucide-react";
 import { dbManager, AddressGroup } from '@/utils/db';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
@@ -39,6 +39,7 @@ export function AddressGroupDialog({
     addresses: initialAddresses,
   });
   const [newAddress, setNewAddress] = useState('');
+  const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
 
   useEffect(() => {
@@ -72,6 +73,16 @@ export function AddressGroupDialog({
         addresses: [...(prev.addresses || []), trimmedAddress]
       }));
       setNewAddress('');
+    }
+  };
+
+  const handleCopyAddress = async (address: string) => {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopiedAddress(address);
+      setTimeout(() => setCopiedAddress(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy address:', err);
     }
   };
 
@@ -175,14 +186,28 @@ export function AddressGroupDialog({
               {addressGroup.addresses?.map((address) => (
                 <div key={address} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded">
                   <span className="flex-1 font-mono text-sm dark:text-gray-200">{address}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveAddress(address)}
-                    className="dark:hover:bg-gray-600"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleCopyAddress(address)}
+                      className="h-8 w-8 dark:hover:bg-gray-600"
+                    >
+                      {copiedAddress === address ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveAddress(address)}
+                      className="h-8 w-8 dark:hover:bg-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

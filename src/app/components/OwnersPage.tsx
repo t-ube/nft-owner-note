@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Plus, Users, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Pencil } from 'lucide-react';
+import { Search, Plus, Users, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Pencil, Copy, Check } from 'lucide-react';
 import { AddressGroupDialog } from '@/app/components/AddressGroupDialog';
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -56,6 +56,7 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [ownerToDelete, setOwnerToDelete] = useState<AddressGroup | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
+  const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   
   // データ読み込み関数
   const loadData = React.useCallback(async () => {
@@ -98,6 +99,16 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
               : null
           : 'asc'
     }));
+  };
+
+  const handleCopyAddress = async (address: string) => {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopiedAddress(address);
+      setTimeout(() => setCopiedAddress(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy address:', err);
+    }
   };
 
   const handleGroupSave = async () => {
@@ -252,14 +263,28 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
                   <TableCell>{owner.name}</TableCell>
                   <TableCell>
                     {owner.addresses.length > 0 ? (
-                      <span className="font-mono">
-                        {`${owner.addresses[0].substring(0, 4)}...${owner.addresses[0].substring(owner.addresses[0].length - 4)}`}
-                        {owner.addresses.length > 1 && (
-                          <span className="text-gray-500 ml-1">
-                            (+{owner.addresses.length - 1})
-                          </span>
-                        )}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono">
+                          {`${owner.addresses[0].substring(0, 4)}...${owner.addresses[0].substring(owner.addresses[0].length - 4)}`}
+                          {owner.addresses.length > 1 && (
+                            <span className="text-gray-500 ml-1">
+                              (+{owner.addresses.length - 1})
+                            </span>
+                          )}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => handleCopyAddress(owner.addresses[0])}
+                        >
+                          {copiedAddress === owner.addresses[0] ? (
+                            <Check className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <Copy className="h-3 w-3 text-gray-500 hover:text-gray-700" />
+                          )}
+                        </Button>
+                      </div>
                     ) : (
                       '-'
                     )}
