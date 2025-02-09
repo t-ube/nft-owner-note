@@ -762,15 +762,21 @@ class DatabaseManager {
             const aValue = a[sortField as keyof NFToken];
             const bValue = b[sortField as keyof NFToken];
   
-            // Handle null/undefined values
+            // Special handling for null/undefined values - always put them at the end
             if (aValue === null || aValue === undefined) {
-              return sortDirection === 'asc' ? 1 : -1;
+              if (bValue === null || bValue === undefined) {
+                // If both values are null/undefined, maintain their relative order
+                return 0;
+              }
+              // If only a is null/undefined, it should always go to the end
+              return 1;
             }
             if (bValue === null || bValue === undefined) {
-              return sortDirection === 'asc' ? -1 : 1;
+              // If only b is null/undefined, it should always go to the end
+              return -1;
             }
   
-            // Normal comparison
+            // Normal comparison for non-null values
             if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
             if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
             return 0;

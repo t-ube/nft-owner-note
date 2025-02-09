@@ -126,17 +126,34 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
   }, [projectId, currentPage, sort, filters]);
 
   const handleSort = (field: SortField) => {
-    setSort(prev => ({
-      field,
-      direction: 
-        prev.field === field
-          ? prev.direction === null 
-            ? 'asc'
-            : prev.direction === 'asc'
-              ? 'desc'
-              : null
-          : 'asc'
-    }));
+    setSort(prev => {
+      if (field === 'nft_serial' || field === 'lastSaleAmount' || field === 'lastSaleAt') {
+        if (prev.field !== field) {
+          return { field, direction: 'desc' };
+        }
+        return {
+          field,
+          direction: 
+            prev.direction === 'desc'
+              ? 'asc'
+              : prev.direction === 'asc'
+                ? null
+                : 'desc'
+        };
+      }
+      
+      return {
+        field,
+        direction: 
+          prev.field === field
+            ? prev.direction === null 
+              ? 'asc'
+              : prev.direction === 'asc'
+                ? 'desc'
+                : null
+            : 'asc'
+      };
+    });
     setCurrentPage(1);
   };
 

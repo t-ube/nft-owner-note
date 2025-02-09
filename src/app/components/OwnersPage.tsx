@@ -117,24 +117,43 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
 
   const getSortedOwners = () => {
     if (!sort.direction) return owners;
-
+  
     return _.orderBy(
       owners,
-      [owner => {
-        switch (sort.field) {
-          case 'name':
-            return owner.name.toLowerCase();
-          case 'addresses':
-            return owner.addresses.length;
-          case 'xAccount':
-            return (owner.xAccount || '').toLowerCase();
-          case 'updatedAt':
-            return owner.updatedAt;
-          default:
-            return owner.name.toLowerCase();
+      [
+        owner => {
+          const value = (() => {
+            switch (sort.field) {
+              case 'name':
+                return owner.name;
+              case 'addresses':
+                return owner.addresses.length;
+              case 'xAccount':
+                return owner.xAccount;
+              case 'updatedAt':
+                return owner.updatedAt;
+              default:
+                return owner.name;
+            }
+          })();
+          return value ? 0 : 1;
+        },
+        owner => {
+          switch (sort.field) {
+            case 'name':
+              return owner.name.toLowerCase();
+            case 'addresses':
+              return owner.addresses.length;
+            case 'xAccount':
+              return (owner.xAccount || '').toLowerCase();
+            case 'updatedAt':
+              return owner.updatedAt;
+            default:
+              return owner.name.toLowerCase();
+          }
         }
-      }],
-      [sort.direction]
+      ],
+      ['asc', sort.direction]
     );
   };
 
