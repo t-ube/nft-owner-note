@@ -79,7 +79,8 @@
         "enterName": "Enter project name",
         "updateError": "Failed to update project name",
         "issuerName": "Issuer Name",
-        "xAccount": "X Account"
+        "xAccount": "X Account",
+        "links": "Links"
       },
       "stats": {
         "error": "Failed to load NFT data",

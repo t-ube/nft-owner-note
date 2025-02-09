@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/collapsible";
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
+import IssuerSiteIcons from '@/app/components/IssuerSiteIcons';
 
 interface ProjectInfoProps {
   lang: string;
@@ -216,6 +217,14 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ lang, project, onProjectUpdat
                   <div className="bg-gray-50 dark:bg-gray-700 p-2 rounded-md dark:text-gray-200">
                     {project.taxon}
                   </div>
+                </div>
+              </div>
+
+              {/* 外部サイトリンク - 新しく追加 */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium dark:text-gray-200">{dict?.project.detail.info.links}</label>
+                <div className="bg-gray-50 dark:bg-gray-700 p-2 rounded-md">
+                  <IssuerSiteIcons issuer={project.issuer} taxon={project.taxon} />
                 </div>
               </div>
 
