@@ -85,6 +85,8 @@ export interface Dictionary {
         cancel: string;
         enterName: string;
         updateError: string;
+        issuerName: string;
+        xAccount: string;
       };
       stats: {
         error: string;

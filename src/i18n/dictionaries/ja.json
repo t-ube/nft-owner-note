@@ -77,7 +77,9 @@
         "save": "保存",
         "cancel": "キャンセル",
         "enterName": "プロジェクト名を入力",
-        "updateError": "プロジェクト名の更新に失敗しました"
+        "updateError": "プロジェクト名の更新に失敗しました",
+        "issuerName": "発行者名",
+        "xAccount": "Xアカウント"
       },
       "stats": {
         "error": "NFTデータの読み込みに失敗しました",
