@@ -3,9 +3,10 @@ import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Plus } from 'lucide-react';
-import { dbManager, Project } from '@/utils/db';
-import { Dictionary } from '@/i18n/dictionaries';
+import { Loader2, Plus, RefreshCw } from 'lucide-react';
+import { dbManager } from '@/utils/db';
+import { fetchNFTMetadataSafe } from '@/utils/nftMetadata';
+import { Dictionary } from '@/i18n/dictionaries/index';
 
 interface TaxonApiResponse {
   info: {
@@ -20,6 +21,35 @@ interface TaxonApiResponse {
   };
 }
 
+interface NFTMetadataResponse {
+  info: {
+    ledger_index: number;
+    ledger_hash: string;
+    ledger_close: string;
+    ledger_close_ms: number;
+  };
+  data: {
+    issuer: string;
+    nfts: Array<{
+      NFTokenID: string;
+      Issuer: string;
+      Owner: string;
+      Taxon: number;
+      TransferFee: number;
+      Flags: number;
+      Sequence: number;
+      URI: string;
+    }>;
+  };
+}
+
+interface CollectionInfo {
+  taxon: number;
+  name: string;
+  isLoading: boolean;
+  error?: string;
+}
+
 interface BulkProjectCreationProps {
   onProjectsCreated: () => void;
   dictionary: Dictionary | null;
@@ -31,7 +61,7 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [taxons, setTaxons] = useState<number[]>([]);
+  const [collections, setCollections] = useState<CollectionInfo[]>([]);
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -39,12 +69,60 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
     return null;
   }
 
+  const fetchCollectionMetadata = async (issuer: string, taxon: number): Promise<string> => {
+    try {
+      // First, fetch an NFT from this collection
+      const response = await fetch(
+        `https://api.xrpldata.com/api/v1/xls20-nfts/issuer/${issuer}/taxon/${taxon}?limit=10`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch NFT');
+      }
+
+      const nftData: NFTMetadataResponse = await response.json();
+      
+      // Find the first non-burned NFT
+      const nft = nftData.data.nfts.find(nft => !(nft.Flags & 0x1));
+      
+      if (!nft?.URI) {
+        throw new Error('No active NFT found');
+      }
+
+      // Decode URI from hex
+      const uri = Buffer.from(nft.URI, 'hex').toString('utf8');
+      
+      // Fetch metadata using the utility function
+      const metadata = await fetchNFTMetadataSafe(uri);
+      if (!metadata) {
+        throw new Error('Failed to fetch metadata');
+      }
+      
+      // Try to extract collection name from the NFT name
+      if (metadata.collection?.name) {
+        return metadata.collection?.name;
+      }
+
+      if (metadata.name) {
+        return metadata.name;
+      }
+      
+      // Fallback to default name
+      return `Collection ${taxon}`;
+    } catch (err) {
+      console.error('Error fetching metadata:', err);
+      throw err;
+    }
+  };
+
   const fetchTaxons = async () => {
     if (!issuerAddress) return;
     
     setIsLoading(true);
     setError(null);
     setSuccessMessage(null);
+    setCollections([]);
+
     try {
       const response = await fetch(
         `https://api.xrpldata.com/api/v1/xls20-nfts/taxon/${issuerAddress}?limit=100`
@@ -55,7 +133,41 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
       }
 
       const data: TaxonApiResponse = await response.json();
-      setTaxons(data.data.taxons);
+      
+      // Initialize collections with loading state
+      const initialCollections = data.data.taxons.map(taxon => ({
+        taxon,
+        name: `Collection ${taxon}`,
+        isLoading: true
+      }));
+      setCollections(initialCollections);
+
+      // Fetch metadata for each collection
+      for (const taxon of data.data.taxons) {
+        try {
+          const name = await fetchCollectionMetadata(issuerAddress, taxon);
+          setCollections(prev => 
+            prev.map(collection => 
+              collection.taxon === taxon
+                ? { ...collection, name, isLoading: false }
+                : collection
+            )
+          );
+        } catch (err) {
+          console.log(err);
+          setCollections(prev => 
+            prev.map(collection => 
+              collection.taxon === taxon
+                ? { 
+                    ...collection, 
+                    isLoading: false, 
+                    error: 'Failed to fetch metadata'
+                  }
+                : collection
+            )
+          );
+        }
+      }
     } catch (err) {
       console.log(err);
       setError(dictionary.project.bulkCreate.fetchError);
@@ -65,31 +177,31 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
   };
 
   const handleCreateProjects = async () => {
-    if (!issuerAddress || taxons.length === 0) return;
+    if (!issuerAddress || collections.length === 0) return;
     
     setIsLoading(true);
     setError(null);
     setSuccessMessage(null);
     
     try {
-      const creationPromises = taxons.map(async (taxon) => {
+      const creationPromises = collections.map(async (collection) => {
         const existing = await dbManager.getProjectByIssuerAndTaxon(
           issuerAddress,
-          taxon.toString()
+          collection.taxon.toString()
         );
         
         if (!existing) {
           return dbManager.addProject({
-            name: `Collection ${taxon}`,
+            name: collection.name,
             issuer: issuerAddress,
-            taxon: taxon.toString()
+            taxon: collection.taxon.toString()
           });
         }
         return null;
       });
 
       const results = await Promise.all(creationPromises);
-      const createdProjects = results.filter((p): p is Project => p !== null);
+      const createdProjects = results.filter((p) => p !== null);
       
       if (createdProjects.length > 0) {
         const message = dictionary.project.bulkCreate.success
@@ -97,7 +209,6 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
         setSuccessMessage(message);
         onProjectsCreated();
 
-        // 最後に作成されたプロジェクトへの遷移を遅延実行
         const lastProject = createdProjects[createdProjects.length - 1];
         setTimeout(() => {
           setOpen(false);
@@ -114,10 +225,49 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
     }
   };
 
+  const handleNameChange = (taxon: number, newName: string) => {
+    setCollections(prev => 
+      prev.map(collection => 
+        collection.taxon === taxon ? { ...collection, name: newName } : collection
+      )
+    );
+  };
+
+  const handleRefreshMetadata = async (taxon: number) => {
+    const collection = collections.find(c => c.taxon === taxon);
+    if (!collection || collection.isLoading) return;
+
+    setCollections(prev => 
+      prev.map(c => 
+        c.taxon === taxon ? { ...c, isLoading: true, error: undefined } : c
+      )
+    );
+
+    try {
+      const name = await fetchCollectionMetadata(issuerAddress, taxon);
+      setCollections(prev => 
+        prev.map(c => 
+          c.taxon === taxon ? { ...c, name, isLoading: false } : c
+        )
+      );
+    } catch (err) {
+      console.log(err);
+      setCollections(prev => 
+        prev.map(c => 
+          c.taxon === taxon ? { 
+            ...c, 
+            isLoading: false, 
+            error: 'Failed to fetch metadata'
+          } : c
+        )
+      );
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full mt-4">
+        <Button className="w-full mt-4">
           <Plus className="h-4 w-4 mr-2" />
           {dictionary.project.bulkCreate.button}
         </Button>
@@ -157,21 +307,46 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
             </div>
           )}
 
-          {taxons.length > 0 && (
+          {collections.length > 0 && (
             <div className="space-y-4">
               <div className="max-h-64 overflow-y-auto border rounded-md dark:border-gray-700">
-                <div className="grid grid-cols-3 gap-2 p-4">
-                  {taxons.map((taxon) => (
+                <div className="grid grid-cols-1 gap-2 p-4">
+                  {collections.map((collection) => (
                     <div 
-                      key={taxon}
-                      className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md text-center"
+                      key={collection.taxon}
+                      className="p-4 bg-gray-50 dark:bg-gray-800 rounded-md flex items-center space-x-2"
                     >
-                      <span className="text-sm text-gray-900 dark:text-gray-300">
-                        Collection {taxon}
-                      </span>
-                      <span className="block text-xs text-gray-500 dark:text-gray-400">
-                        Taxon: {taxon}
-                      </span>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <Input
+                            value={collection.name}
+                            onChange={(e) => handleNameChange(collection.taxon, e.target.value)}
+                            className="flex-1"
+                            placeholder="Collection Name"
+                            disabled={collection.isLoading}
+                          />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleRefreshMetadata(collection.taxon)}
+                            disabled={collection.isLoading}
+                          >
+                            <RefreshCw 
+                              className={`h-4 w-4 ${collection.isLoading ? 'animate-spin' : ''}`}
+                            />
+                          </Button>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            Taxon: {collection.taxon}
+                          </span>
+                          {collection.error && (
+                            <span className="text-xs text-red-500">
+                              {collection.error}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -188,7 +363,7 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
                   <Plus className="h-4 w-4 mr-2" />
                 )}
                 {dictionary.project.bulkCreate.create}
-                {taxons.length > 0 && ` (${taxons.length})`}
+                {collections.length > 0 && ` (${collections.length})`}
               </Button>
             </div>
           )}

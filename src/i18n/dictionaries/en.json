@@ -36,8 +36,8 @@
       }
     },
     "bulkCreate": {
-      "button": "Bulk Create Projects",
-      "title": "Create Multiple Projects",
+      "button": "Quick Create Projects",
+      "title": "Quick Create Projects",
       "placeholder": "Enter issuer address",
       "fetch": "Fetch Collections",
       "create": "Create All Projects",

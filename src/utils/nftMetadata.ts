@@ -6,6 +6,9 @@ interface NFTMetadata {
   name?: string;
   description?: string;
   image?: string;
+  collection?: {
+    name?: string;
+  },
   attributes?: Array<{
     trait_type: string;
     value: string | number;
@@ -97,7 +100,7 @@ export async function fetchNFTMetadata(uri: string): Promise<NFTMetadata | null>
   }
 }
 
-const fetchNFTMetadataSafe = async (uri: string): Promise<NFTMetadata | null> => {
+export const fetchNFTMetadataSafe = async (uri: string): Promise<NFTMetadata | null> => {
   try {
     if (uri.startsWith('ipfs://')) {
       const hash = uri.replace('ipfs://', '');
