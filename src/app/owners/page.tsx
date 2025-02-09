@@ -40,6 +40,19 @@ export default function OwnerListPage() {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleProjectUpdate = useCallback(async (updatedProject: Project) => {
+    try {
+      const db = await dbManager.initDB();
+      const transaction = db.transaction('projects', 'readwrite');
+      const store = transaction.objectStore('projects');
+      await store.put(updatedProject);
+      await loadAllProjects();
+    } catch (error) {
+      console.error('Failed to update project:', error);
+      throw error;
+    }
+  }, [loadAllProjects]);
+
   const handleDeleteConfirm = async () => {
     if (projectToDelete) {
       try {
@@ -67,6 +80,7 @@ export default function OwnerListPage() {
         onSearchChange={setSearchTerm}
         onDeleteClick={handleDeleteClick}
         onProjectsUpdated={refreshProjects}
+        onProjectUpdate={handleProjectUpdate}
         lang='en'
       />
       <div className="flex-1 overflow-auto">
