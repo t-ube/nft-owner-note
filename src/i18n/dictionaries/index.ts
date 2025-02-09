@@ -362,6 +362,12 @@ export interface Dictionary {
         placeholder: string;
       };
       noProjects: string;
+      edit: string;
+      save: string;
+      cancel: string;
+      delete: string;
+      saveError: string;
+      emptyNameError: string;
       footer: {
         developedBy: string;
         followOnX: string;

@@ -355,6 +355,12 @@
         "placeholder": "プロジェクトを検索"
       },
       "noProjects": "プロジェクトが見つかりません",
+      "edit": "プロジェクト名を編集",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "delete": "プロジェクトを削除",
+      "saveError": "プロジェクト名の更新に失敗しました",
+      "emptyNameError": "プロジェクト名を入力してください",
       "footer": {
         "developedBy": "開発者：shirome",
         "followOnX": "Xでフォロー"

@@ -37,6 +37,24 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
   const [dict, setDict] = useState<Dictionary | null>(null);
   const router = useRouter();
 
+  // プロジェクトの読み込み処理を一元化
+  const loadProject = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const projectData = await dbManager.getProjectByProjectId(projectId);
+      if (projectData) {
+        setProject(projectData);
+      } else {
+        setError('Project not found');
+      }
+    } catch (error) {
+      console.error('Failed to load project data:', error);
+      setError('Failed to load project data');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [projectId]);
+
   const loadAllProjects = useCallback(async () => {
     try {
       const allProjects = await dbManager.getAllProjects();
@@ -46,9 +64,31 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
     }
   }, []);
 
+  // プロジェクト更新処理を一元化
+  const handleProjectUpdate = useCallback(async (updatedProject: Project) => {
+    try {
+      const db = await dbManager.initDB();
+      const transaction = db.transaction('projects', 'readwrite');
+      const store = transaction.objectStore('projects');
+      await store.put(updatedProject);
+      
+      // 現在のプロジェクトを更新
+      if (updatedProject.projectId === projectId) {
+        setProject(updatedProject);
+      }
+      
+      // プロジェクトリストを更新
+      await loadAllProjects();
+    } catch (error) {
+      console.error('Failed to update project:', error);
+    }
+  }, [projectId, loadAllProjects]);
+
+  // 初期読み込み
   useEffect(() => {
+    loadProject();
     loadAllProjects();
-  }, [loadAllProjects]);
+  }, [loadProject, loadAllProjects]);
 
   useEffect(() => {
     const loadDictionary = async () => {
@@ -68,12 +108,9 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
     if (projectToDelete) {
       try {
         await dbManager.deleteProject(projectToDelete.projectId);
-        setProjects(projects.filter(p => p.id !== projectToDelete.id));
+        await loadAllProjects();
         if (projectId === projectToDelete.projectId) {
           router.push(`/${lang}`);
-        } else {
-          //await dbManager.deleteProject(projectToDelete.projectId);
-          await loadAllProjects();
         }
       } catch (error) {
         console.error('Failed to delete project:', error);
@@ -82,44 +119,29 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
     setIsDeleteDialogOpen(false);
     setProjectToDelete(null);
   };
-  useEffect(() => {
-    const loadProject = async () => {
-      setIsLoading(true);
-      try {
-        const projectData = await dbManager.getProjectByProjectId(projectId);
-        if (projectData) {
-          setProject(projectData);
-        } else {
-          setError('Project not found');
-        }
-      } catch (error) {
-        console.error('Failed to load project data:', error);
-        setError('Failed to load project data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
 
-    loadProject();
-  }, [projectId]);
+  const refreshProjects = useCallback(async () => {
+    await Promise.all([loadProject(), loadAllProjects()]);
+  }, [loadProject, loadAllProjects]);
 
-  const refreshProjects = async () => {
-    const allProjects = await dbManager.getAllProjects();
-    setProjects(allProjects);
-  };
+  // 共通のサイドバーコンポーネント
+  const sidebarComponent = (
+    <ProjectSidebar
+      projects={projects}
+      currentProjectId={projectId}
+      searchTerm={searchTerm}
+      onSearchChange={setSearchTerm}
+      onDeleteClick={handleDeleteClick}
+      onProjectsUpdated={refreshProjects}
+      onProjectUpdate={handleProjectUpdate}
+      lang={lang}
+    />
+  );
 
   if (isLoading) {
     return (
       <div className="flex h-screen">
-        <ProjectSidebar
-          projects={projects}
-          currentProjectId={projectId}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          onDeleteClick={handleDeleteClick}
-          onProjectsUpdated={refreshProjects}
-          lang={lang}
-        />
+        {sidebarComponent}
         <div className="flex-1 p-6 flex items-center justify-center">
           <div className="flex items-center space-x-2">
             <RefreshCcw className="h-5 w-5 animate-spin" />
@@ -130,44 +152,16 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
     );
   }
 
-  if (error) {
+  if (error || !project) {
     return (
       <div className="flex h-screen">
-        <ProjectSidebar
-          projects={projects}
-          currentProjectId={projectId}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          onDeleteClick={handleDeleteClick}
-          onProjectsUpdated={refreshProjects}
-          lang={lang}
-        />
+        {sidebarComponent}
         <div className="flex-1 p-6 flex items-center justify-center">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        </div>
-      </div>
-    );
-  }
-
-  if (!project) {
-    return (
-      <div className="flex h-screen">
-        <ProjectSidebar
-          projects={projects}
-          currentProjectId={projectId}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          onDeleteClick={handleDeleteClick}
-          onProjectsUpdated={refreshProjects}
-          lang={lang}
-        />
-        <div className="flex-1 p-6 flex items-center justify-center">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{dict?.project.detail.notFound}</AlertDescription>
+            <AlertDescription>
+              {error || dict?.project.detail.notFound}
+            </AlertDescription>
           </Alert>
         </div>
       </div>
@@ -176,21 +170,19 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
 
   return (
     <div className="flex h-screen">
-      <ProjectSidebar
-        projects={projects}
-        currentProjectId={projectId}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        onDeleteClick={handleDeleteClick}
-        onProjectsUpdated={refreshProjects}
-        lang={lang}
-      />
+      {sidebarComponent}
       <NFTContextProvider 
         projectId={projectId}
         issuer={project.issuer}
         taxon={project.taxon}
       >
-        <ProjectDetail projectId={projectId} lang={lang} onProjectsUpdated={refreshProjects}/>
+        <ProjectDetail 
+          projectId={projectId} 
+          project={project}
+          lang={lang} 
+          onProjectUpdate={handleProjectUpdate}
+          onProjectsUpdated={refreshProjects}
+        />
       </NFTContextProvider>
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>

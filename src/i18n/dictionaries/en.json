@@ -355,6 +355,12 @@
         "placeholder": "Search projects"
       },
       "noProjects": "No projects found",
+      "edit": "Edit project name",
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete project",
+      "saveError": "Failed to update project name",
+      "emptyNameError": "Project name cannot be empty",
       "footer": {
         "developedBy": "Developed by shirome",
         "followOnX": "Follow on X"

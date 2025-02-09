@@ -42,19 +42,19 @@ const CrossProjectOwnerPage: React.FC<CrossProjectOwnerPageProps> = ({
     if (initialProjects.length === 0) {
       return;
     }
-
     if (initialized) {
       setSelectedProjects(prev => 
-        prev.filter(selected => 
+        prev.map(selected => {
+          const updated = initialProjects.find(p => p.projectId === selected.projectId);
+          return updated || selected;
+        }).filter(selected => 
           initialProjects.some(p => p.projectId === selected.projectId)
         )
       );
       return;
     }
-
     try {
       const savedProjectIds = localStorage.getItem(STORAGE_KEY);
-
       if (savedProjectIds) {
         const projectIds = JSON.parse(savedProjectIds) as string[];
         const validProjects = initialProjects.filter(project => 
@@ -65,7 +65,6 @@ const CrossProjectOwnerPage: React.FC<CrossProjectOwnerPageProps> = ({
     } catch (error) {
       console.error('Failed to load selected projects from localStorage:', error);
     }
-
     setInitialized(true);
   }, [initialProjects, initialized]);
 

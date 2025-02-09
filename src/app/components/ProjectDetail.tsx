@@ -24,8 +24,10 @@ import { Dictionary } from '@/i18n/dictionaries/index';
 
 interface ProjectDetailProps {
   projectId: string;
+  project: Project;
   lang: string;
-  onProjectsUpdated: () => void;
+  onProjectUpdate: (project: Project) => Promise<void>;
+  onProjectsUpdated: () => Promise<void>;
 }
 
 const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjectsUpdated }) => {
