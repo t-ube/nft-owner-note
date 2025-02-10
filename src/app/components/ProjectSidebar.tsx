@@ -328,7 +328,7 @@ const ProjectSidebar = ({
           </div>
           
           <div className="relative">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pt-2 pb-1">
               <span className="text-sm text-gray-500 dark:text-gray-400">Developed by shirome</span>
               <a
                 href="https://x.com/shirome_x"
@@ -373,7 +373,7 @@ const ProjectSidebar = ({
               overflow-hidden transition-all duration-500 ease-in-out
               ${isCreditsOpen ? 'max-h-32 mt-2 opacity-100' : 'max-h-0 opacity-0 mb-0'}
             `}>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="pb-5 text-xs text-gray-500 dark:text-gray-400">
                 <div className="flex flex-wrap gap-1">
                   {CONTRIBUTORS.map((contributor, index) => (
                     <span key={index} className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">

@@ -167,7 +167,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="flex flex-col sm:flex-row h-[100dvh] overflow-hidden bg-gray-100 dark:bg-gray-900">
       <ProjectSidebar
         projects={projects}
         searchTerm={searchTerm}
@@ -178,21 +178,21 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
         lang={lang}
       />
   
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <IconTitle/>
 
-        <Card className="max-w-2xl mx-auto">
+        <Card className="max-w-2xl mx-auto mb-8">
           <CardHeader>
             <CardTitle>{dict?.project.title}</CardTitle>
           </CardHeader>
           <CardContent>
             {error && (
-              <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-400 rounded">
+              <div className="mb-4 p-3 sm:p-4 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-400 rounded text-sm">
                 {error}
               </div>
             )}
             {successMessage && (
-              <div className="mb-4 p-4 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-800 text-green-700 dark:text-green-400 rounded">
+              <div className="mb-4 p-3 sm:p-4 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-800 text-green-700 dark:text-green-400 rounded text-sm">
                 {successMessage}
               </div>
             )}

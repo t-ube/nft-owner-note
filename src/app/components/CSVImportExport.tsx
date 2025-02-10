@@ -206,14 +206,14 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang
         </Alert>
       )}
       
-      <div className="flex items-center gap-2">
-        {/* Desktop view */}
-        <div className="hidden lg:flex gap-2">
+      <div className="flex items-center">
+        {/* Desktop view (1280px以上) */}
+        <div className="hidden xl:flex gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={handleExport}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 whitespace-nowrap"
           >
             <Download className="h-4 w-4" />
             {t.buttons.exportCSV}
@@ -230,7 +230,7 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang
             <Button
               variant="outline"
               size="sm"
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 whitespace-nowrap"
             >
               <Upload className="h-4 w-4" />
               {t.buttons.importCSV}
@@ -241,45 +241,45 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang
             variant="outline"
             size="sm"
             onClick={generateSampleCSV}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 whitespace-nowrap"
           >
             <FileDown className="h-4 w-4" />
             {t.buttons.downloadSample}
           </Button>
         </div>
 
-        {/* Mobile view */}
-        <div className="lg:hidden">
+        {/* Mobile view (1280px未満) */}
+        <div className="xl:hidden">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleExport}>
-              <Download className="h-4 w-4 mr-2" />
-              {t.buttons.exportCSV}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.csv';
-                input.onchange = (e) => handleImport(e as unknown as React.ChangeEvent<HTMLInputElement>);
-                input.click();
-              }}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              {t.buttons.importCSV}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={generateSampleCSV}>
-              <FileDown className="h-4 w-4 mr-2" />
-              {t.buttons.downloadSample}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExport}>
+                <Download className="h-4 w-4 mr-2" />
+                {t.buttons.exportCSV}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = '.csv';
+                  input.onchange = (e) => handleImport(e as unknown as React.ChangeEvent<HTMLInputElement>);
+                  input.click();
+                }}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {t.buttons.importCSV}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={generateSampleCSV}>
+                <FileDown className="h-4 w-4 mr-2" />
+                {t.buttons.downloadSample}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>
