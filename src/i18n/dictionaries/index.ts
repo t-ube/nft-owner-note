@@ -45,6 +45,7 @@ export interface Dictionary {
     bulkCreate: {
       button: string;
       title: string;
+      description: string;
       placeholder: string;
       fetch: string;
       create: string;

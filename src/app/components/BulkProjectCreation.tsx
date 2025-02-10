@@ -267,10 +267,14 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full mt-4">
-          <Plus className="h-4 w-4 mr-2" />
-          {dictionary.project.bulkCreate.button}
-        </Button>
+        <div className="space-y-2">
+          <Button variant="default" className="w-full mt-4 relative">
+            <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full">New</div>
+            <Plus className="h-5 w-5 mr-2" />
+            {dictionary.project.bulkCreate.button}
+          </Button>
+          <p className="text-sm text-gray-600 dark:text-gray-400 text-center">✨ {dictionary.project.bulkCreate.description}</p>
+        </div>
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>

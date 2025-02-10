@@ -197,14 +197,6 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
               </div>
             )}
 
-            <BulkProjectCreation
-              onProjectsCreated={refreshProjects}
-              dictionary={dict}
-              lang={lang}
-            />
-
-            <Separator className="my-4" />
-
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1 dark:text-gray-200">
@@ -296,11 +288,20 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
                   </DialogContent>
                 </Dialog>
               </div>
-              <Button variant="outline" type="submit" className="w-full" disabled={isSubmitting}>
+              <Button variant="secondary" type="submit" className="w-full" disabled={isSubmitting}>
                 <Plus className="h-4 w-4 mr-2" />
                 {isSubmitting ? dict?.project.creating : dict?.project.createButton}
               </Button>
             </form>
+
+            <Separator className="my-4" />
+
+            <BulkProjectCreation
+              onProjectsCreated={refreshProjects}
+              dictionary={dict}
+              lang={lang}
+            />
+            
           </CardContent>
         </Card>
       </div>

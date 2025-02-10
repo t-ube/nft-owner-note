@@ -38,6 +38,7 @@
     "bulkCreate": {
       "button": "プロジェクト簡単作成",
       "title": "プロジェクト簡単作成",
+      "description": "複数のプロジェクトを一括で作成できます",
       "placeholder": "発行者アドレスを入力",
       "fetch": "コレクション取得",
       "create": "全プロジェクトを作成",
