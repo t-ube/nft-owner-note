@@ -104,11 +104,28 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ lang, onFilterChange }) 
     });
   };
 
-  // 日付を Unix タイムスタンプに変換
+  // 日付をUnixタイムスタンプに変換
   const dateToTimestamp = (dateStr: string): number => {
+    console.log(dateStr);
+    // 入力された日付文字列をローカルタイムゾーンで解釈
     const date = new Date(dateStr);
-    date.setHours(0, 0, 0, 0);
-    return date.getTime();
+    // その日の0時0分0秒を取得（ローカルタイムゾーン）
+    const localMidnight = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      0, 0, 0, 0
+    );
+    // Unixタイムスタンプとしてミリセカンドを返す
+    return localMidnight.getTime();
+  };
+
+  const formatDateToLocal = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   if (!dict) return null;
@@ -203,7 +220,7 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ lang, onFilterChange }) 
                 <Input
                   type="date"
                   value={filters.minDate 
-                    ? new Date(filters.minDate).toISOString().split('T')[0]
+                    ? formatDateToLocal(filters.minDate)
                     : ''}
                   onChange={e => updateFilter(
                     'minDate',
@@ -213,7 +230,7 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ lang, onFilterChange }) 
                 <Input
                   type="date"
                   value={filters.maxDate
-                    ? new Date(filters.maxDate).toISOString().split('T')[0]
+                    ? formatDateToLocal(filters.maxDate)
                     : ''}
                   onChange={e => updateFilter(
                     'maxDate',
@@ -253,7 +270,7 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ lang, onFilterChange }) 
                 <Input
                   type="date"
                   value={filters.minLatestSaleDate 
-                    ? new Date(filters.minLatestSaleDate).toISOString().split('T')[0]
+                    ? formatDateToLocal(filters.minLatestSaleDate)
                     : ''}
                   onChange={e => updateFilter(
                     'minLatestSaleDate',
@@ -263,7 +280,7 @@ export const NFTFilters: React.FC<NFTFiltersProps> = ({ lang, onFilterChange }) 
                 <Input
                   type="date"
                   value={filters.maxLatestSaleDate
-                    ? new Date(filters.maxLatestSaleDate).toISOString().split('T')[0]
+                    ? formatDateToLocal(filters.maxLatestSaleDate)
                     : ''}
                   onChange={e => updateFilter(
                     'maxLatestSaleDate',
