@@ -313,9 +313,9 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-2 sm:px-0">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2">
             <Checkbox
               id="showGrouped"
               checked={showGrouped}
@@ -356,23 +356,23 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card className="mx-[-0.5rem] sm:mx-0 rounded-none sm:rounded-lg border-x-0 sm:border-x">
+        <CardHeader className="px-3 sm:px-6">
           <CardTitle>{t.table.title}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-2 sm:px-6">
           <div className="border rounded-md overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t.table.rank}</TableHead>
-                  <TableHead>{t.table.owner}</TableHead>
-                  <TableHead>{t.table.name}</TableHead>
-                  <TableHead>{t.table.xAccount}</TableHead>
+                  <TableHead className="w-16">{t.table.rank}</TableHead>
+                  <TableHead className="min-w-[140px]">{t.table.owner}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{t.table.name}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{t.table.xAccount}</TableHead>
                   <TableHead className="text-right">{t.table.totalNfts}</TableHead>
-                  <TableHead className="text-right">{t.table.share}</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">{t.table.share}</TableHead>
                   {selectedProjects.map(project => (
-                    <TableHead key={project.projectId} className="text-right">
+                    <TableHead key={project.projectId} className="text-right min-w-[80px]">
                       {project.name}
                     </TableHead>
                   ))}
@@ -388,16 +388,16 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
                   <TableCell className="font-mono">
                     {isGroupedStat(stat) ? (
                       <div className="flex items-center gap-2">
-                        <span className="font-mono">{formatAddress(stat.addresses[0])}</span>
+                        <span className="font-mono text-sm">{formatAddress(stat.addresses[0])}</span>
                         {stat.addresses.length > 1 &&
-                          <span className="text-sm text-gray-500">
+                          <span className="text-xs text-gray-500">
                             (+{stat.addresses.length - 1})
                           </span>
                         }
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <span className="font-mono">{formatAddress(stat.address)}</span>
+                        <span className="font-mono text-sm">{formatAddress(stat.address)}</span>
                         <AddressGroupDialog
                           initialAddresses={[stat.address]}
                           groupId={stat.group?.id}
@@ -415,16 +415,16 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
                       </div>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     {isGroupedStat(stat) ? stat.groupName || '-' : stat.group?.name || '-'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     {formatXAccount(isGroupedStat(stat) ? stat.xAccount : stat.group?.xAccount)}
                   </TableCell>
                   <TableCell className="text-right">
                     {stat.totalNFTs.toLocaleString()}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right hidden sm:table-cell">
                     {stat.holdingRatio.toFixed(2)}%
                   </TableCell>
                   {selectedProjects.map(project => (

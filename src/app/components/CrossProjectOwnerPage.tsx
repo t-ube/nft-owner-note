@@ -113,78 +113,81 @@ const CrossProjectOwnerPage: React.FC<CrossProjectOwnerPageProps> = ({
   const t = dict.project.aggregatedOwnerList;
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-4">{t.title}</h1>
-        
-        <div className="flex flex-wrap gap-4 mb-4">
-          <div className="w-[300px] space-y-2">
-            <Input
-              placeholder={t.placeholders.searchProjects}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <Select onValueChange={toggleProject}>
-              <SelectTrigger>
-                <SelectValue placeholder={t.placeholders.selectProject} />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredProjects.map((project) => (
-                  <SelectItem
-                    key={project.projectId}
-                    value={project.projectId}
-                  >
-                    <div className="flex items-center">
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          selectedProjects.find(p => p.projectId === project.projectId)
-                            ? "opacity-100"
-                            : "opacity-0"
-                        )}
-                      />
-                      {project.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <div className="p-2 sm:p-4 lg:p-6">
+      <div className="space-y-4 sm:space-y-6">
+          <h1 className="text-xl sm:text-2xl font-bold px-1">{t.title}</h1>
+          
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="w-full sm:w-[300px] space-y-2">
+          
+              <Input
+                placeholder={t.placeholders.searchProjects}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <Select onValueChange={toggleProject}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t.placeholders.selectProject} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredProjects.map((project) => (
+                    <SelectItem
+                      key={project.projectId}
+                      value={project.projectId}
+                    >
+                      <div className="flex items-center">
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            selectedProjects.find(p => p.projectId === project.projectId)
+                              ? "opacity-100"
+                              : "opacity-0"
+                          )}
+                        />
+                        {project.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="flex flex-wrap gap-2">
-            {selectedProjects.map(project => (
-              <Badge
-                key={project.projectId}
-                variant="secondary"
-                className="flex items-center gap-2"
-              >
-                {project.name}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-4 w-4 p-0 hover:bg-transparent"
-                  onClick={() => toggleProject(project.projectId)}
+            <div className="flex flex-wrap gap-2">
+              {selectedProjects.map(project => (
+                <Badge
+                  key={project.projectId}
+                  variant="secondary"
+                  className="flex items-center gap-2"
                 >
-                  ×
-                </Button>
-              </Badge>
-            ))}
+                  {project.name}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0 hover:bg-transparent"
+                    onClick={() => toggleProject(project.projectId)}
+                  >
+                    ×
+                  </Button>
+                </Badge>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {selectedProjects.length > 0 ? (
-          <CrossProjectOwnerList
-            selectedProjects={selectedProjects}
-            lang={lang}
-            onProjectsUpdated={handleProjectsUpdated}
-          />
-        ) : (
-          <Card>
-            <CardContent className="p-8 text-center text-gray-500">
-              {t.placeholders.selectProjectToAnalyze}
-            </CardContent>
-          </Card>
-        )}
+          {selectedProjects.length > 0 ? (
+            <CrossProjectOwnerList
+              selectedProjects={selectedProjects}
+              lang={lang}
+              onProjectsUpdated={handleProjectsUpdated}
+            />
+          ) : (
+            <Card>
+              <CardContent className="p-8 text-center text-gray-500">
+                {t.placeholders.selectProjectToAnalyze}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -185,8 +185,16 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
     return <ArrowUpDown className="ml-2 h-4 w-4" />;
   };
 
-  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
-    <TableHead className={field.startsWith('userValue') ? 'w-24' : ''}>
+  const SortableHeader = ({ 
+    field, 
+    children,
+    className 
+  }: { 
+    field: SortField; 
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    <TableHead className={className}>
       <Button
         variant="ghost"
         onClick={() => handleSort(field)}
@@ -232,111 +240,117 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
   const { owners: t } = dict.project;
 
   return (
-    <div className="p-4 lg:p-8">
-      <Card>
-        <CardHeader className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-2">
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              {t.title}
-            </CardTitle>
-            <span className="text-sm text-muted-foreground">
-              ({filteredOwners.length} {searchTerm ? t.matchingOwners : t.totalOwners})
-            </span>
-          </div>
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 w-full lg:w-auto">
-            <div className="relative flex-1 lg:w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />
-              <Input
-                placeholder={t.search.placeholder}
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+    <div className="p-2 sm:p-4 lg:p-8">
+      <Card className="mx-[-0.5rem] sm:mx-0 rounded-none sm:rounded-lg border-x-0 sm:border-x">
+        <CardHeader className="px-3 sm:px-6">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                {t.title}
+              </CardTitle>
+              <span className="text-sm text-muted-foreground">
+                ({filteredOwners.length} {searchTerm ? t.matchingOwners : t.totalOwners})
+              </span>
             </div>
-            <div className="flex items-center gap-2">
-              <AddressGroupDialog onSave={handleGroupSave} lang={lang}>
-                <Button className="flex-1 lg:flex-none">
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t.actions.newOwner}
-                </Button>
-              </AddressGroupDialog>
-              <CSVImportExport onGroupsUpdated={loadData} lang={lang} />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+              <div className="relative flex-1 lg:w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />
+                <Input
+                  placeholder={t.search.placeholder}
+                  className="pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <AddressGroupDialog onSave={handleGroupSave} lang={lang}>
+                  <Button className="flex-1 lg:flex-none">
+                    <Plus className="h-4 w-4 mr-2" />
+                    {t.actions.newOwner}
+                  </Button>
+                </AddressGroupDialog>
+                <CSVImportExport onGroupsUpdated={loadData} lang={lang} />
+              </div>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <SortableHeader field="name">{t.table.ownerName}</SortableHeader>
-                <SortableHeader field="addresses">{t.table.walletAddresses}</SortableHeader>
-                <SortableHeader field="xAccount">{t.table.xAccount}</SortableHeader>
-                <TableHead>{t.table.memo}</TableHead>
-                <TableHead>{t.table.actions}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredOwners.map((owner) => (
-                <TableRow key={owner.id}>
-                  <TableCell>{owner.name}</TableCell>
-                  <TableCell>
-                    {owner.addresses.length > 0 ? (
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono">
-                          {`${owner.addresses[0].substring(0, 4)}...${owner.addresses[0].substring(owner.addresses[0].length - 4)}`}
-                          {owner.addresses.length > 1 && (
-                            <span className="text-gray-500 ml-1">
-                              (+{owner.addresses.length - 1})
-                            </span>
-                          )}
-                        </span>
+        <CardContent className="px-2 sm:px-6">
+          <div className="border rounded-md overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <SortableHeader field="name">{t.table.ownerName}</SortableHeader>
+                  <SortableHeader field="addresses">{t.table.walletAddresses}</SortableHeader>
+                  <SortableHeader field="xAccount" className="hidden sm:table-cell">{t.table.xAccount}</SortableHeader>
+                  <TableHead className="hidden sm:table-cell">{t.table.memo}</TableHead>
+                  <TableHead>{t.table.actions}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredOwners.map((owner) => (
+                  <TableRow key={owner.id}>
+                    <TableCell>{owner.name}</TableCell>
+                    <TableCell>
+                      {owner.addresses.length > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono">
+                            {`${owner.addresses[0].substring(0, 4)}...${owner.addresses[0].substring(owner.addresses[0].length - 4)}`}
+                            {owner.addresses.length > 1 && (
+                              <span className="text-gray-500 ml-1">
+                                (+{owner.addresses.length - 1})
+                              </span>
+                            )}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => handleCopyAddress(owner.addresses[0])}
+                          >
+                            {copiedAddress === owner.addresses[0] ? (
+                              <Check className="h-3 w-3 text-green-500" />
+                            ) : (
+                              <Copy className="h-3 w-3 text-gray-500 hover:text-gray-700" />
+                            )}
+                          </Button>
+                        </div>
+                      ) : (
+                        '-'
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">{formatXAccount(owner.xAccount)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{owner.memo || '-'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <AddressGroupDialog
+                          groupId={owner.id}
+                          onSave={handleGroupSave}
+                          lang={lang}
+                        >
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </AddressGroupDialog>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => handleCopyAddress(owner.addresses[0])}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteClick(owner)}
                         >
-                          {copiedAddress === owner.addresses[0] ? (
-                            <Check className="h-3 w-3 text-green-500" />
-                          ) : (
-                            <Copy className="h-3 w-3 text-gray-500 hover:text-gray-700" />
-                          )}
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                    ) : (
-                      '-'
-                    )}
-                  </TableCell>
-                  <TableCell>{formatXAccount(owner.xAccount)}</TableCell>
-                  <TableCell>{owner.memo || '-'}</TableCell>
-                  <TableCell>
-                    <AddressGroupDialog
-                      groupId={owner.id}
-                      onSave={handleGroupSave}
-                      lang={lang}
-                    >
-                      <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                        >
-                          <Pencil className="h-4 w-4" />
-                      </Button>
-                    </AddressGroupDialog>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => handleDeleteClick(owner)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

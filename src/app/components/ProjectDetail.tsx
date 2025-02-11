@@ -112,10 +112,10 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjec
     >
       <NFTWrapper>
         <div className="flex-1 overflow-auto">
-          <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
+          <div className="p-3 sm:p-6">
+            <div className="flex justify-between items-center mb-4 sm:mb-6">
               <div>
-                <h1 className="text-2xl font-bold">{project.name}</h1>
+                <h1 className="text-xl sm:text-2xl font-bold">{project.name}</h1>
               </div>
             </div>
 
@@ -138,11 +138,11 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjec
               </TabsList>
 
               <TabsContent value="owners" className="space-y-4">
-                <Card>
-                  <CardHeader>
+                <Card className="mx-[-0.75rem] sm:mx-0 rounded-none sm:rounded-lg border-x-0 sm:border-x">
+                  <CardHeader className="px-3 sm:px-6">
                     <CardTitle>{dict?.project.detail.ownerRank}</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-2 sm:px-6">
                     <OwnerList 
                       lang={lang}
                       issuer={project.issuer} 
@@ -153,18 +153,18 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjec
               </TabsContent>
 
               <TabsContent value="nfts" className="space-y-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
+                <Card className="mx-[-0.75rem] sm:mx-0 rounded-none sm:rounded-lg border-x-0 sm:border-x">
+                  <CardHeader className="flex flex-row items-center justify-between px-3 sm:px-6">
                     <CardTitle>{dict?.project.detail.nftList}</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-2 sm:px-6">
                     <NFTList lang={lang} projectId={projectId}/>
                   </CardContent>
                 </Card>
               </TabsContent>
 
               <TabsContent value="stats" className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2 px-2 sm:px-0">
                   <Statistics lang={lang} projectId={projectId} />
                 </div>
               </TabsContent>
