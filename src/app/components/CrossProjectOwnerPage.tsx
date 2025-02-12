@@ -19,7 +19,7 @@ import { Project, dbManager } from '@/utils/db';
 import { fetchProjectNFTs } from '@/utils/fetchProjectNFTs';
 import CrossProjectOwnerList from '@/app/components/CrossProjectOwnerList';
 import AllowlistGenerator from '@/app/components/AllowlistGenerator';
-import { BatchUpdateComponent, UpdateProgress } from '@/app/components/BatchUpdateComponent';
+import { UpdateProgress } from '@/app/components/BatchUpdateComponent';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import { Check } from 'lucide-react';
