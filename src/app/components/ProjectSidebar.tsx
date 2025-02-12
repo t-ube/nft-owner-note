@@ -11,7 +11,7 @@ import {
   X, 
   Moon, 
   Sun, 
-  BarChart3, 
+  Network, 
   ChevronDown, 
   Pencil 
 } from 'lucide-react';
@@ -146,8 +146,8 @@ const ProjectSidebar = ({
                 setIsOpen(false);
               }}
             >
-              <BarChart3 className="h-4 w-4 mr-2" />
-              {t.crossProjectAnalysis}
+              <Network className="h-4 w-4 mr-2" />
+              {t.integration}
             </Button>
 
             <h2 className="text-xl font-bold dark:text-white">{t.projectsTitle}</h2>

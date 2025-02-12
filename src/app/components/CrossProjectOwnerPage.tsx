@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Check } from "lucide-react";
+import { Check, Users, List, Network } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,9 +14,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Input } from '@/components/ui/input';
 import { Project } from '@/utils/db';
 import CrossProjectOwnerList from '@/app/components/CrossProjectOwnerList';
-import { Input } from '@/components/ui/input';
+import AllowlistGenerator from '@/app/components/AllowlistGenerator';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 
@@ -110,17 +112,18 @@ const CrossProjectOwnerPage: React.FC<CrossProjectOwnerPageProps> = ({
   );
 
   if (!dict) return null;
-  const t = dict.project.aggregatedOwnerList;
+  const t = dict.project.integration;
 
   return (
     <div className="p-2 sm:p-4 lg:p-6">
       <div className="space-y-4 sm:space-y-6">
-          <h1 className="text-xl sm:text-2xl font-bold px-1">{t.title}</h1>
-          
-          <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="w-full sm:w-[300px] space-y-2">
-          
+        <div className="flex items-center gap-2 px-1">
+          <Network className="h-6 w-6" />
+          <h1 className="text-xl sm:text-2xl font-bold">{t.title}</h1>
+        </div>
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="w-full sm:w-[300px] space-y-2">
               <Input
                 placeholder={t.placeholders.searchProjects}
                 value={searchTerm}
@@ -175,11 +178,34 @@ const CrossProjectOwnerPage: React.FC<CrossProjectOwnerPageProps> = ({
           </div>
 
           {selectedProjects.length > 0 ? (
-            <CrossProjectOwnerList
-              selectedProjects={selectedProjects}
-              lang={lang}
-              onProjectsUpdated={handleProjectsUpdated}
-            />
+            <Tabs defaultValue="owners" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="owners">
+                  <Users className="h-4 w-4 mr-2" />
+                  {t.tabs.owners}
+                </TabsTrigger>
+                <TabsTrigger value="allowlist">
+                  <List className="h-4 w-4 mr-2" />
+                  {t.tabs.allowlist}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="owners">
+                <CrossProjectOwnerList
+                  selectedProjects={selectedProjects}
+                  lang={lang}
+                  onProjectsUpdated={handleProjectsUpdated}
+                />
+              </TabsContent>
+
+              <TabsContent value="allowlist">
+                <AllowlistGenerator
+                  selectedProjects={selectedProjects}
+                  dict={dict}
+                  lang={lang}
+                />
+              </TabsContent>
+            </Tabs>
           ) : (
             <Card>
               <CardContent className="p-8 text-center text-gray-500">

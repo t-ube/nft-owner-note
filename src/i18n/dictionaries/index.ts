@@ -360,7 +360,7 @@ export interface Dictionary {
     sidebar: {
       title: string;
       ownersList: string;
-      crossProjectAnalysis: string;
+      integration: string;
       projectsTitle: string;
       search: {
         placeholder: string;
@@ -377,7 +377,7 @@ export interface Dictionary {
         followOnX: string;
       };
     };
-    aggregatedOwnerList: {
+    integration: {
       title: string;
       placeholders: {
         searchProjects: string;
@@ -404,6 +404,30 @@ export interface Dictionary {
         share: string;
         title: string;
       };
+      tabs: {
+        owners: string;
+        allowlist: string;
+      };
+    };
+    allowlist: {
+      status: {
+        total: string;
+      },
+      address: string;
+      name: string;
+      totalNFTs: string;
+      mints: string;
+      export: string;
+      clear: string;
+      save: string;
+      cancel: string;
+      applyRules: string;
+      loadingRules: string;
+      ruleSettings: string;
+      minNFTs: string;
+      mintCount: string;
+      addRule: string;
+      removeRule: string;
     };
   };
 }

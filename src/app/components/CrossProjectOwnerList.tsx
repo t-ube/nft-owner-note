@@ -309,7 +309,7 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
 
 
   if (!dict) return null;
-  const t = dict.project.aggregatedOwnerList;
+  const t = dict.project.integration;
 
   return (
     <div className="space-y-4">

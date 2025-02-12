@@ -79,6 +79,20 @@ export interface AddressInfo {
   updatedAt: number;
 }
 
+export interface AllowlistEntry {
+  id: string;           // projectId-address
+  address: string;      // オーナーのアドレス
+  mints: number;        // ミント可能数
+  updatedAt: number;    // 更新日時
+}
+
+export interface AllowlistRule {
+  id: string;           // ルールID
+  minNFTs: number;      // 最小NFT所持数
+  mintCount: number;    // 付与するミント数
+  updatedAt: number;    // 更新日時
+}
+
 interface NFTPaginationOptions {
   projectId: string;
   page: number;
@@ -174,6 +188,18 @@ class DatabaseManager {
           const addressStore = db.createObjectStore('addresses', { keyPath: 'address' });
           addressStore.createIndex('groupId', 'groupId', { unique: false });
           addressStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+        }
+
+        // Allowlist store
+        if (!db.objectStoreNames.contains('allowlist')) {
+          const store = db.createObjectStore('allowlist', { keyPath: 'id' });
+          store.createIndex('address', 'address', { unique: true });
+        }
+
+        // Allowlist Rules store
+        if (!db.objectStoreNames.contains('allowlistRules')) {
+          const store = db.createObjectStore('allowlistRules', { keyPath: 'id' });
+          store.createIndex('updatedAt', 'updatedAt', { unique: false });
         }
       };
     });
@@ -793,6 +819,105 @@ class DatabaseManager {
           total
         });
       };
+    });
+  }
+
+  // AL Management Methods
+  async setAllowlistEntry(
+    address: string,
+    mints: number
+  ): Promise<AllowlistEntry> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('allowlist', 'readwrite');
+      const store = transaction.objectStore('allowlist');
+      const entry: AllowlistEntry = {
+        id: address,
+        address,
+        mints,
+        updatedAt: Date.now()
+      };
+
+      const request = store.put(entry);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(entry);
+    });
+  }
+
+  async getAllowlistEntries(): Promise<AllowlistEntry[]> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('allowlist', 'readonly');
+      const store = transaction.objectStore('allowlist');
+      const request = store.getAll();
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+    });
+  }
+
+  async clearAllowlist(): Promise<void> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('allowlist', 'readwrite');
+      const store = transaction.objectStore('allowlist');
+      const request = store.clear();
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+  }
+
+  // Allowlist Rules Methods
+  async getAllowlistRules(): Promise<AllowlistRule[]> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('allowlistRules', 'readonly');
+      const store = transaction.objectStore('allowlistRules');
+      const request = store.getAll();
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const rules = request.result;
+        // minNFTs の降順でソート
+        rules.sort((a, b) => b.minNFTs - a.minNFTs);
+        resolve(rules);
+      };
+    });
+  }
+
+  async saveAllowlistRules(rules: Omit<AllowlistRule, 'id' | 'updatedAt'>[]): Promise<AllowlistRule[]> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('allowlistRules', 'readwrite');
+      const store = transaction.objectStore('allowlistRules');
+
+      // まず既存のルールを全て削除
+      store.clear();
+
+      const now = Date.now();
+      const savedRules: AllowlistRule[] = [];
+
+      // 新しいルールを保存
+      rules.forEach((rule) => {
+        const completeRule: AllowlistRule = {
+          id: crypto.randomUUID(),
+          updatedAt: now,
+          ...rule
+        };
+
+        const request = store.add(completeRule);
+        request.onsuccess = () => {
+          savedRules.push(completeRule);
+        };
+      });
+
+      transaction.oncomplete = () => {
+        // minNFTs の降順でソート
+        savedRules.sort((a, b) => b.minNFTs - a.minNFTs);
+        resolve(savedRules);
+      };
+      transaction.onerror = () => reject(transaction.error);
     });
   }
 }

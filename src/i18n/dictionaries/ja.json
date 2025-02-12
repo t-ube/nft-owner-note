@@ -353,7 +353,7 @@
     "sidebar": {
       "title": "Owner Note",
       "ownersList": "オーナーリスト",
-      "crossProjectAnalysis": "プロジェクト横断分析",
+      "integration": "プロジェクト連携",
       "projectsTitle": "プロジェクト",
       "search": {
         "placeholder": "プロジェクトを検索"
@@ -370,8 +370,8 @@
         "followOnX": "Xでフォロー"
       }
     },
-    "aggregatedOwnerList": {
-      "title": "プロジェクト横断分析",
+    "integration": {
+      "title": "プロジェクト連携",
       "placeholders": {
         "searchProjects": "プロジェクトを検索...",
         "selectProject": "プロジェクトを選択",
@@ -396,7 +396,31 @@
         "totalNfts": "NFT合計",
         "share": "保有率",
         "title": "オーナーランク"
+      },
+      "tabs": {
+        "owners": "オーナーランク",
+        "allowlist": "AL作成"
       }
+    },
+    "allowlist": {
+      "status": {
+        "total": "合計 {count} エントリー"
+      },
+      "address": "アドレス",
+      "name": "オーナー名",
+      "totalNFTs": "総NFT数",
+      "mints": "AL数",
+      "export": "ALを出力",
+      "clear": "クリア",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "applyRules": "ルールを適用",
+      "loadingRules": "ルールを読み込み中...",
+      "ruleSettings": "ルール設定",
+      "minNFTs": "必要NFT数",
+      "mintCount": "AL付与数",
+      "addRule": "ルール追加",
+      "removeRule": "削除"
     }
   }
 }

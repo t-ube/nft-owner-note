@@ -353,7 +353,7 @@
     "sidebar": {
       "title": "Owner Note",
       "ownersList": "Owners List",
-      "crossProjectAnalysis": "Cross-Project Analysis",
+      "integration": "Project Integration",
       "projectsTitle": "Projects",
       "search": {
         "placeholder": "Search projects"
@@ -370,8 +370,8 @@
         "followOnX": "Follow on X"
       }
     },
-    "aggregatedOwnerList": {
-      "title": "Cross-Project Analysis",
+    "integration": {
+      "title": "Project Integration",
       "placeholders": {
         "searchProjects": "Search projects...",
         "selectProject": "Select project",
@@ -396,7 +396,31 @@
         "totalNfts": "Total NFTs",
         "share": "Holding %",
         "title": "Owner Rank"
+      },
+      "tabs": {
+        "owners": "Owner Rank",
+        "allowlist": "Allowlist"
       }
+    },
+    "allowlist": {
+      "status": {
+        "total": "Total {count} entries"
+      },
+      "address": "Address",
+      "name": "Owner Name",
+      "totalNFTs": "Total NFTs",
+      "mints": "AL Count",
+      "export": "Export",
+      "clear": "Clear",
+      "save": "Save",
+      "cancel": "Cancel",
+      "applyRules": "Apply Rules",
+      "loadingRules": "Loading rules...",
+      "ruleSettings": "Rule Settings",
+      "minNFTs": "Min NFTs",
+      "mintCount": "AL Count",
+      "addRule": "Add Rule",
+      "removeRule": "Remove"
     }
   }
 }
