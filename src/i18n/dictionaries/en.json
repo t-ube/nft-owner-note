@@ -404,13 +404,18 @@
     },
     "allowlist": {
       "status": {
-        "total": "Total {count} entries"
+        "total": "Total {count} entries",
+        "updatingProject": "Updating {project} ({current}/{total})",
+        "updateComplete": "Update complete"
+      },
+      "actions": {
+        "updateNFTs": "Update Total NFTs"
       },
       "address": "Address",
       "name": "Owner Name",
       "totalNFTs": "Total NFTs",
       "mints": "AL Count",
-      "export": "Export",
+      "export": "Export AL",
       "clear": "Clear",
       "save": "Save",
       "cancel": "Cancel",
@@ -420,7 +425,8 @@
       "minNFTs": "Min NFTs",
       "mintCount": "AL Count",
       "addRule": "Add Rule",
-      "removeRule": "Remove"
+      "removeRule": "Remove",
+      "manualEntry": "Manual Entry"
     }
   }
 }

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, Users, List, Network } from "lucide-react";
+import { Users, List, Network } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -15,11 +15,14 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Input } from '@/components/ui/input';
-import { Project } from '@/utils/db';
+import { Project, dbManager } from '@/utils/db';
+import { fetchProjectNFTs } from '@/utils/fetchProjectNFTs';
 import CrossProjectOwnerList from '@/app/components/CrossProjectOwnerList';
 import AllowlistGenerator from '@/app/components/AllowlistGenerator';
+import { BatchUpdateComponent, UpdateProgress } from '@/app/components/BatchUpdateComponent';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
+import { Check } from 'lucide-react';
 
 interface CrossProjectOwnerPageProps {
   lang: string;
@@ -39,7 +42,10 @@ const CrossProjectOwnerPage: React.FC<CrossProjectOwnerPageProps> = ({
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [, setUpdateTrigger] = useState(0);
   const [initialized, setInitialized] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState<UpdateProgress | null>(null);
 
+  // ローカルストレージからの選択プロジェクト復元
   useEffect(() => {
     if (initialProjects.length === 0) {
       return;
@@ -70,9 +76,15 @@ const CrossProjectOwnerPage: React.FC<CrossProjectOwnerPageProps> = ({
     setInitialized(true);
   }, [initialProjects, initialized]);
 
+  // 選択プロジェクトの保存
   useEffect(() => {
     if (!initialized) {
       return;
+    }
+
+    // プロジェクトの選択が0になった場合、ALをクリア
+    if (selectedProjects.length === 0) {
+      dbManager.clearAllowlist();
     }
 
     try {
@@ -83,6 +95,7 @@ const CrossProjectOwnerPage: React.FC<CrossProjectOwnerPageProps> = ({
     }
   }, [selectedProjects, initialized]);
 
+  // 辞書のロード
   useEffect(() => {
     const loadDictionary = async () => {
       const dictionary = await getDictionary(lang as 'en' | 'ja');
@@ -90,6 +103,44 @@ const CrossProjectOwnerPage: React.FC<CrossProjectOwnerPageProps> = ({
     };
     loadDictionary();
   }, [lang]);
+
+  // 一括更新処理
+  const handleBatchUpdate = async () => {
+    setIsUpdating(true);
+    try {
+      for (let i = 0; i < selectedProjects.length; i++) {
+        const project = selectedProjects[i];
+        const progress: UpdateProgress = {
+          currentProject: project.projectId,
+          currentProjectIndex: i,
+          totalProjects: selectedProjects.length,
+          projectProgress: ((i + 1) / selectedProjects.length) * 100,
+          isComplete: i === selectedProjects.length - 1
+        };
+        setUpdateProgress(progress);
+
+        await fetchProjectNFTs(
+          project.projectId,
+          project.issuer,
+          project.taxon,
+          (nftProgress) => {
+            setUpdateProgress(prev => prev ? {
+              ...prev,
+              projectProgress: nftProgress.projectProgress
+            } : null);
+          },
+          selectedProjects.length,
+          i
+        );
+      }
+      await handleProjectsUpdated();
+    } catch (error) {
+      console.error('Error updating NFTs:', error);
+    } finally {
+      setIsUpdating(false);
+      setUpdateProgress(null);
+    }
+  };
 
   const handleProjectsUpdated = useCallback(async () => {
     await onProjectsUpdated();
@@ -194,7 +245,10 @@ const CrossProjectOwnerPage: React.FC<CrossProjectOwnerPageProps> = ({
                 <CrossProjectOwnerList
                   selectedProjects={selectedProjects}
                   lang={lang}
-                  onProjectsUpdated={handleProjectsUpdated}
+                  onUpdate={handleBatchUpdate}
+                  isUpdating={isUpdating}
+                  updateProgress={updateProgress}
+                  dictionary={dict.project.integration}
                 />
               </TabsContent>
 
@@ -203,6 +257,9 @@ const CrossProjectOwnerPage: React.FC<CrossProjectOwnerPageProps> = ({
                   selectedProjects={selectedProjects}
                   dict={dict}
                   lang={lang}
+                  onUpdate={handleBatchUpdate}
+                  isUpdating={isUpdating}
+                  updateProgress={updateProgress}
                 />
               </TabsContent>
             </Tabs>

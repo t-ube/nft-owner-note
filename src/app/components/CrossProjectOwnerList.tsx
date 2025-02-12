@@ -12,11 +12,10 @@ import {
 } from "@/components/ui/table";
 import { Download, Pencil } from 'lucide-react';
 import { AddressGroupDialog } from './AddressGroupDialog';
-import { BatchNFTUpdater } from '@/app/components/BatchNFTUpdater';
+import { BatchUpdateComponent, UpdateProgress } from '@/app/components/BatchUpdateComponent';
 import { dbManager, Project, NFToken, AddressGroup, AddressInfo } from '@/utils/db';
 import _ from 'lodash';
 import Papa from 'papaparse';
-import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 
 interface AggregatedOwnerStats {
@@ -29,12 +28,6 @@ interface AggregatedOwnerStats {
   holdingRatio: number;
   userValue1: number | null;
   userValue2: number | null;
-}
-
-interface CrossProjectOwnerListProps {
-  selectedProjects: Project[];
-  lang: string;
-  onProjectsUpdated: () => void;
 }
 
 interface GroupedStats {
@@ -53,47 +46,39 @@ type DisplayStat =
   | ({ type: 'individual' } & AggregatedOwnerStats)
   | ({ type: 'group' } & GroupedStats);
 
+interface CrossProjectOwnerListProps {
+  selectedProjects: Project[];
+  lang: string;
+  onUpdate: () => Promise<void>;
+  isUpdating: boolean;
+  updateProgress: UpdateProgress | null;
+  dictionary: Dictionary['project']['integration'];
+}
+
 const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
   selectedProjects,
   lang,
-  onProjectsUpdated
+  onUpdate,
+  isUpdating,
+  updateProgress,
+  dictionary
 }) => {
   const [nfts, setNFTs] = useState<Record<string, NFToken[]>>({});
   const [addressGroups, setAddressGroups] = useState<Record<string, AddressGroup>>({});
   const [addressInfos, setAddressInfos] = useState<Record<string, AddressInfo>>({});
   const [showGrouped, setShowGrouped] = useState(false);
-  const [, setIsLoading] = useState(true);
-  const [dict, setDict] = useState<Dictionary | null>(null);
 
-  const loadNFTData = async () => {
-    setIsLoading(true);
-    try {
-      const nftData: Record<string, NFToken[]> = {};
-      for (const project of selectedProjects) {
-        const projectNFTs = await dbManager.getNFTsByProjectId(project.projectId);
-        nftData[project.projectId] = projectNFTs.filter(nft => !nft.is_burned);
-      }
-      setNFTs(nftData);
-    } catch (error) {
-      console.error('Failed to load NFT data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // データの読み込み
   useEffect(() => {
-    const loadDictionary = async () => {
-      const dictionary = await getDictionary(lang as 'en' | 'ja');
-      setDict(dictionary);
-    };
-    loadDictionary();
-  }, [lang]);
-
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
+    const loadNFTData = async () => {
       try {
-        await loadNFTData();
+        const nftData: Record<string, NFToken[]> = {};
+        for (const project of selectedProjects) {
+          const projectNFTs = await dbManager.getNFTsByProjectId(project.projectId);
+          nftData[project.projectId] = projectNFTs.filter(nft => !nft.is_burned);
+        }
+        setNFTs(nftData);
+
         const [groups, infos] = await Promise.all([
           dbManager.getAllAddressGroups(),
           dbManager.getAllAddressInfos(),
@@ -101,40 +86,21 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
         setAddressGroups(_.keyBy(groups, 'id'));
         setAddressInfos(_.keyBy(infos, 'address'));
       } catch (error) {
-        console.error('Failed to load data:', error);
-      } finally {
-        setIsLoading(false);
+        console.error('Failed to load NFT data:', error);
       }
     };
 
-    loadData();
+    loadNFTData();
   }, [selectedProjects]);
 
+  // NFTの合計数を計算
   const totalNftCount = useMemo(() => 
     _.sum(Object.values(nfts).map(projectNFTs => 
       projectNFTs.filter(nft => !nft.is_burned).length
     )), [nfts]
   );
 
-  const calculateRank = (stats: DisplayStat[]): (number | string)[] => {
-    const ranks: (number | string)[] = [];
-    let currentRank = 1;
-    let currentCount: number | null = null;
-    let sameRankCount = 0;
-  
-    stats.forEach((stat) => {
-      if (stat.totalNFTs !== currentCount) {
-        currentRank = currentRank + sameRankCount;
-        currentCount = stat.totalNFTs;
-        sameRankCount = 0;
-      }
-      ranks.push(currentRank);
-      sameRankCount++;
-    });
-  
-    return ranks;
-  };
-
+  // 統計データの集計
   const aggregatedStats = useMemo(() => {
     const stats: Record<string, AggregatedOwnerStats> = {};
 
@@ -169,6 +135,7 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
     return _.orderBy(Object.values(stats), ['totalNFTs'], ['desc']);
   }, [nfts, addressGroups, addressInfos]);
 
+  // グループ化された統計データ
   const groupedStats = useMemo(() => {
     const groupedOwners = aggregatedStats.filter(stat => stat.group?.id);
     const statsByGroup = _.groupBy(groupedOwners, stat => stat.group?.id);
@@ -195,6 +162,7 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
     }).sort((a, b) => b.totalNFTs - a.totalNFTs);
   }, [aggregatedStats, addressGroups, totalNftCount]);
 
+  // 表示用の統計データ
   const displayStats = useMemo(() => {
     if (!showGrouped) {
       return aggregatedStats.map(stat => ({
@@ -219,7 +187,25 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
       .sort((a, b) => b.totalNFTs - a.totalNFTs);
   }, [showGrouped, aggregatedStats, groupedStats]);
 
-  const ranks = useMemo(() => calculateRank(displayStats), [displayStats]);
+  // ランクの計算
+  const ranks = useMemo(() => {
+    const result: (number | string)[] = [];
+    let currentRank = 1;
+    let currentCount: number | null = null;
+    let sameRankCount = 0;
+  
+    displayStats.forEach((stat) => {
+      if (stat.totalNFTs !== currentCount) {
+        currentRank = currentRank + sameRankCount;
+        currentCount = stat.totalNFTs;
+        sameRankCount = 0;
+      }
+      result.push(currentRank);
+      sameRankCount++;
+    });
+  
+    return result;
+  }, [displayStats]);
 
   const isGroupedStat = (stat: DisplayStat): stat is ({ type: 'group' } & GroupedStats) => {
     return stat.type === 'group';
@@ -244,39 +230,21 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
     );
   };
 
-  interface ExportData {
-    rank: number | string;
-    addresses: string[];
-    addressCount: number;
-    name: string;
-    xAccount: string;
-    totalNFTs: number;
-    holdingPercentage: string;
-    [key: string]: number | string | string[];
-  }
-
+  // CSVエクスポート処理
   const handleExportCSV = () => {
-    const exportData: ExportData[] = displayStats.map((stat, index) => {
-      const baseData = {
-        rank: ranks[index],
-        addresses: isGroupedStat(stat) ? stat.addresses : [stat.address],
-        addressCount: isGroupedStat(stat) ? stat.addresses.length : 1,
-        name: isGroupedStat(stat) ? stat.groupName || '' : stat.group?.name || '',
-        xAccount: isGroupedStat(stat) ? stat.xAccount || '' : stat.group?.xAccount || '',
-        totalNFTs: stat.totalNFTs,
-        holdingPercentage: stat.holdingRatio.toFixed(2),
-      };
-
-      const projectCounts = selectedProjects.reduce((acc, project) => ({
+    const exportData = displayStats.map((stat, index) => ({
+      rank: ranks[index],
+      addresses: isGroupedStat(stat) ? stat.addresses : [stat.address],
+      addressCount: isGroupedStat(stat) ? stat.addresses.length : 1,
+      name: isGroupedStat(stat) ? stat.groupName || '' : stat.group?.name || '',
+      xAccount: isGroupedStat(stat) ? stat.xAccount || '' : stat.group?.xAccount || '',
+      totalNFTs: stat.totalNFTs,
+      holdingPercentage: stat.holdingRatio.toFixed(2),
+      ...selectedProjects.reduce((acc, project) => ({
         ...acc,
         [`${project.name}_count`]: stat.projectHoldings[project.projectId] || 0
-      }), {});
-
-      return {
-        ...baseData,
-        ...projectCounts
-      };
-    });
+      }), {})
+    }));
   
     const csv = Papa.unparse(exportData);
     const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { 
@@ -297,6 +265,7 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
     URL.revokeObjectURL(link.href);
   };
 
+  // グループの保存処理
   const handleGroupSave = async (savedGroup: AddressGroup) => {
     setAddressGroups(prev => ({
       ...prev,
@@ -306,10 +275,6 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
     const infos = await dbManager.getAllAddressInfos();
     setAddressInfos(_.keyBy(infos, 'address'));
   };
-
-
-  if (!dict) return null;
-  const t = dict.project.integration;
 
   return (
     <div className="space-y-4">
@@ -322,26 +287,23 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
               onCheckedChange={(checked) => setShowGrouped(checked as boolean)}
             />
             <label htmlFor="showGrouped" className="text-sm">
-              {t.actions.showGrouped}
+              {dictionary.actions.showGrouped}
             </label>
           </div>
           <div className="text-sm text-gray-500">
-            {t.status.showingOwners.replace('{count}', displayStats.length.toString())}
+            {dictionary.status.showingOwners.replace('{count}', displayStats.length.toString())}
           </div>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-          <BatchNFTUpdater 
+          <BatchUpdateComponent
+            onUpdate={onUpdate}
+            isUpdating={isUpdating}
+            progress={updateProgress}
             projects={selectedProjects}
-            onComplete={async () => {
-              await loadNFTData();
-              if (onProjectsUpdated) {
-                onProjectsUpdated();
-              }
-            }}
             dictionary={{
-              updating: t.actions.updateNFTs,
-              projectProgress: t.status.updatingProject,
-              complete: t.status.updateComplete
+              updating: dictionary.actions.updateNFTs,
+              projectProgress: dictionary.status.updatingProject,
+              complete: dictionary.status.updateComplete
             }}
           />
           <Button
@@ -351,26 +313,26 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
             className="flex items-center gap-2"
           >
             <Download className="h-4 w-4" />
-            {t.actions.exportRank}
+            {dictionary.actions.exportRank}
           </Button>
         </div>
       </div>
 
       <Card className="mx-[-0.5rem] sm:mx-0 rounded-none sm:rounded-lg border-x-0 sm:border-x">
         <CardHeader className="px-3 sm:px-6">
-          <CardTitle>{t.table.title}</CardTitle>
+          <CardTitle>{dictionary.table.title}</CardTitle>
         </CardHeader>
         <CardContent className="px-2 sm:px-6">
           <div className="border rounded-md overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-16">{t.table.rank}</TableHead>
-                  <TableHead className="min-w-[140px]">{t.table.owner}</TableHead>
-                  <TableHead className="hidden sm:table-cell">{t.table.name}</TableHead>
-                  <TableHead className="hidden sm:table-cell">{t.table.xAccount}</TableHead>
-                  <TableHead className="text-right">{t.table.totalNfts}</TableHead>
-                  <TableHead className="text-right hidden sm:table-cell">{t.table.share}</TableHead>
+                  <TableHead className="w-16">{dictionary.table.rank}</TableHead>
+                  <TableHead className="min-w-[140px]">{dictionary.table.owner}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{dictionary.table.name}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{dictionary.table.xAccount}</TableHead>
+                  <TableHead className="text-right">{dictionary.table.totalNfts}</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">{dictionary.table.share}</TableHead>
                   {selectedProjects.map(project => (
                     <TableHead key={project.projectId} className="text-right min-w-[80px]">
                       {project.name}
@@ -379,68 +341,68 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-              {displayStats.map((stat, index) => (
-                <TableRow 
-                  key={isGroupedStat(stat) ? `group-${stat.groupId}` : `individual-${stat.address}`} 
-                  className="group"
-                >
-                  <TableCell className="font-medium">{ranks[index]}</TableCell>
-                  <TableCell className="font-mono">
-                    {isGroupedStat(stat) ? (
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm">{formatAddress(stat.addresses[0])}</span>
-                        {stat.addresses.length > 1 &&
-                          <span className="text-xs text-gray-500">
-                            (+{stat.addresses.length - 1})
-                          </span>
-                        }
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm">{formatAddress(stat.address)}</span>
-                        <AddressGroupDialog
-                          initialAddresses={[stat.address]}
-                          groupId={stat.group?.id}
-                          onSave={handleGroupSave}
-                          lang={lang}
-                        >
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </AddressGroupDialog>
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    {isGroupedStat(stat) ? stat.groupName || '-' : stat.group?.name || '-'}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    {formatXAccount(isGroupedStat(stat) ? stat.xAccount : stat.group?.xAccount)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {stat.totalNFTs.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right hidden sm:table-cell">
-                    {stat.holdingRatio.toFixed(2)}%
-                  </TableCell>
-                  {selectedProjects.map(project => (
-                    <TableCell key={project.projectId} className="text-right">
-                      {(stat.projectHoldings[project.projectId] || 0).toLocaleString()}
-                    </TableCell>
+                {displayStats.map((stat, index) => (
+                  <TableRow 
+                    key={isGroupedStat(stat) ? `group-${stat.groupId}` : `individual-${stat.address}`} 
+                    className="group"
+                  >
+                    <TableCell className="font-medium">{ranks[index]}</TableCell>
+                    <TableCell className="font-mono">
+                      {isGroupedStat(stat) ? (
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm">{formatAddress(stat.addresses[0])}</span>
+                            {stat.addresses.length > 1 &&
+                              <span className="text-xs text-gray-500">
+                                (+{stat.addresses.length - 1})
+                              </span>
+                            }
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm">{formatAddress(stat.address)}</span>
+                            <AddressGroupDialog
+                              initialAddresses={[stat.address]}
+                              groupId={stat.group?.id}
+                              onSave={handleGroupSave}
+                              lang={lang}
+                            >
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </AddressGroupDialog>
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {isGroupedStat(stat) ? stat.groupName || '-' : stat.group?.name || '-'}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {formatXAccount(isGroupedStat(stat) ? stat.xAccount : stat.group?.xAccount)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {stat.totalNFTs.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right hidden sm:table-cell">
+                        {stat.holdingRatio.toFixed(2)}%
+                      </TableCell>
+                      {selectedProjects.map(project => (
+                        <TableCell key={project.projectId} className="text-right">
+                          {(stat.projectHoldings[project.projectId] || 0).toLocaleString()}
+                        </TableCell>
+                      ))}
+                    </TableRow>
                   ))}
-                </TableRow>
-              ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-export default CrossProjectOwnerList;
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+  
+  export default CrossProjectOwnerList;

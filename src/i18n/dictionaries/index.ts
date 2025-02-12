@@ -412,6 +412,11 @@ export interface Dictionary {
     allowlist: {
       status: {
         total: string;
+        updatingProject: string;
+        updateComplete: string;
+      },
+      actions: {
+        updateNFTs: string;
       },
       address: string;
       name: string;
@@ -428,6 +433,7 @@ export interface Dictionary {
       mintCount: string;
       addRule: string;
       removeRule: string;
+      manualEntry: string;
     };
   };
 }

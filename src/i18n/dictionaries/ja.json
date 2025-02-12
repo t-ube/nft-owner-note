@@ -404,7 +404,12 @@
     },
     "allowlist": {
       "status": {
-        "total": "合計 {count} エントリー"
+        "total": "合計 {count} エントリー",
+        "updatingProject": "{project} を更新中 ({current}/{total})",
+        "updateComplete": "更新完了"
+      },
+      "actions": {
+        "updateNFTs": "総NFT数を更新"
       },
       "address": "アドレス",
       "name": "オーナー名",
@@ -420,7 +425,8 @@
       "minNFTs": "必要NFT数",
       "mintCount": "AL付与数",
       "addRule": "ルール追加",
-      "removeRule": "削除"
+      "removeRule": "削除",
+      "manualEntry": "手動入力"
     }
   }
 }

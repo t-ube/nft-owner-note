@@ -7,26 +7,40 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressGroupDialog } from './AddressGroupDialog';
 import { Project, dbManager, AddressGroup, AllowlistEntry, AllowlistRule, NFToken, AddressInfo } from '@/utils/db';
 import Papa from 'papaparse';
-import { Download, Pencil, Trash2 } from 'lucide-react';
+import { Download, Pencil, Trash2, Plus } from 'lucide-react';
 import _ from 'lodash';
 import OwnerValueEditor from '@/app/components/OwnerValueEditor';
 import { Dictionary } from '@/i18n/dictionaries/index';
+import { BatchUpdateComponent, UpdateProgress } from '@/app/components/BatchUpdateComponent';
 
-interface AllowlistEditorProps {
+interface AllowlistGeneratorProps {
   selectedProjects: Project[];
   dict: Dictionary;
   lang: string;
+  onUpdate: () => Promise<void>;
+  isUpdating: boolean;
+  updateProgress: UpdateProgress | null;
 }
 
-const AllowlistGenerator: React.FC<AllowlistEditorProps> = ({
+const AllowlistGenerator: React.FC<AllowlistGeneratorProps> = ({
   selectedProjects,
   dict,
-  lang
+  lang,
+  onUpdate,
+  isUpdating,
+  updateProgress
 }) => {
   const [entries, setEntries] = useState<Record<string, AllowlistEntry>>({});
   const [editingMints, setEditingMints] = useState<string | null>(null);
@@ -35,25 +49,42 @@ const AllowlistGenerator: React.FC<AllowlistEditorProps> = ({
   const [addressInfos, setAddressInfos] = useState<Record<string, AddressInfo>>({});
   const [rules, setRules] = useState<AllowlistRule[]>([]);
   const [isLoadingRules, setIsLoadingRules] = useState(true);
+  const [previousProjectIds, setPreviousProjectIds] = useState<Set<string>>(new Set());
 
-  // Load NFTs and address data
   useEffect(() => {
     const loadData = async () => {
-      // Load NFTs from all selected projects
-      const allNFTs = await Promise.all(
-        selectedProjects.map(project => 
-          dbManager.getNFTsByProjectId(project.projectId)
-        )
-      );
-      setNFTs(allNFTs.flat().filter(nft => !nft.is_burned));
-
-      // Load address groups and infos
-      const [groups, infos] = await Promise.all([
-        dbManager.getAllAddressGroups(),
-        dbManager.getAllAddressInfos(),
-      ]);
-      setAddressGroups(_.keyBy(groups, 'id'));
-      setAddressInfos(_.keyBy(infos, 'address'));
+      try {
+        // Load NFTs from all selected projects
+        const allNFTs = await Promise.all(
+          selectedProjects.map(project => 
+            dbManager.getNFTsByProjectId(project.projectId)
+          )
+        );
+        setNFTs(allNFTs.flat().filter(nft => !nft.is_burned));
+  
+        // Load address groups and infos
+        const [groups, infos] = await Promise.all([
+          dbManager.getAllAddressGroups(),
+          dbManager.getAllAddressInfos(),
+        ]);
+        setAddressGroups(_.keyBy(groups, 'id'));
+        setAddressInfos(_.keyBy(infos, 'address'));
+  
+        // AL更新の処理
+        const currentProjectIds = new Set(selectedProjects.map(p => p.projectId));
+        if (selectedProjects.length === 0) {
+          handleClear();
+        } else {
+          const removedProjects = Array.from(previousProjectIds).filter(id => !currentProjectIds.has(id));
+          if (removedProjects.length > 0) {
+            applyRules(true);
+          }
+        }
+        setPreviousProjectIds(currentProjectIds);
+  
+      } catch (error) {
+        console.error('Failed to load data:', error);
+      }
     };
     loadData();
   }, [selectedProjects]);
@@ -91,6 +122,7 @@ const AllowlistGenerator: React.FC<AllowlistEditorProps> = ({
     loadRules();
   }, []);
 
+  // Rules auto-save
   useEffect(() => {
     const saveRules = async () => {
       const rulesToSave = rules.map(({ minNFTs, mintCount }) => ({
@@ -117,33 +149,59 @@ const AllowlistGenerator: React.FC<AllowlistEditorProps> = ({
     }).sort((a, b) => b.totalNFTs - a.totalNFTs || a.address.localeCompare(b.address));
   }, [nfts, addressGroups, addressInfos]);
 
-  const applyRules = async () => {
+  const applyRules = async (preserveManual: boolean = false) => {
+    // 手動設定されたエントリーを保持
+    const manualEntries = preserveManual
+      ? Object.values(entries).filter(entry => entry.isManual)
+      : [];
+    
     const newEntries: Record<string, AllowlistEntry> = {};
     const sortedRules = _.orderBy(rules, ['minNFTs'], ['desc']);
     
+    // オーナーごとの統計を計算
     ownerStats.forEach(stat => {
+      // 手動設定されたエントリーはスキップ
+      if (manualEntries.some(entry => entry.address === stat.address)) {
+        return;
+      }
+
       const matchingRule = sortedRules.find(rule => stat.totalNFTs >= rule.minNFTs);
       if (matchingRule) {
         newEntries[stat.address] = {
           id: stat.address,
           address: stat.address,
           mints: matchingRule.mintCount,
+          isManual: false,
           updatedAt: Date.now()
         };
       }
     });
 
-    const savedEntries = await Promise.all(
-      Object.values(newEntries).map(entry => 
-        dbManager.setAllowlistEntry(entry.address, entry.mints)
+    // 現在のエントリーをクリア
+    await dbManager.clearAllowlist();
+
+    // 手動設定されたエントリーを保存
+    const savedManualEntries = await Promise.all(
+      manualEntries.map(entry => 
+        dbManager.setAllowlistEntry(entry.address, entry.mints, true)
       )
     );
 
-    setEntries(_.keyBy(savedEntries, 'address'));
+    // 自動計算されたエントリーを保存
+    const savedAutoEntries = await Promise.all(
+      Object.values(newEntries).map(entry => 
+        dbManager.setAllowlistEntry(entry.address, entry.mints, false)
+      )
+    );
+
+    // 両方のエントリーを結合
+    const allEntries = [...savedManualEntries, ...savedAutoEntries];
+    setEntries(_.keyBy(allEntries, 'address'));
   };
 
   const handleMintEdit = async (address: string, mints: number) => {
-    const entry = await dbManager.setAllowlistEntry(address, mints);
+    // 手動編集時は isManual フラグを true に設定
+    const entry = await dbManager.setAllowlistEntry(address, mints, true);
     setEntries(prev => ({
       ...prev,
       [address]: entry
@@ -194,7 +252,6 @@ const AllowlistGenerator: React.FC<AllowlistEditorProps> = ({
     setAddressInfos(_.keyBy(infos, 'address'));
   };
 
-  if (!dict) return null;
   const t = dict.project.allowlist;
 
   return (
@@ -208,53 +265,54 @@ const AllowlistGenerator: React.FC<AllowlistEditorProps> = ({
         ) : (
           <div className="space-y-2">
             {rules.map((rule, index) => (
-            <div key={index} className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">{t.minNFTs}</span>
-                <Input
-                  type="number"
-                  min="1"
-                  value={rule.minNFTs}
-                  onChange={e => {
-                    const newRules = [...rules];
-                    newRules[index].minNFTs = parseInt(e.target.value);
+              <div key={index} className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">{t.minNFTs}</span>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={rule.minNFTs}
+                    onChange={e => {
+                      const newRules = [...rules];
+                      newRules[index].minNFTs = parseInt(e.target.value);
+                      setRules(newRules);
+                    }}
+                    className="w-24"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">{t.mintCount}</span>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={rule.mintCount}
+                    onChange={e => {
+                      const newRules = [...rules];
+                      newRules[index].mintCount = parseInt(e.target.value);
+                      setRules(newRules);
+                    }}
+                    className="w-24"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const newRules = rules.filter((_, i) => i !== index);
                     setRules(newRules);
                   }}
-                  className="w-24"
-                />
+                >
+                  {t.removeRule}
+                </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">{t.mintCount}</span>
-                <Input
-                  type="number"
-                  min="1"
-                  value={rule.mintCount}
-                  onChange={e => {
-                    const newRules = [...rules];
-                    newRules[index].mintCount = parseInt(e.target.value);
-                    setRules(newRules);
-                  }}
-                  className="w-24"
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const newRules = rules.filter((_, i) => i !== index);
-                  setRules(newRules);
-                }}
-              >
-                {t.removeRule}
-              </Button>
-            </div>
-          ))}
+            ))}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setRules([...rules, { id: '', minNFTs: 1, mintCount: 1, updatedAt: 0 }])}
               className="mt-2"
             >
+              <Plus className="h-4 w-4 mr-2" />
               {t.addRule}
             </Button>
           </div>
@@ -268,31 +326,74 @@ const AllowlistGenerator: React.FC<AllowlistEditorProps> = ({
           </div>
         </div>
         <div className="flex gap-2">
+          {/* 常に表示するボタン */}
+          <BatchUpdateComponent
+            onUpdate={onUpdate}
+            isUpdating={isUpdating}
+            progress={updateProgress}
+            projects={selectedProjects}
+            dictionary={{
+              updating: t.actions.updateNFTs,
+              projectProgress: t.status.updatingProject,
+              complete: t.status.updateComplete
+            }}
+          />
           <Button 
-            variant="outline" 
-            size="sm"
-            onClick={applyRules}
-          >
-            {t.applyRules}
-          </Button>
-          <Button
             variant="outline"
             size="sm"
-            onClick={handleExportCSV}
-            disabled={Object.keys(entries).length === 0}
+            onClick={() => applyRules(true)}
           >
-            <Download className="h-4 w-4 mr-2" />
-            {t.export}
+            ✨ {t.applyRules}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleClear}
-            disabled={Object.keys(entries).length === 0}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            {t.clear}
-          </Button>
+
+          {/* Desktop view (1280px以上) */}
+          <div className="hidden xl:flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              disabled={Object.keys(entries).length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {t.export}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClear}
+              disabled={Object.keys(entries).length === 0}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {t.clear}
+            </Button>
+          </div>
+
+          {/* Mobile view (1280px未満) */}
+          <div className="xl:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  onClick={handleExportCSV}
+                  disabled={Object.keys(entries).length === 0}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {t.export}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleClear}
+                  disabled={Object.keys(entries).length === 0}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {t.clear}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -303,7 +404,14 @@ const AllowlistGenerator: React.FC<AllowlistEditorProps> = ({
               <TableHead className="w-40">{t.address}</TableHead>
               <TableHead className="w-40">{t.name}</TableHead>
               <TableHead className="w-32 text-right">{t.totalNFTs}</TableHead>
-              <TableHead className="w-32 text-right">{t.mints}</TableHead>
+              <TableHead className="w-32 text-right">
+                <div className="flex items-center justify-end gap-2">
+                  <span>{t.mints}</span>
+                  <div className="text-xs text-gray-500">
+                    ✎ = {t.manualEntry}
+                  </div>
+                </div>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -335,39 +443,41 @@ const AllowlistGenerator: React.FC<AllowlistEditorProps> = ({
                   {stat.totalNFTs.toLocaleString()}
                 </TableCell>
                 <TableCell>
-                {editingMints === stat.address ? (
-                  <OwnerValueEditor
-                    initialValue={entries[stat.address]?.mints || 0}
-                    onSave={async (value) => {
-                      if (value !== null) {
-                        await handleMintEdit(stat.address, value);
-                      }
-                      setEditingMints(null);
-                    }}
-                    onCancel={() => setEditingMints(null)}
-                  />
-                ) : (
-                  <div className="flex items-center justify-end gap-2">
-                    <span>{entries[stat.address]?.mints || 0}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => {
-                        setEditingMints(stat.address);
+                  {editingMints === stat.address ? (
+                    <OwnerValueEditor
+                      initialValue={entries[stat.address]?.mints || 0}
+                      onSave={async (value) => {
+                        if (value !== null) {
+                          await handleMintEdit(stat.address, value);
+                        }
+                        setEditingMints(null);
                       }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+                      onCancel={() => setEditingMints(null)}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-end gap-2">
+                      <span>{entries[stat.address]?.mints || 0}</span>
+                      {entries[stat.address]?.isManual && (
+                        <span className="text-gray-500">✎</span>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => {
+                          setEditingMints(stat.address);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
-
     </div>
   );
 };

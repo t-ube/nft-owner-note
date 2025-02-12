@@ -83,6 +83,7 @@ export interface AllowlistEntry {
   id: string;           // projectId-address
   address: string;      // オーナーのアドレス
   mints: number;        // ミント可能数
+  isManual: boolean;    // 手動設定かどうか
   updatedAt: number;    // 更新日時
 }
 
@@ -825,7 +826,8 @@ class DatabaseManager {
   // AL Management Methods
   async setAllowlistEntry(
     address: string,
-    mints: number
+    mints: number,
+    isManual: boolean = false
   ): Promise<AllowlistEntry> {
     const db = await this.initDB();
     return new Promise((resolve, reject) => {
@@ -835,9 +837,10 @@ class DatabaseManager {
         id: address,
         address,
         mints,
+        isManual,
         updatedAt: Date.now()
       };
-
+  
       const request = store.put(entry);
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(entry);
