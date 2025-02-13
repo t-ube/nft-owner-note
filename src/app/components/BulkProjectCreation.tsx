@@ -56,6 +56,58 @@ interface BulkProjectCreationProps {
   lang: string;
 }
 
+const KNOWN_PROJECTS: { [key: string]: { [key: number]: string } } = {
+  'rBeistBLWtUskF2YzzSwMSM2tgsK7ZD7ME': {
+    0: 'Zerpmon',
+  },
+  'rEQQ8tTnJm4ECbPv71K9syrHrTJTv6DX3T': {
+    0: 'Zerpmon Equipment',
+  },
+  'rXuRpzTATAm3BNzWNRLmzGwkwJDrHy6Jy': {
+    0: 'Zerpmon Trainers',
+  },
+  'rJzn2G1VoBFynqy9A8iRTJnbSt2bf6PPb9': {
+    9: 'Gnostic Ugas Elders Circle',
+    333: 'Ugas Brethren'
+  },
+  'rJeBz69krYh8sXb8uKsEE22ADzbi1Z4yF2': {
+    250: 'Cozy Shroom',
+    700: 'Shroom Pepe',
+    8000: 'xShrooms',
+    8001: 'Shroompepen',
+    8538: 'Faces'
+  },
+  'r3BWpaFk3rtWhhs2Q5FwFqLVdTPnfVUJLr': {
+    9: 'BearableBulls'
+  },
+  'rwFDeXmYDzSpb7RaehBcsXeVnZR423Nmtw': {
+    5: 'Wen Moon'
+  },
+  'rBEARbo4Prn33894evmvYcAf9yAQjp4VJF': {
+    2: 'Pixel BEAR'
+  },
+  'rwvQWhjpUncjEbhsD2V9tv4YpKXjfH5RDj': {
+    1: 'Xpossum'
+  },
+  'rEzbi191M5AjrucxXKZWbR5QeyfpbedBcV': {
+    1: 'Bored Apes XRP Club'
+  },
+  'r9NYWS14TPZ4bjFrxgdMhysBFnSiqMLdu9': {
+    1: 'Pixel Ape Rowboat Club',
+    3: 'Mysterious Banana'
+  },
+  'rKiNWUkVsq1rb9sWForfshDSEQDSUncwEu': {
+    1: 'xPunKats',
+    2: 'xPunKittens',
+    6: 'Y',
+    402: 'xTape',
+    7833: 'Super Pixel Cone Frens',
+  },
+  'rUv6Bmw6GRQHgJaiVcXnnNFCeTMKUE6FCa': {
+    1: 'HOG'
+  }
+};
+
 const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCreated, dictionary, lang }) => {
   const [issuerAddress, setIssuerAddress] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -70,6 +122,11 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
   }
 
   const fetchCollectionMetadata = async (issuer: string, taxon: number): Promise<string> => {
+    const knownProject = KNOWN_PROJECTS[issuer]?.[taxon];
+    if (knownProject) {
+      return knownProject;
+    }
+
     try {
       // First, fetch an NFT from this collection
       const response = await fetch(
