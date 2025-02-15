@@ -17,7 +17,27 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "Owner Note",
   description: "Owner Note is a specialized management tool for XRPL (XRP Ledger) NFTs that enables users to link wallet addresses with owner names, track ownership statistics through rankings, and monitor NFT sales data with advanced filtering and sorting capabilities.",
-};
+  openGraph: {
+    title: 'Owner Note',
+    description: 'Owner Note is a specialized management tool for XRPL (XRP Ledger) NFTs that enables users to link wallet addresses with owner names, track ownership statistics through rankings, and monitor NFT sales data with advanced filtering and sorting capabilities.',
+    images: [
+      {
+        url: 'https://owner-note.shirome.net/images/ogp.png',
+        width: 1200,
+        height: 630,
+        alt: 'Owner Note Logo',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Owner Note',
+    description: 'Owner Note is a specialized management tool for XRPL (XRP Ledger) NFTs that enables users to link wallet addresses with owner names, track ownership statistics through rankings, and monitor NFT sales data with advanced filtering and sorting capabilities.',
+    images: ['https://owner-note.shirome.net/images/ogp.png'],
+  },
+}
 
 export default function RootLayout({
   children,
