@@ -365,6 +365,7 @@
       "delete": "Delete project",
       "saveError": "Failed to update project name",
       "emptyNameError": "Project name cannot be empty",
+      "manual": "Help & Documentation",
       "footer": {
         "developedBy": "Developed by shirome",
         "followOnX": "Follow on X"

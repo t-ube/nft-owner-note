@@ -372,6 +372,7 @@ export interface Dictionary {
       delete: string;
       saveError: string;
       emptyNameError: string;
+      manual: string;
       footer: {
         developedBy: string;
         followOnX: string;

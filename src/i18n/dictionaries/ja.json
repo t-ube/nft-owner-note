@@ -365,6 +365,7 @@
       "delete": "プロジェクトを削除",
       "saveError": "プロジェクト名の更新に失敗しました",
       "emptyNameError": "プロジェクト名を入力してください",
+      "manual": "使い方・ヘルプ",
       "footer": {
         "developedBy": "開発者：shirome",
         "followOnX": "Xでフォロー"
