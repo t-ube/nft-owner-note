@@ -16,10 +16,10 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "Owner Note",
-  description: "Owner Note is a specialized management tool for XRPL (XRP Ledger) NFTs that enables users to link wallet addresses with owner names, track ownership statistics through rankings, and monitor NFT sales data with advanced filtering and sorting capabilities.",
+  description: "A management tool for XRPL NFTs - Easily track owners, monitor sales, and view statistics for XRP Ledger NFTs.",
   openGraph: {
     title: 'Owner Note',
-    description: 'Owner Note is a specialized management tool for XRPL (XRP Ledger) NFTs that enables users to link wallet addresses with owner names, track ownership statistics through rankings, and monitor NFT sales data with advanced filtering and sorting capabilities.',
+    description: 'A management tool for XRPL NFTs - Easily track owners, monitor sales, and view statistics for XRP Ledger NFTs.',
     images: [
       {
         url: 'https://owner-note.shirome.net/images/ogp.png',
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Owner Note',
-    description: 'Owner Note is a specialized management tool for XRPL (XRP Ledger) NFTs that enables users to link wallet addresses with owner names, track ownership statistics through rankings, and monitor NFT sales data with advanced filtering and sorting capabilities.',
+    description: 'A management tool for XRPL NFTs - Easily track owners, monitor sales, and view statistics for XRP Ledger NFTs.',
     images: ['https://owner-note.shirome.net/images/ogp.png'],
   },
 }
