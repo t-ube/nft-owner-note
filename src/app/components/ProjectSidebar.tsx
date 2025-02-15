@@ -13,7 +13,8 @@ import {
   Sun, 
   Network, 
   ChevronDown, 
-  Pencil 
+  Pencil,
+  Book
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -304,6 +305,20 @@ const ProjectSidebar = ({
         </div>
 
         <div className="p-4 pb-0 mt-auto border-t dark:border-gray-700">
+          <div className="pb-2">
+            <Button
+              variant="outline"
+              className="w-full justify-start dark:border-gray-600 dark:text-gray-200"
+              onClick={() => {
+                window.open('https://shirome.gitbook.io/owner-note', '_blank');
+                setIsOpen(false);
+              }}
+            >
+              <Book className="h-4 w-4 mr-2" />
+              {t.manual}
+            </Button>
+          </div>
+
           <div className="flex items-center justify-between gap-2">
             <select
               onChange={(e) => {
@@ -326,7 +341,9 @@ const ProjectSidebar = ({
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             </Button>
           </div>
+
           
+
           <div className="relative">
             <div className="flex items-center justify-between pt-2 pb-1">
               <span className="text-sm text-gray-500 dark:text-gray-400">Developed by shirome</span>
