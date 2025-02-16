@@ -34,6 +34,27 @@ export interface Dictionary {
       createFailed: string;
       deleteFailed: string;
       duplicateProject: string;
+      fetchFailed: string;
+      saveFailed: string;
+      updateFailed: string;
+      importFailed: string;
+      nftFetchFailed: string;
+      noActiveNFT: string;
+      metadataFetchFailed: string;
+      ownerExportFailed: string;
+      ownerImportFailed: string;
+      csvParseFailed: string;
+      fileReadFailed: string;
+      csvValidationError: string;
+      projectExportFailed: string;
+      projectImportFailed: string;
+    };
+    validation: {
+      projectIdRequired: string;
+      nameRequired: string;
+      issuerRequired: string;
+      taxonRequired: string;
+      errorPrefix: string;
     };
     newProject: {
       placeholders: {

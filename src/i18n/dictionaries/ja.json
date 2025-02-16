@@ -26,7 +26,28 @@
       "loadFailed": "プロジェクトの読み込みに失敗しました",
       "createFailed": "プロジェクトの作成に失敗しました",
       "deleteFailed": "プロジェクトの削除に失敗しました",
-      "duplicateProject": "同じ発行者とタクソンの組み合わせが既に存在します：{name}"
+      "duplicateProject": "同じ発行者とタクソンの組み合わせが既に存在します：{name}",
+      "fetchFailed": "データの取得に失敗しました",
+      "saveFailed": "データの保存に失敗しました",
+      "updateFailed": "データの更新に失敗しました",
+      "importFailed": "データのインポートに失敗しました",
+      "nftFetchFailed": "NFTの取得に失敗しました",
+      "noActiveNFT": "有効なNFTが見つかりませんでした",
+      "metadataFetchFailed": "メタデータの取得に失敗しました",
+      "ownerExportFailed": "オーナーのエクスポートに失敗しました",
+      "ownerImportFailed": "オーナーのインポートに失敗しました",
+      "csvParseFailed": "CSVファイルの解析に失敗しました",
+      "fileReadFailed": "ファイルの読み込みに失敗しました",
+      "csvValidationError": "CSVのバリデーションエラー: {errors}",
+      "projectExportFailed": "プロジェクトのエクスポートに失敗しました",
+      "projectImportFailed": "プロジェクトのインポートに失敗しました"
+    },
+    "validation": {
+      "projectIdRequired": "プロジェクトIDは必須です",
+      "nameRequired": "名前は必須です",
+      "issuerRequired": "発行者アドレスは必須です",
+      "taxonRequired": "タクソンは必須です",
+      "errorPrefix": "{row}行目: {errors}"
     },
     "newProject": {
       "placeholders": {

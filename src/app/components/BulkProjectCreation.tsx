@@ -134,7 +134,7 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
       );
       
       if (!response.ok) {
-        throw new Error('Failed to fetch NFT');
+        throw new Error(dictionary.project.errors.nftFetchFailed);
       }
 
       const nftData: NFTMetadataResponse = await response.json();
@@ -143,7 +143,7 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
       const nft = nftData.data.nfts.find(nft => !(nft.Flags & 0x1));
       
       if (!nft?.URI) {
-        throw new Error('No active NFT found');
+        throw new Error(dictionary.project.errors.noActiveNFT);
       }
 
       // Decode URI from hex
@@ -152,7 +152,7 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
       // Fetch metadata using the utility function
       const metadata = await fetchNFTMetadataSafe(uri);
       if (!metadata) {
-        throw new Error('Failed to fetch metadata');
+        throw new Error(dictionary.project.errors.metadataFetchFailed);
       }
       
       // Try to extract collection name from the NFT name
@@ -218,7 +218,7 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
                 ? { 
                     ...collection, 
                     isLoading: false, 
-                    error: 'Failed to fetch metadata'
+                    error: dictionary.project.errors.metadataFetchFailed
                   }
                 : collection
             )
@@ -314,7 +314,7 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
           c.taxon === taxon ? { 
             ...c, 
             isLoading: false, 
-            error: 'Failed to fetch metadata'
+            error: dictionary.project.errors.metadataFetchFailed
           } : c
         )
       );

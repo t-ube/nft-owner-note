@@ -26,7 +26,28 @@
       "loadFailed": "Failed to load projects",
       "createFailed": "Failed to create project",
       "deleteFailed": "Failed to delete project",
-      "duplicateProject": "A project with the same issuer and taxon already exists: {name}"
+      "duplicateProject": "A project with the same issuer and taxon already exists: {name}",
+      "fetchFailed": "Failed to fetch data",
+      "saveFailed": "Failed to save data",
+      "updateFailed": "Failed to update data",
+      "importFailed": "Failed to import data",
+      "nftFetchFailed": "Failed to fetch NFT",
+      "noActiveNFT": "No active NFT found",
+      "metadataFetchFailed": "Failed to fetch metadata",
+      "ownerExportFailed": "Failed to export owners",
+      "ownerImportFailed": "Failed to import some owners",
+      "csvParseFailed": "Failed to parse CSV file",
+      "fileReadFailed": "Failed to read file",
+      "csvValidationError": "Validation errors in CSV: {errors}",
+      "projectExportFailed": "Failed to export projects",
+      "projectImportFailed": "Failed to import some projects"
+    },
+    "validation": {
+      "projectIdRequired": "Project ID is required",
+      "nameRequired": "Name is required",
+      "issuerRequired": "Issuer is required",
+      "taxonRequired": "Taxon is required",
+      "errorPrefix": "Row {row}: {errors}"
     },
     "newProject": {
       "placeholders": {
