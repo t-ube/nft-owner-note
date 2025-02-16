@@ -65,28 +65,29 @@ const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProje
       link.click();
       document.body.removeChild(link);
     } catch (err) {
-      setError('Failed to export projects');
+      setError(dict?.project.errors.projectExportFailed ?? 'Failed to export projects');
       console.error('Export error:', err);
     }
   };
 
   const validateCSVRow = (row: ProjectCSV, index: number): ValidationError | null => {
+    if (!dict) return null;
     const errors: string[] = [];
     
     if (!row.projectId?.trim()) {
-      errors.push('Project ID is required');
+      errors.push(dict.project.validation.projectIdRequired);
     }
     
     if (!row.name?.trim()) {
-      errors.push('Name is required');
+      errors.push(dict.project.validation.nameRequired);
     }
 
     if (!row.issuer?.trim()) {
-      errors.push('Issuer is required');
+      errors.push(dict.project.validation.issuerRequired);
     }
 
     if (!row.taxon?.trim()) {
-      errors.push('Taxon is required');
+      errors.push(dict.project.validation.taxonRequired);
     }
     
     return errors.length > 0 ? { row: index + 1, errors } : null;
@@ -123,9 +124,19 @@ const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProje
             });
   
             if (validationErrors.length > 0) {
-              setError(`Validation errors in CSV: ${validationErrors.map(e => 
-                `Row ${e.row}: ${e.errors.join(', ')}`
-              ).join('; ')}`);
+              const errorMessage = dict
+                ? dict.project.errors.csvValidationError.replace(
+                    '{errors}',
+                    validationErrors.map(e => 
+                      dict.project.validation.errorPrefix
+                        .replace('{row}', e.row.toString())
+                        .replace('{errors}', e.errors.join(', '))
+                    ).join('; ')
+                  )
+                : `Validation errors in CSV: ${validationErrors.map(e => 
+                    `Row ${e.row}: ${e.errors.join(', ')}`
+                  ).join('; ')}`;
+              setError(errorMessage);
               return;
             }
   
@@ -147,17 +158,17 @@ const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProje
             onProjectsUpdated();
             setError(null);
           } catch (err) {
-            setError('Failed to import some projects');
+            setError(dict?.project.errors.projectImportFailed ?? 'Failed to import some projects');
             console.error('Import error:', err);
           }
         },
         error: () => {
-          setError('Failed to parse CSV file');
+          setError(dict?.project.errors.csvParseFailed ?? 'Failed to parse CSV file');
           console.error('Parse error');
         }
       });
     } catch (err) {
-      setError('Failed to read file');
+      setError(dict?.project.errors.fileReadFailed ?? 'Failed to read file');
       console.error('File read error:', err);
     }
     

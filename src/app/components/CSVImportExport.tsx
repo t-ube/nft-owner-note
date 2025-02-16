@@ -76,7 +76,7 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang
       link.click();
       document.body.removeChild(link);
     } catch (err) {
-      setError('Failed to export groups');
+      setError(dict.project.errors.ownerExportFailed);
       console.error('Export error:', err);
     }
   };
@@ -127,9 +127,15 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang
             });
   
             if (validationErrors.length > 0) {
-              setError(`Validation errors in CSV: ${validationErrors.map(e => 
-                `Row ${e.row}: ${e.errors.join(', ')}`
-              ).join('; ')}`);
+              const errorMessage = dict.project.errors.csvValidationError.replace(
+                '{errors}',
+                validationErrors.map(e => 
+                  t.validation.errorPrefix
+                    .replace('{row}', e.row.toString())
+                    .replace('{errors}', e.errors.join(', '))
+                ).join('; ')
+              );
+              setError(errorMessage);
               return;
             }
   
@@ -158,17 +164,17 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang
             onGroupsUpdated();
             setError(null);
           } catch (err) {
-            setError('Failed to import some groups');
+            setError(dict.project.errors.ownerImportFailed);
             console.error('Import error:', err);
           }
         },
         error: () => {
-          setError('Failed to parse CSV file');
+          setError(dict.project.errors.csvParseFailed);
           console.error('Parse error');
         }
       });
     } catch (err) {
-      setError('Failed to read file');
+      setError(dict.project.errors.fileReadFailed);
       console.error('File read error:', err);
     }
     
