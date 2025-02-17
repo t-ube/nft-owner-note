@@ -37,6 +37,18 @@ export const metadata: Metadata = {
     description: 'A management tool for XRPL NFTs - Easily track owners, monitor sales, and view statistics for XRP Ledger NFTs.',
     images: ['https://owner-note.shirome.net/images/ogp.png'],
   },
+  icons: {
+    icon: [
+      { url: '/images/favicon/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/images/favicon/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/images/favicon/android-chrome-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/images/favicon/android-chrome-512x512.png', sizes: '512x512', type: 'image/png' }
+    ],
+    apple: [
+      { url: '/images/favicon/apple-touch-icon.png' },
+    ],
+    shortcut: [{ url: "/images/favicon/favicon.ico" }],
+  }
 }
 
 export default function RootLayout({
