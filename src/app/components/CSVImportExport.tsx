@@ -197,7 +197,7 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang
     const blob = new Blob([bom, csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', 'sample_address_groups.csv');
+    link.setAttribute('download', 'sample_owners_list.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

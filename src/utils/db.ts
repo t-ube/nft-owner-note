@@ -539,54 +539,102 @@ class DatabaseManager {
       const transaction = db.transaction(['addressGroups', 'addresses'], 'readwrite');
       const groupStore = transaction.objectStore('addressGroups');
       const addressStore = transaction.objectStore('addresses');
-  
+    
       const now = Date.now();
       const updatedGroup = {
         ...group,
         updatedAt: now
       };
+    
+      // 1. まず既存のグループ情報と全てのグループを取得
+      const getGroupRequest = groupStore.get(group.id);
+    
+      getGroupRequest.onsuccess = () => {
+        const oldGroup = getGroupRequest.result as AddressGroup;
+        
+        // 他の全グループを取得
+        const getAllGroupsRequest = groupStore.getAll();
+        
+        getAllGroupsRequest.onsuccess = () => {
+          const allGroups = getAllGroupsRequest.result as AddressGroup[];
+          const otherGroups = allGroups.filter(g => g.id !== group.id);
+          
+          const oldAddresses = new Set(oldGroup.addresses);
+          const newAddresses = new Set(group.addresses);
+    
+          // 2. 削除されたアドレスを処理
+          const removedAddresses = Array.from(oldAddresses)
+            .filter(addr => !newAddresses.has(addr));
+          
+          // 3. 新しく追加されたアドレスを処理
+          const addedAddresses = Array.from(newAddresses)
+            .filter(addr => !oldAddresses.has(addr));
+    
+          // 4. 削除されたアドレスの処理
+          const removePromises = removedAddresses.map(address => {
+            // このアドレスを含む他のグループを探す
+            const otherGroupWithAddress = otherGroups.find(g => 
+              g.addresses.includes(address)
+            );
   
-      // まず既存のグループ情報を取得
-      const getRequest = groupStore.get(group.id);
-  
-      getRequest.onsuccess = () => {
-        const oldGroup = getRequest.result as AddressGroup;
-        const oldAddresses = new Set(oldGroup.addresses);
-        const newAddresses = new Set(group.addresses);
-  
-        // 削除されたアドレスのgroupIdをnullに
-        const removedAddresses = Array.from(oldAddresses)
-          .filter(addr => !newAddresses.has(addr));
-  
-        // 新しいアドレスのgroupIdを設定
-        const addedAddresses = Array.from(newAddresses)
-          .filter(addr => !oldAddresses.has(addr));
-  
-        // 削除されたアドレスの更新
-        removedAddresses.forEach(address => {
-          addressStore.put({
-            address,
-            groupId: null,
-            updatedAt: now
+            if (otherGroupWithAddress) {
+              // 他のグループで使用されている場合、そのグループIDを設定
+              return addressStore.put({
+                address,
+                groupId: otherGroupWithAddress.id,
+                updatedAt: now
+              });
+            } else {
+              // 他のグループで使用されていない場合は削除
+              return addressStore.delete(address);
+            }
           });
-        });
-  
-        // 追加されたアドレスの更新
-        addedAddresses.forEach(address => {
-          addressStore.put({
-            address,
-            groupId: group.id,
-            updatedAt: now
+    
+          // 5. 追加されたアドレスの処理
+          const addPromises = addedAddresses.map(address => {
+            return addressStore.put({
+              address,
+              groupId: group.id,
+              updatedAt: now
+            });
           });
-        });
+    
+          // 6. グループ情報を更新
+          const updateGroupRequest = groupStore.put(updatedGroup);
+          
+          // 7. 全ての処理の完了を待つ
+          Promise.all([...removePromises, ...addPromises])
+            .then(() => {
+              updateGroupRequest.onsuccess = () => resolve(updatedGroup);
+              updateGroupRequest.onerror = () => reject(updateGroupRequest.error);
+            })
+            .catch(error => reject(error));
+        };
+        
+        getAllGroupsRequest.onerror = () => reject(getAllGroupsRequest.error);
+      };
+    
+      getGroupRequest.onerror = () => reject(getGroupRequest.error);
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  async getAddressGroups(address: string): Promise<AddressGroup[]> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('addressGroups', 'readonly');
+      const store = transaction.objectStore('addressGroups');
+      const request = store.getAll();
   
-        // グループ情報を更新
-        const updateRequest = groupStore.put(updatedGroup);
-        updateRequest.onsuccess = () => resolve(updatedGroup);
-        updateRequest.onerror = () => reject(updateRequest.error);
+      request.onsuccess = () => {
+        const groups = request.result as AddressGroup[];
+        const belongingGroups = groups.filter(group => 
+          group.addresses.includes(address)
+        );
+        resolve(belongingGroups);
       };
   
-      getRequest.onerror = () => reject(getRequest.error);
+      request.onerror = () => reject(request.error);
     });
   }
 
@@ -644,30 +692,106 @@ class DatabaseManager {
       const transaction = db.transaction(['addressGroups', 'addresses'], 'readwrite');
       const groupStore = transaction.objectStore('addressGroups');
       const addressStore = transaction.objectStore('addresses');
-
-      // まず既存のグループ情報を取得
-      const getRequest = groupStore.get(id);
-
-      getRequest.onsuccess = () => {
-        const group = getRequest.result as AddressGroup;
-        if (!group) {
+  
+      // 1. まず削除対象のグループ情報を取得
+      const getGroupRequest = groupStore.get(id);
+  
+      getGroupRequest.onsuccess = async () => {
+        const groupToDelete = getGroupRequest.result as AddressGroup;
+        if (!groupToDelete) {
           resolve();
           return;
         }
-
-        // グループに所属する全アドレスのgroupIdをnullに更新
-        group.addresses.forEach(address => {
-          addressStore.put({
-            address,
-            groupId: null,
-            updatedAt: Date.now()
+  
+        // 2. 他の全てのグループを取得して、アドレスの参照を確認
+        const getAllGroupsRequest = groupStore.getAll();
+        
+        getAllGroupsRequest.onsuccess = () => {
+          const allGroups = getAllGroupsRequest.result as AddressGroup[];
+          const otherGroups = allGroups.filter(g => g.id !== id);
+  
+          // 3. 各アドレスについて、他のグループでの使用状況を確認
+          const addressUpdates = groupToDelete.addresses.map(address => {
+            // このアドレスを含む他のグループを探す
+            const otherGroupWithAddress = otherGroups.find(g => 
+              g.addresses.includes(address)
+            );
+  
+            if (otherGroupWithAddress) {
+              // 他のグループで使用されている場合、そのグループIDを設定
+              return addressStore.put({
+                address,
+                groupId: otherGroupWithAddress.id,
+                updatedAt: Date.now()
+              });
+            } else {
+              // 他のグループで使用されていない場合は削除
+              return addressStore.delete(address);
+            }
           });
-        });
-
-        // グループを削除
-        groupStore.delete(id);
+  
+          // 4. グループを削除
+          const deleteGroupRequest = groupStore.delete(id);
+          deleteGroupRequest.onerror = () => reject(deleteGroupRequest.error);
+  
+          // 5. すべての更新が完了するのを待つ
+          Promise.all(addressUpdates)
+            .then(() => resolve())
+            .catch(error => reject(error));
+        };
+  
+        getAllGroupsRequest.onerror = () => reject(getAllGroupsRequest.error);
       };
+  
+      getGroupRequest.onerror = () => reject(getGroupRequest.error);
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
 
+  async repairAddressReferences(): Promise<void> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['addressGroups', 'addresses'], 'readwrite');
+      const groupStore = transaction.objectStore('addressGroups');
+      const addressStore = transaction.objectStore('addresses');
+  
+      // 1. すべてのグループとアドレス情報を取得
+      const groupRequest = groupStore.getAll();
+      
+      groupRequest.onsuccess = () => {
+        const groups = groupRequest.result as AddressGroup[];
+        const addressRequest = addressStore.getAll();
+        
+        addressRequest.onsuccess = () => {
+          const addresses = addressRequest.result as AddressInfo[];
+          
+          // 2. 各アドレスについて、正しいグループ参照を確認・修正
+          addresses.forEach(addressInfo => {
+            // このアドレスを含む最初のグループを見つける
+            const correctGroup = groups.find(group => 
+              group.addresses.includes(addressInfo.address)
+            );
+  
+            if (correctGroup) {
+              // グループが見つかった場合、groupIdを更新
+              if (addressInfo.groupId !== correctGroup.id) {
+                addressStore.put({
+                  ...addressInfo,
+                  groupId: correctGroup.id,
+                  updatedAt: Date.now()
+                });
+              }
+            } else {
+              // どのグループにも属していない場合は削除
+              addressStore.delete(addressInfo.address);
+            }
+          });
+        };
+  
+        addressRequest.onerror = () => reject(addressRequest.error);
+      };
+  
+      groupRequest.onerror = () => reject(groupRequest.error);
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
     });
