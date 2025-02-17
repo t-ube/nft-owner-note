@@ -401,13 +401,13 @@ const AllowlistGenerator: React.FC<AllowlistGeneratorProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-40">{t.address}</TableHead>
-              <TableHead className="w-40">{t.name}</TableHead>
-              <TableHead className="w-32 text-right">{t.totalNFTs}</TableHead>
-              <TableHead className="w-32 text-right">
+              <TableHead className="min-w-[140px] max-w-[200px] whitespace-normal">{t.address}</TableHead>
+              <TableHead className="min-w-[140px] max-w-[200px] whitespace-normal break-words">{t.name}</TableHead>
+              <TableHead className="min-w-[100px] text-right whitespace-normal">{t.totalNFTs}</TableHead>
+              <TableHead className="min-w-[120px] text-right whitespace-normal">
                 <div className="flex items-center justify-end gap-2">
                   <span>{t.mints}</span>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-500 whitespace-nowrap">
                     ✎ = {t.manualEntry}
                   </div>
                 </div>

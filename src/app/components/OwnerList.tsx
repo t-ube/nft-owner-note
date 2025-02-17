@@ -393,16 +393,18 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-20">{ownerList.table.rank}</TableHead>
-              <TableHead className="w-40">{ownerList.table.owner}</TableHead>
-              <TableHead className="w-40">{ownerList.table.name}</TableHead>
-              <TableHead className="w-40">{ownerList.table.xAccount}</TableHead>
-              <TableHead className="w-32 text-right">{ownerList.table.nftCount}</TableHead>
-              <TableHead className="w-32 text-right">{ownerList.table.userValue1}</TableHead>
-              <TableHead className="hidden lg:table-cell w-32 text-right">{ownerList.table.userValue2}</TableHead>
-              <TableHead className="hidden lg:table-cell w-32 text-right">{ownerList.table.holdingPercentage}</TableHead>
+              <TableHead className="w-16 text-center whitespace-normal">{ownerList.table.rank}</TableHead>
+              <TableHead className="min-w-[120px] max-w-[160px] whitespace-normal">{ownerList.table.owner}</TableHead>
+              <TableHead className="min-w-[160px] max-w-[200px] whitespace-normal break-words">
+                {ownerList.table.name}
+              </TableHead>
+              <TableHead className="min-w-[120px] max-w-[160px] whitespace-normal break-words">{ownerList.table.xAccount}</TableHead>
+              <TableHead className="min-w-[80px] text-right whitespace-normal">{ownerList.table.nftCount}</TableHead>
+              <TableHead className="min-w-[100px] text-right whitespace-normal">{ownerList.table.userValue1}</TableHead>
+              <TableHead className="hidden lg:table-cell min-w-[100px] text-right whitespace-normal">{ownerList.table.userValue2}</TableHead>
+              <TableHead className="hidden lg:table-cell min-w-[100px] text-right whitespace-normal">{ownerList.table.holdingPercentage}</TableHead>
               {!showGrouped && (
-                <TableHead className="w-40">{ownerList.table.links}</TableHead>
+                <TableHead className="min-w-[120px] whitespace-normal">{ownerList.table.links}</TableHead>
               )}
             </TableRow>
           </TableHeader>
@@ -448,7 +450,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
                     </div>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="min-w-[160px] max-w-[200px] whitespace-normal break-words">
                   {isGroupedStat(stat) ? (stat as GroupedStats).groupName || '-' : (stat as OwnerStats).group?.name || '-'}
                 </TableCell>
                 <TableCell>

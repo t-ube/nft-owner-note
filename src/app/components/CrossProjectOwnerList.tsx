@@ -327,14 +327,17 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-16">{dictionary.table.rank}</TableHead>
-                  <TableHead className="min-w-[140px]">{dictionary.table.owner}</TableHead>
-                  <TableHead className="hidden sm:table-cell">{dictionary.table.name}</TableHead>
-                  <TableHead className="hidden sm:table-cell">{dictionary.table.xAccount}</TableHead>
-                  <TableHead className="text-right">{dictionary.table.totalNfts}</TableHead>
-                  <TableHead className="text-right hidden sm:table-cell">{dictionary.table.share}</TableHead>
+                  <TableHead className="w-16 text-center whitespace-normal">{dictionary.table.rank}</TableHead>
+                  <TableHead className="min-w-[140px] max-w-[200px] whitespace-normal">{dictionary.table.owner}</TableHead>
+                  <TableHead className="min-w-[160px] max-w-[200px] whitespace-normal break-words">{dictionary.table.name}</TableHead>
+                  <TableHead className="min-w-[120px] max-w-[160px] whitespace-normal break-words">{dictionary.table.xAccount}</TableHead>
+                  <TableHead className="min-w-[80px] text-right whitespace-normal">{dictionary.table.totalNfts}</TableHead>
+                  <TableHead className="min-w-[80px] text-right hidden sm:table-cell whitespace-normal">{dictionary.table.share}</TableHead>
                   {selectedProjects.map(project => (
-                    <TableHead key={project.projectId} className="text-right min-w-[80px]">
+                    <TableHead 
+                      key={project.projectId} 
+                      className="min-w-[100px] max-w-[160px] text-right whitespace-normal break-words px-4"
+                    >
                       {project.name}
                     </TableHead>
                   ))}
@@ -377,10 +380,10 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">
+                      <TableCell className="table-cell">
                         {isGroupedStat(stat) ? stat.groupName || '-' : stat.group?.name || '-'}
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">
+                      <TableCell className="table-cell">
                         {formatXAccount(isGroupedStat(stat) ? stat.xAccount : stat.group?.xAccount)}
                       </TableCell>
                       <TableCell className="text-right">
