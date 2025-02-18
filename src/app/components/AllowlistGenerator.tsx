@@ -341,7 +341,15 @@ const AllowlistGenerator: React.FC<AllowlistGeneratorProps> = ({
           <Button 
             variant="outline"
             size="sm"
-            onClick={() => applyRules(true)}
+            onClick={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              try {
+                await applyRules(true);
+              } catch (error) {
+                console.error('Failed to apply rules:', error);
+              }
+            }}
           >
             ✨ {t.applyRules}
           </Button>
