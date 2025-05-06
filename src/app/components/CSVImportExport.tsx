@@ -88,10 +88,10 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang
       errors.push(t.validation.nameRequired);
     }
     
-    const addresses = row.addresses.split(';').filter(Boolean);
-    if (addresses.length === 0) {
-      errors.push(t.validation.addressRequired);
-    }
+    //const addresses = row.addresses.split(';').filter(Boolean);
+    //if (addresses.length === 0) {
+    //  errors.push(t.validation.addressRequired);
+    //}
     
     return errors.length > 0 ? { row: index + 1, errors } : null;
   };
@@ -99,7 +99,7 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang
   const convertCSVToAddressGroup = (row: AddressGroupCSV): Omit<AddressGroup, 'id' | 'updatedAt'> => {
     return {
       name: row.name.trim(),
-      addresses: row.addresses.split(';').filter(Boolean),
+      addresses: row.addresses ? row.addresses.split(';').filter(Boolean) : [],
       xAccount: row.xAccount?.trim() || null,
       memo: row.memo?.trim() || null,
     };
