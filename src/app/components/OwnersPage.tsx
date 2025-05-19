@@ -216,6 +216,10 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
       try {
         await dbManager.deleteAddressGroup(ownerToDelete.id);
         await loadData();
+
+        // 拡張機能に通知
+        window.postMessage({ type: 'OWNERNOTE_UPDATED' }, '*');
+        
       } catch (error) {
         console.error('Failed to delete owner:', error);
       }

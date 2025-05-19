@@ -116,6 +116,10 @@ export function AddressGroupDialog({
         };
         savedGroup = await dbManager.createAddressGroup(groupToSave as Omit<AddressGroup, 'id' | 'updatedAt'>);
       }
+      
+      // 拡張機能に通知
+      window.postMessage({ type: 'OWNERNOTE_UPDATED' }, '*');
+
       onSave?.(savedGroup);
       setOpen(false);
     } catch (error) {

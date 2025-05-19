@@ -162,6 +162,10 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang
   
             await Promise.all(importPromises);
             onGroupsUpdated();
+
+            // 拡張機能に通知
+            window.postMessage({ type: 'OWNERNOTE_UPDATED' }, '*');
+
             setError(null);
           } catch (err) {
             setError(dict.project.errors.ownerImportFailed);
