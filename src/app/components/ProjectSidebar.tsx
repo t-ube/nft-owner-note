@@ -315,7 +315,7 @@ const ProjectSidebar = ({
                 variant="outline"
                 className="w-full justify-start dark:border-gray-600 dark:text-gray-200"
                 onClick={() => {
-                  window.open('https://shirome.gitbook.io/owner-note', '_blank');
+                  window.open(lang === 'en' ? 'https://shirome.gitbook.io/owner-note/en' : 'https://shirome.gitbook.io/owner-note', '_blank');
                   setIsOpen(false);
                 }}
               >
