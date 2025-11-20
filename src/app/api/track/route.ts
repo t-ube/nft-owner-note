@@ -17,19 +17,35 @@ export async function POST(req: NextRequest) {
     const cookieStore = cookies()
     
     let userId = cookieStore.get('user_id')?.value
+    const isNewUser = !userId
+
     if (!userId) {
       userId = uuidv4()
     }
 
+    const body = await req.json().catch(() => null)
     const path = req.headers.get('referer') || ''
+    const ownerListCount =
+      typeof body.owner_list_count === 'number' ? body.owner_list_count : null
+    const issuer = typeof body.issuer === 'string' ? body.issuer : null
+    const taxon = typeof body.taxon === 'number' ? body.taxon : null
+    
+    const ip =
+      req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+      req.ip ||
+      ''
+
     const { data, error } = await supabase
         .from('visits')
         .insert([
           { 
             user_id: userId,
             path,
-            ip: req.headers.get('x-forwarded-for') || '',
-            user_agent: req.headers.get('user-agent') || ''
+            ip,
+            user_agent: req.headers.get('user-agent') || '',
+            owner_list_count: ownerListCount,
+            issuer,
+            taxon
           }
         ])
         .select()
@@ -40,7 +56,19 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Database error during registration' }, { status: 500 })
       }
     
-    return NextResponse.json({ ok: true, visit: data });
+    const res = NextResponse.json({ ok: true, visit: data });
+
+    if (isNewUser) {
+      res.cookies.set('user_id', userId!, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365, // 1 year
+      })
+    }
+
+    return res
     
   } catch (e) {
     console.error('API error:', e)
