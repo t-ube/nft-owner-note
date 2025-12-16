@@ -2,6 +2,7 @@
 "use client"
 
 import { ThemeProvider } from "next-themes"
+import { XamanProvider } from '@/app/contexts/XamanContext';
 
 export const Providers: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
@@ -11,7 +12,9 @@ export const Providers: React.FC<{ children: React.ReactNode }> = ({ children })
       enableSystem
       disableTransitionOnChange
     >
-      {children}
+      <XamanProvider>
+        {children}
+      </XamanProvider>
     </ThemeProvider>
   )
 }

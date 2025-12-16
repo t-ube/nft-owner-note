@@ -6,6 +6,17 @@ const dictionaries = {
 
 
 export interface Dictionary {
+  menu: {
+    connect: string;
+    disconnect: string;
+    login: string;
+    logout: string;
+    settings: string;
+  };
+  walletSelect: {
+    title: string;
+    description: string;
+  };
   project: {
     title: string;
     name: string;

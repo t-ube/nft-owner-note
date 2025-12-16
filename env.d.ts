@@ -2,6 +2,7 @@
 // by running `wrangler types --env-interface CloudflareEnv env.d.ts`
 
 interface CloudflareEnv {
+    NEXT_PUBLIC_XAMAN_API_KEY:string,
     NEXT_PUBLIC_SUPABASE_URL:string,
     SUPABASE_SERVICE_ROLE_KEY:string,
 }

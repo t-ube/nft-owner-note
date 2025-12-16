@@ -1,4 +1,15 @@
 {
+  "menu": {
+    "connect": "接続",
+    "disconnect": "切断",
+    "login": "ログイン",
+    "logout": "ログアウト",
+    "settings": "設定"
+  },
+  "walletSelect": {
+    "title": "ウォレットを選択",
+    "description": "接続するウォレットを選択してください"
+  },
   "project": {
     "title": "新規プロジェクト作成",
     "name": "プロジェクト名",

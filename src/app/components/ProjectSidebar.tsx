@@ -14,7 +14,7 @@ import {
   Network, 
   ChevronDown, 
   Pencil,
-  Book
+  Book,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -124,7 +124,7 @@ const ProjectSidebar = ({
           {/* 上部固定部分 */}
           <div className="p-4 flex-shrink-0">
             <h1
-              className="text-2xl font-bold mb-8 cursor-pointer hover:text-gray-600 dark:text-white dark:hover:text-gray-300 transition-colors"
+              className="text-2xl font-bold mb-4 cursor-pointer hover:text-gray-600 dark:text-white dark:hover:text-gray-300 transition-colors"
               onClick={handleOwnerNoteClick}
             >
               {t.title}
@@ -132,7 +132,7 @@ const ProjectSidebar = ({
 
             <Button
               variant="outline"
-              className="w-full mb-4 justify-start dark:border-gray-600 dark:text-gray-200"
+              className="w-full mb-2 justify-start dark:border-gray-600 dark:text-gray-200"
               onClick={() => {
                 router.push(`/${lang}/owners`);
                 setIsOpen(false);

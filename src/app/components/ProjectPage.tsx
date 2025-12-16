@@ -2,7 +2,13 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, HelpCircle } from 'lucide-react';
+import { Plus, HelpCircle, Wallet } from 'lucide-react';
+import { Wallets } from '@/types/Wallet';
+import {
+  useAccount,
+  useConnect,
+  useDisconnect,
+} from '@/app/contexts/XamanContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -27,9 +33,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import IconTitle from '@/app/components/IconTitle';
+import { WalletSelectDialog } from '@/app/components/WalletSelectDialog';
 
 interface ProjectFormData {
   name: string;
@@ -56,6 +64,9 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
   const router = useRouter();
+  const account = useAccount()
+  const { connect } = useConnect()
+  const disconnect = useDisconnect()
 
   useEffect(() => {
     loadProjects();
@@ -179,8 +190,32 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
       />
   
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <IconTitle/>
+        <div className='hidden lg:flex justify-end mb-4'>
+          {account ? 
+            <Button
+              variant="default"
+              className="mb-2 justify-start dark:border-gray-600 dark:text-black-200 font-bold"
+              onClick={() => {
+                disconnect();
+              }}
+            >
+              <Wallet className="h-4 w-4 mr-2" />
+              {dict?.menu.disconnect || 'Disconnect'}
+            </Button>
+          :
+            <WalletSelectDialog lang={lang}>
+              <Button
+                variant="default"
+                className="mb-2 justify-start dark:border-gray-600 dark:text-black-200 font-bold"
+              >
+                <Wallet className="h-4 w-4 mr-2" />
+                {dict?.menu.connect || 'Connect'}
+              </Button>
+            </WalletSelectDialog>
+          }
+        </div>
 
+        <IconTitle/>
         <Card className="max-w-2xl mx-auto mb-8">
           <CardHeader>
             <CardTitle>{dict?.project.title}</CardTitle>

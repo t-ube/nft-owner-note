@@ -1,4 +1,15 @@
 {
+  "menu": {
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "login": "Login",
+    "logout": "Logout",
+    "settings": "Settings"
+  },
+  "walletSelect": {
+    "title": "Select Wallet",
+    "description": "Please select a wallet to connect to your account."
+  },
   "project": {
     "title": "Create New Project",
     "name": "Project Name",
