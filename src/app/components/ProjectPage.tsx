@@ -3,12 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, HelpCircle, Wallet } from 'lucide-react';
-import { Wallets } from '@/types/Wallet';
 import {
-  useAccount,
-  useConnect,
-  useDisconnect,
-} from '@/app/contexts/XamanContext';
+  useXRPLWallet
+} from '@/app/contexts/XRPLWalletContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -64,9 +61,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
   const router = useRouter();
-  const account = useAccount()
-  const { connect } = useConnect()
-  const disconnect = useDisconnect()
+  const { account, disconnect } = useXRPLWallet()
 
   useEffect(() => {
     loadProjects();

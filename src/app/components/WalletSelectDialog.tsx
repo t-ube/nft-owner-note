@@ -14,8 +14,8 @@ import type { WalletType } from '@/types/Wallet'
 import { Wallets } from '@/types/Wallet';
 import { getDictionary } from '@/i18n/get-dictionary'
 import type { Dictionary } from '@/i18n/dictionaries/index'
-import { useConnect, useXamanError } from '@/app/contexts/XamanContext'
-
+//import { useConnect, useXamanError } from '@/app/contexts/XamanContext'
+import { useXRPLWallet } from '@/app/contexts/XRPLWalletContext'
 
 interface WalletSelectDialogProps {
   children: React.ReactNode
@@ -31,9 +31,7 @@ export function WalletSelectDialog({
   const [open, setOpen] = useState(false)
   const [dict, setDict] = useState<Dictionary | null>(null)
 
-  const { connect } = useConnect()
-  const { error, clearError } = useXamanError()
-
+  const { connect, error, clearError } = useXRPLWallet()
 
   useEffect(() => {
     const loadDictionary = async () => {

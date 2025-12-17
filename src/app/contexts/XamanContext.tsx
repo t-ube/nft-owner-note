@@ -3,13 +3,11 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo } from 'react'
 import { Xumm } from "xumm"
 import type { XummTypes } from 'xumm-sdk'
-import type { WalletType } from '@/types/Wallet'
+import type { UnifiedTx } from '@/types/Wallet'
+import type { XummJsonTransaction } from '@/types/Xaman'
 
 export const XAMAN_NETWORK = 'MAINNET'
 
-type XummPostPayloadBodyJson = XummTypes.XummPostPayloadBodyJson
-type XummPostPayloadBodyBlob = XummTypes.XummPostPayloadBodyBlob
-type XummJsonTransaction = XummTypes.XummJsonTransaction
 
 // トランザクション結果の型定義
 interface TransactionResult {
@@ -40,10 +38,10 @@ interface XamanContextType {
   account: Account | undefined;
   isConnected: boolean;
   isConnecting: boolean;
-  connect: (wallet: WalletType) => Promise<boolean>;
+  connect: () => Promise<boolean>;
   disconnect: () => Promise<boolean>;
   signAndSubmitTransaction: (
-    transaction: XummPostPayloadBodyJson | XummPostPayloadBodyBlob | XummJsonTransaction,
+    transaction: UnifiedTx,
     return_url_query?: string
   ) => Promise<TransactionResult>;
   error: string | null;
@@ -232,7 +230,7 @@ export const XamanProvider = ({ children }: XamanWalletProviderProps) => {
   }, [checkConnectionStatus]);
 
   const signAndSubmitTransaction = async (
-    transaction: XummPostPayloadBodyJson | XummPostPayloadBodyBlob | XummJsonTransaction,
+    transaction: UnifiedTx,
     return_url_query?: string
   ): Promise<TransactionResult> => {
     setError(null)
