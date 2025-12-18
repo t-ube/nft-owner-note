@@ -15,6 +15,7 @@ import {
   ChevronDown, 
   Pencil,
   Book,
+  Wallet,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,8 @@ import ProjectCSVImportExport from '@/app/components/ProjectCSVImportExport';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import { CONTRIBUTORS } from '@/constants/contributors';
+import { useXRPLWallet } from '@/app/contexts/XRPLWalletContext';
+import { WalletSelectDialog } from '@/app/components/WalletSelectDialog';
 
 interface ProjectSidebarProps {
   projects: Project[];
@@ -58,6 +61,7 @@ const ProjectSidebar = ({
   const [error, setError] = useState<string | null>(null);
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
+  const { account } = useXRPLWallet()
 
   useEffect(() => {
     const loadDictionary = async () => {
@@ -122,14 +126,38 @@ const ProjectSidebar = ({
         {/* スクロール可能なコンテナ */}
         <div className="flex flex-col h-full overflow-hidden">
           {/* 上部固定部分 */}
-          <div className="p-4 flex-shrink-0">
+          <div className="p-4 pt-2 pb-2 lg:pt-4 flex-shrink-0">
             <h1
-              className="text-2xl font-bold mb-4 cursor-pointer hover:text-gray-600 dark:text-white dark:hover:text-gray-300 transition-colors"
+              className="text-2xl font-bold cursor-pointer hover:text-gray-600 dark:text-white dark:hover:text-gray-300 transition-colors mb-2 lg:mb-4"
               onClick={handleOwnerNoteClick}
             >
               {t.title}
             </h1>
 
+            {account ? (
+              <Button
+                variant="outline"
+                className="w-full mb-2 justify-start dark:border-gray-600 dark:text-gray-200"
+                onClick={() => {
+                  router.push(`/${lang}/my-account`);
+                  setIsOpen(false);
+                }}
+              >
+                <Wallet className="h-4 w-4 mr-2" /> {t.myAccount}
+              </Button>
+              ) : (
+                <WalletSelectDialog lang={lang}>
+                  <Button
+                    variant="default"
+                    className="w-full mb-4 justify-start dark:border-gray-600 dark:text-black-200 font-bold"
+                  >
+                    <Wallet className="h-4 w-4 mr-2" />
+                    {t.connectWallet || 'Connect Wallet'}
+                  </Button>
+                </WalletSelectDialog>
+              ) 
+            }
+            
             <Button
               variant="outline"
               className="w-full mb-2 justify-start dark:border-gray-600 dark:text-gray-200"
@@ -154,20 +182,21 @@ const ProjectSidebar = ({
                 <Network className="h-4 w-4 mr-2" />
                 {t.integration}
               </Button>
+            </div>
 
+            <div className="mt-6 mb-2 flex items-center justify-between">
               <h2 className="text-xl font-bold dark:text-white">{t.projectsTitle}</h2>
-              
               <ProjectCSVImportExport onProjectsUpdated={onProjectsUpdated} lang={lang} />
-              
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                <Input
-                  placeholder={t.search.placeholder}
-                  className="pl-8 w-full dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
-                  value={searchTerm}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                />
-              </div>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
+              <Input
+                placeholder={t.search.placeholder}
+                className="pl-8 w-full dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
+                value={searchTerm}
+                onChange={(e) => onSearchChange(e.target.value)}
+              />
             </div>
           </div>
 

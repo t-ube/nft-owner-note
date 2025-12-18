@@ -20,6 +20,7 @@ type UnifiedCtx = {
   disconnect: () => Promise<boolean>
   signAndSubmit: (tx: UnifiedTx) => Promise<TxResult>
   clearError: () => void
+  balanceXrp: number | null;
 }
 
 const Ctx = createContext<UnifiedCtx | null>(null)
@@ -29,6 +30,8 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
   const [error, setError] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [account, setAccount] = useState<string | null>(null)
+  const [balanceXrp, setBalanceXrp] = useState<number | null>(null)
+
 
   // --- Xaman 側 ---
   const xamanAccount = useXamanAccount()
@@ -61,6 +64,61 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
       return false
     }
   }, [joey.actions, joey.accounts, joey.session])
+
+  /*
+  useEffect(() => {
+    const kit = joey.walletKit;
+    if (!kit) return;
+
+    const onProposalExpire = (event: unknown) => {
+      console.warn('Joey proposal_expire:', event);
+      setError('Connection request expired');
+    };
+
+    const onSessionRequestExpire = (event: unknown) => {
+      console.warn('Joey session_request_expire:', event);
+      setError('Request expired');
+    };
+
+    const onSessionDelete = (event: unknown) => {
+      console.warn('Joey session_delete:', event);
+      setWalletType(null);
+      setAccount(null);
+      setBalanceXrp(null);
+    };
+
+    kit.on('proposal_expire', onProposalExpire);
+    kit.on('session_request_expire', onSessionRequestExpire);
+    kit.on('session_delete', onSessionDelete);
+
+    const relayer = kit.core?.relayer;
+    const onRelayerDisconnect = (event: unknown) => {
+      console.warn('Joey relayer_disconnect:', event);
+      setError('WalletConnect relay disconnected');
+    };
+    relayer?.on?.('relayer_disconnect', onRelayerDisconnect);
+
+    return () => {
+      kit.off?.('proposal_expire', onProposalExpire);
+      kit.off?.('session_request_expire', onSessionRequestExpire);
+      kit.off?.('session_delete', onSessionDelete);
+      relayer?.off?.('relayer_disconnect', onRelayerDisconnect);
+    };
+  }, [joey.walletKit]);
+  */
+
+  function extractXrplAddress(caipAccount?: string | null): string | null {
+    if (!caipAccount) return null;
+
+    const parts = caipAccount.split(':');
+    if (parts.length !== 3) return null;
+
+    const [namespace, , address] = parts;
+    if (namespace !== 'xrpl') return null;
+
+    return address;
+  }
+
 
   // isConnecting は統合的に
   const connecting = isConnecting || xamanIsConnecting
@@ -123,13 +181,33 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
     }
   }, [clearError, walletType, xamanDisconnect, joey.actions])
 
+  const getXrpBalance = useCallback(async (address: string): Promise<number | null> => {
+    try {
+      const res = await fetch('/api/xrp-balance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address })
+      })
+      if (!res.ok) {
+        console.warn('Failed to fetch balance:', await res.text());
+        return null
+      }
+      const data = await res.json()
+      return data.xrp ?? null
+    } catch (err) {
+      console.error('Balance fetch error:', err);
+      return null
+    }
+  },[])
+
   useEffect(() => {
     console.log('Wallet type changed:', walletType);
     if (walletType === 'xaman') {
       setAccount(xamanAccount?.address ?? null)
     } else if (walletType === 'joey') {
       const a = joey.accounts?.[0]
-      setAccount(a ? (joey.chain ? a.replace(joey.chain, '') : a) : null)
+      const address = extractXrplAddress(a)
+      setAccount(address)
     } else {
       setAccount(null)
     }
@@ -149,10 +227,34 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
       setAccount(null)
       return
     }
-    const addr = joey.chain ? a.replace(joey.chain, '') : a
-    setAccount(addr)
-    if (walletType === null) setWalletType('joey')
+    if (joey.accounts?.length) {
+      const addr = extractXrplAddress(joey.accounts[0]);
+      setAccount(addr);
+      if (walletType === null) setWalletType('joey');
+      return;
+    }
+    (async () => {
+      try {
+        if (joey.session !== undefined) {
+          await joey.actions.reconnect(joey.session);
+          console.log('Joey reconnect successful');
+        }
+      } catch (e) {
+        console.error('Joey reconnect error:', e);
+        setError(e instanceof Error ? e.message : 'Unknown error');
+        setAccount(null);
+      }
+    })();
+
   }, [walletType, joey.session, joey.accounts, joey.chain])
+
+  useEffect(() => {
+    if (account === null) {
+      setBalanceXrp(null)
+      return
+    }
+    getXrpBalance(account).then(setBalanceXrp)
+  }, [account, getXrpBalance])
 
   const signAndSubmit = useCallback(async (tx: UnifiedTx): Promise<TxResult> => {
     clearError()
@@ -184,6 +286,7 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
     disconnect,
     signAndSubmit,
     clearError,
+    balanceXrp
   }
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

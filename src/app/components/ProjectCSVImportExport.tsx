@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, Download, AlertCircle } from 'lucide-react';
+import { Upload, Download, AlertCircle, FileDown, MoreVertical } from 'lucide-react';
 import Papa from 'papaparse';
 import { dbManager, Project } from '@/utils/db';
 import { getDictionary } from '@/i18n/get-dictionary';
@@ -189,7 +195,8 @@ const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProje
         </Alert>
       )}
       
-      <div className="flex gap-1">
+      {/* 隠す */}
+      <div className="hidden flex gap-1">
         <Button
           variant="outline"
           size="sm"
@@ -216,6 +223,36 @@ const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProje
             {t.buttons.importCSV}
           </Button>
         </div>
+      </div>
+
+      {/* 共通 */}
+      <div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleExport}>
+              <Download className="h-4 w-4 mr-2" />
+              {t.buttons.exportCSV}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.csv';
+                input.onchange = (e) => handleImport(e as unknown as React.ChangeEvent<HTMLInputElement>);
+                input.click();
+              }}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              {t.buttons.importCSV}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

@@ -382,8 +382,30 @@
         "errorPrefix": "Row {row}: {errors}"
       }
     },
+    "myAccount": {
+      "title": "My Account",
+      "wallet": "Wallet",
+      "address": "Address",
+      "balance": "Balance",
+      "walletType": "Wallet Type",
+      "copyAddress": "Copy Address",
+      "addressCopied": "Address copied to clipboard",
+      "disconnect": "Disconnect Wallet",
+      "logout": "Logout",
+      "xrp": "XRP",
+      "revenue": "Revenue",
+      "last30Days": "Last 30 Days",
+      "commingSoon": "Coming Soon",
+      "settings": "Settings",
+      "cloudBackup": "Cloud Backup",
+      "backupFeature": "Enable/disable backup feature",
+      "revenueTracking": "Revenue Tracking",
+      "prepareRevenue": "Prepare revenue management (feature flag)"
+    },
     "sidebar": {
       "title": "Owner Note",
+      "connectWallet": "Connect Wallet",
+      "myAccount": "My Account",
       "ownersList": "Owners List",
       "integration": "Project Integration",
       "projectsTitle": "Projects",

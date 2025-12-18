@@ -382,8 +382,30 @@
         "errorPrefix": "{row}行目: {errors}"
       }
     },
+    "myAccount": {
+      "title": "マイアカウント",
+      "wallet": "ウォレット",
+      "address": "アドレス",
+      "balance": "残高",
+      "walletType": "ウォレットタイプ",
+      "copyAddress": "アドレスをコピー",
+      "addressCopied": "アドレスをコピーしました",
+      "disconnect": "ウォレット切断",
+      "logout": "ログアウト",
+      "xrp": "XRP",
+      "revenue": "推定収益",
+      "last30Days": "過去30日間",
+      "commingSoon": "（近日対応予定）",
+      "settings": "設定",
+      "cloudBackup": "クラウドバックアップ",
+      "backupFeature": "バックアップ機能の有効化/無効化",
+      "revenueTracking": "収益管理",
+      "prepareRevenue": "収益管理機能の有効化/無効化（準備中）"
+    },
     "sidebar": {
       "title": "Owner Note",
+      "connectWallet": "ウォレット接続",
+      "myAccount": "マイアカウント",
       "ownersList": "オーナーリスト",
       "integration": "プロジェクト連携",
       "projectsTitle": "プロジェクト",
