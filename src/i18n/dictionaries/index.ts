@@ -408,6 +408,9 @@ export interface Dictionary {
       backupFeature: string;
       revenueTracking: string;
       prepareRevenue: string;
+      authenticated: string;
+      notAuthenticated: string;
+      userId: string;
     },
     sidebar: {
       title: string;

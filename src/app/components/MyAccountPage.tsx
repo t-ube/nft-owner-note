@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Copy, Check, LogOut, Wallet } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Copy, Check, LogOut, Wallet, Shield, ShieldCheck, ShieldX } from "lucide-react";
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import { useXRPLWallet } from "@/app/contexts/XRPLWalletContext";
@@ -21,11 +22,17 @@ function shortAddr(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-6)}`;
 }
 
+function shortId(id: string) {
+  if (id.length <= 12) return id;
+  return `${id.slice(0, 6)}…${id.slice(-6)}`;
+}
+
 export default function MyAccountPageWrapper({ lang }: Props) {
   const [dict, setDict] = useState<Dictionary | null>(null);
-  const { account, balanceXrp, walletType, disconnect } = useXRPLWallet();
+  const { account, balanceXrp, walletType, disconnect, supabaseUserId, isAuthenticated } = useXRPLWallet();
   const router = useRouter();
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
+  const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
   
   // 設定（ローカルに保持。後でクラウド同期に置き換え可）
   const [backupEnabled, setBackupEnabled] = useState<boolean>(true);
@@ -70,6 +77,16 @@ export default function MyAccountPageWrapper({ lang }: Props) {
     }
   };
 
+  const handleCopyUserId = async (userId: string) => {
+    try {
+      await navigator.clipboard.writeText(userId);
+      setCopiedUserId(userId);
+      setTimeout(() => setCopiedUserId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy user ID:', err);
+    }
+  };
+
   const addr = account ?? "";
   const balanceLabel = useMemo(() => {
     if (balanceXrp === null || balanceXrp === undefined) return "—";
@@ -92,17 +109,37 @@ export default function MyAccountPageWrapper({ lang }: Props) {
         {/* Wallet */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">{t.wallet}</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">{t.wallet}</CardTitle>
+              <div className="flex items-center gap-2">
+                {walletType && (
+                  <Badge variant="outline" className="text-xs capitalize">
+                    {walletType}
+                  </Badge>
+                )}
+                {isAuthenticated ? (
+                  <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                    <ShieldCheck className="h-3 w-3 mr-1" />
+                    {t.authenticated ?? "Synced"}
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100">
+                    <ShieldX className="h-3 w-3 mr-1" />
+                    {t.notAuthenticated ?? "Local"}
+                  </Badge>
+                )}
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-1 flex items-center gap-8">
+          <CardContent className="space-y-4">
+            {/* Address & Balance */}
+            <div className="flex items-center gap-8">
               <div>
                 <div className="text-sm text-muted-foreground">{t.address}</div>
                 <div className="flex items-center gap-2">
                   <div className="font-mono text-sm break-all">
                     {addr ? shortAddr(addr) : "Not connected"}
                   </div>
-
                   <Button
                     variant="ghost"
                     size="icon"
@@ -118,14 +155,38 @@ export default function MyAccountPageWrapper({ lang }: Props) {
                   </Button>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm text-muted-foreground">{t.balance}</div>
-                  <div className="text-lg font-bold break-all">{balanceLabel} {t.xrp}</div>
-                </div>
+              <div>
+                <div className="text-sm text-muted-foreground">{t.balance}</div>
+                <div className="text-lg font-bold break-all">{balanceLabel} {t.xrp}</div>
               </div>
             </div>
 
+            {/* User ID (認証済みの場合のみ表示) */}
+            {isAuthenticated && supabaseUserId && (
+              <>
+                <Separator />
+                <div>
+                  <div className="text-sm text-muted-foreground">{t.userId ?? "User ID"}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="font-mono text-xs text-muted-foreground">
+                      {shortId(supabaseUserId)}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleCopyUserId(supabaseUserId)}
+                      className="h-6 w-6"
+                    >
+                      {copiedUserId ? (
+                        <Check className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <Copy className="h-3 w-3 text-gray-500 hover:text-gray-700" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 

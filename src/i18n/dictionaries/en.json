@@ -400,7 +400,10 @@
       "cloudBackup": "Cloud Backup",
       "backupFeature": "Enable/disable backup feature",
       "revenueTracking": "Revenue Tracking",
-      "prepareRevenue": "Prepare revenue management (feature flag)"
+      "prepareRevenue": "Prepare revenue management (feature flag)",
+      "authenticated": "Authenticated",
+      "notAuthenticated": "Not Authenticated",
+      "userId": "User ID"
     },
     "sidebar": {
       "title": "Owner Note",

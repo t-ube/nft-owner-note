@@ -146,7 +146,13 @@ const ProjectSidebar = ({
                 <Wallet className="h-4 w-4 mr-2" /> {t.myAccount}
               </Button>
               ) : (
-                <WalletSelectDialog lang={lang}>
+                <WalletSelectDialog
+                  lang={lang}
+                  onConnected={() => {
+                    router.push(`/${lang}/my-account`);
+                    setIsOpen(false);
+                  }}
+                >
                   <Button
                     variant="default"
                     className="w-full mb-4 justify-start dark:border-gray-600 dark:text-black-200 font-bold"

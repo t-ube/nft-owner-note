@@ -151,17 +151,23 @@ export const XamanProvider = ({ children }: XamanWalletProviderProps) => {
   const [error, setError] = useState<string | null>(null)
   const [currentSignRequest, setCurrentSignRequest] = useState<SignRequest | null>(null)
   const [balanceXrp, setBalanceXrp] = useState<number | null>(null);
+  const [xaman, setXaman] = useState<Xumm | null>(null);
   
-  const xaman = useMemo(() => {
-    return new Xumm(process.env.NEXT_PUBLIC_XAMAN_API_KEY as string, undefined);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const sdk = new Xumm(process.env.NEXT_PUBLIC_XAMAN_API_KEY as string);
+      setXaman(sdk);
+    }
   }, []);
 
   const checkConnectionStatus = useCallback(async () => {
+    if (!xaman) return;
     try {
       const user = await xaman.user;
       if (user) {
         const accountAddress = await user.account;
         if (accountAddress) {
+          console.log('Existing Xaman connection found for account:', accountAddress);
           setAccount({ address: accountAddress });
           setBalanceXrp(await getXrpBalance(accountAddress));
         }
@@ -172,6 +178,11 @@ export const XamanProvider = ({ children }: XamanWalletProviderProps) => {
   }, [xaman]);
   
   const connect = useCallback(async (): Promise<boolean> => {
+    if (!xaman) {
+      setError('SDK not initialized');
+      return false;
+    }
+
     setIsConnecting(true)
     setError(null)
   
@@ -210,7 +221,8 @@ export const XamanProvider = ({ children }: XamanWalletProviderProps) => {
     }
   }, [xaman]);
 
-  const disconnect = async (): Promise<boolean> => {
+  const disconnect = useCallback(async (): Promise<boolean> => {
+    if (!xaman) return false;
     try {
       await xaman.logout();
       setAccount(undefined);
@@ -221,18 +233,24 @@ export const XamanProvider = ({ children }: XamanWalletProviderProps) => {
       setError('Failed to disconnect wallet');
       return false;
     }
-  }
+  }, [xaman]);
 
   useEffect(() => {
-    console.log('Checking existing Xaman connection status...');
-    checkConnectionStatus().then(() => {
-    });
-  }, [checkConnectionStatus]);
+    if (xaman) {
+      console.log('Checking existing Xaman connection status...');
+      checkConnectionStatus().then(() => {
+      });
+    }
+  }, [xaman, checkConnectionStatus]);
 
-  const signAndSubmitTransaction = async (
+  const signAndSubmitTransaction = useCallback(async (
     transaction: UnifiedTx,
     return_url_query?: string
   ): Promise<TransactionResult> => {
+    if (!xaman) {
+      return { success: false, error: 'SDK not initialized' };
+    }
+
     setError(null)
 
     const baseUrl = window.location.origin + window.location.pathname
@@ -318,7 +336,7 @@ export const XamanProvider = ({ children }: XamanWalletProviderProps) => {
       setCurrentSignRequest(null)
       return { success: false, error: errorMessage }
     }
-  }
+  }, [xaman, account]);
 
   const clearError = (): void => {
     setError(null)

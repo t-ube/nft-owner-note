@@ -400,7 +400,10 @@
       "cloudBackup": "クラウドバックアップ",
       "backupFeature": "バックアップ機能の有効化/無効化",
       "revenueTracking": "収益管理",
-      "prepareRevenue": "収益管理機能の有効化/無効化（準備中）"
+      "prepareRevenue": "収益管理機能の有効化/無効化（準備中）",
+      "authenticated": "認証済みユーザー",
+      "notAuthenticated": "未認証ユーザー",
+      "userId": "ユーザーID"
     },
     "sidebar": {
       "title": "Owner Note",
