@@ -6,6 +6,7 @@ export interface Project {
   name: string;
   issuer: string;
   taxon: string;
+  isDeleted: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -46,7 +47,8 @@ export interface ProjectOwnerValue {
   owner: string;        // オーナーのアドレス
   userValue1: number | null;  // ユーザー定義数値1
   userValue2: number | null;  // ユーザー定義数値2
-  updatedAt: number;    // 更新日時
+  isDeleted: boolean;         // 削除フラグ
+  updatedAt: number;          // 更新日時
 }
 
 export interface NFTDetail {
@@ -70,12 +72,14 @@ export interface AddressGroup {
   addresses: string[];  // 所属するアドレスのリスト
   xAccount: string | null;   // Xアカウント名
   memo: string | null;       // メモ
+  isDeleted: boolean;    // 削除フラグ
   updatedAt: number;        // 更新日時
 }
 
 export interface AddressInfo {
   address: string;
   groupId: string | null;  // 所属するグループのID
+  isDeleted: boolean;     // 削除フラグ
   updatedAt: number;
 }
 
@@ -120,7 +124,7 @@ interface PaginatedResult<T> {
 
 class DatabaseManager {
   private dbName = 'OwnerNoteDB';
-  private version = 1;
+  private version = 2;
 
   // ProjectIDを生成するヘルパーメソッド
   private async generateProjectId(project: { name: string; issuer: string; taxon: string }): Promise<string> {
@@ -149,65 +153,96 @@ class DatabaseManager {
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
 
-        // ProjectOwnerValues store
-        if (!db.objectStoreNames.contains('projectOwnerValues')) {
-          const store = db.createObjectStore('projectOwnerValues', { keyPath: 'id' });
-          store.createIndex('projectId', 'projectId', { unique: false });
-          store.createIndex('owner', 'owner', { unique: false });
-          store.createIndex('projectId_owner', ['projectId', 'owner'], { unique: true });
+        const oldVersion = event.oldVersion;
+        console.log(`Upgrading database from version ${oldVersion} to ${this.version}`);
+
+        if (oldVersion < 1) {
+          // ProjectOwnerValues store
+          if (!db.objectStoreNames.contains('projectOwnerValues')) {
+            const store = db.createObjectStore('projectOwnerValues', { keyPath: 'id' });
+            store.createIndex('projectId', 'projectId', { unique: false });
+            store.createIndex('owner', 'owner', { unique: false });
+            store.createIndex('projectId_owner', ['projectId', 'owner'], { unique: true });
+          }
+
+          // Projects store
+          if (!db.objectStoreNames.contains('projects')) {
+            const store = db.createObjectStore('projects', { keyPath: 'id' });
+            store.createIndex('projectId', 'projectId', { unique: true });
+            store.createIndex('name', 'name', { unique: false });
+          }
+
+          // NFTs store
+          if (!db.objectStoreNames.contains('nfts')) {
+            const store = db.createObjectStore('nfts', { keyPath: 'id' });
+            store.createIndex('projectId', 'projectId', { unique: false });
+            store.createIndex('owner', 'owner', { unique: false });
+            store.createIndex('projectId_nft_id', ['projectId', 'nft_id'], { unique: true });
+            store.createIndex('isOrderMade', 'isOrderMade', { unique: false });
+            store.createIndex('color', 'color', { unique: false });
+            store.createIndex('firstSaleAmount', 'firstSaleAmount', { unique: false });
+            store.createIndex('firstSaleAt', 'firstSaleAt', { unique: false });
+            store.createIndex('mintedAt', 'mintedAt', { unique: false });
+          }
+
+          // Address Groups store
+          if (!db.objectStoreNames.contains('addressGroups')) {
+            const groupStore = db.createObjectStore('addressGroups', { keyPath: 'id' });
+            groupStore.createIndex('name', 'name', { unique: false });
+            groupStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+          }
+
+          // Addresses store
+          if (!db.objectStoreNames.contains('addresses')) {
+            const addressStore = db.createObjectStore('addresses', { keyPath: 'address' });
+            addressStore.createIndex('groupId', 'groupId', { unique: false });
+            addressStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+          }
+
+          // Allowlist store
+          if (!db.objectStoreNames.contains('allowlist')) {
+            const store = db.createObjectStore('allowlist', { keyPath: 'id' });
+            store.createIndex('address', 'address', { unique: true });
+          }
+
+          // Allowlist Rules store
+          if (!db.objectStoreNames.contains('allowlistRules')) {
+            const store = db.createObjectStore('allowlistRules', { keyPath: 'id' });
+            store.createIndex('updatedAt', 'updatedAt', { unique: false });
+          }
         }
 
-        // Projects store
-        if (!db.objectStoreNames.contains('projects')) {
-          const store = db.createObjectStore('projects', { keyPath: 'id' });
-          store.createIndex('projectId', 'projectId', { unique: true });
-          store.createIndex('name', 'name', { unique: false });
-        }
-
-        // NFTs store
-        if (!db.objectStoreNames.contains('nfts')) {
-          const store = db.createObjectStore('nfts', { keyPath: 'id' });
-          store.createIndex('projectId', 'projectId', { unique: false });
-          store.createIndex('owner', 'owner', { unique: false });
-          store.createIndex('projectId_nft_id', ['projectId', 'nft_id'], { unique: true });
-          store.createIndex('isOrderMade', 'isOrderMade', { unique: false });
-          store.createIndex('color', 'color', { unique: false });
-          store.createIndex('firstSaleAmount', 'firstSaleAmount', { unique: false });
-          store.createIndex('firstSaleAt', 'firstSaleAt', { unique: false });
-          store.createIndex('mintedAt', 'mintedAt', { unique: false });
-        }
-
-        // Address Groups store
-        if (!db.objectStoreNames.contains('addressGroups')) {
-          const groupStore = db.createObjectStore('addressGroups', { keyPath: 'id' });
-          groupStore.createIndex('name', 'name', { unique: false });
-          groupStore.createIndex('updatedAt', 'updatedAt', { unique: false });
-        }
-
-        // Addresses store
-        if (!db.objectStoreNames.contains('addresses')) {
-          const addressStore = db.createObjectStore('addresses', { keyPath: 'address' });
-          addressStore.createIndex('groupId', 'groupId', { unique: false });
-          addressStore.createIndex('updatedAt', 'updatedAt', { unique: false });
-        }
-
-        // Allowlist store
-        if (!db.objectStoreNames.contains('allowlist')) {
-          const store = db.createObjectStore('allowlist', { keyPath: 'id' });
-          store.createIndex('address', 'address', { unique: true });
-        }
-
-        // Allowlist Rules store
-        if (!db.objectStoreNames.contains('allowlistRules')) {
-          const store = db.createObjectStore('allowlistRules', { keyPath: 'id' });
-          store.createIndex('updatedAt', 'updatedAt', { unique: false });
+        if (oldVersion < 2) {
+          const transaction = (event.target as IDBOpenDBRequest).transaction!;
+          this.migrateStore(transaction, 'projects');
+          this.migrateStore(transaction, 'addressGroups');
+          this.migrateStore(transaction, 'addresses');
+          this.migrateStore(transaction, 'projectOwnerValues');
         }
       };
     });
   }
 
+  private migrateStore(transaction: IDBTransaction, storeName: string): void {
+    if (!transaction.objectStoreNames.contains(storeName)) return;
+    const store = transaction.objectStore(storeName);
+    const request = store.openCursor();
+    request.onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+      if (cursor) {
+        const record = cursor.value;
+        // isDeletedが未定義なら追加
+        if (record.isDeleted === undefined) {
+          record.isDeleted = false;
+          cursor.update(record);
+        }
+        cursor.continue();
+      }
+    };
+  }
+
   // Project Methods
-  async addProject(project: Omit<Project, 'id' | 'projectId' | 'createdAt' | 'updatedAt'>): Promise<Project> {
+  async addProject(project: Omit<Project, 'id' | 'projectId' | 'isDeleted' | 'createdAt' | 'updatedAt'>): Promise<Project> {
     const db = await this.initDB();
     const projectId = await this.generateProjectId(project);
     return new Promise((resolve, reject) => {
@@ -219,6 +254,7 @@ class DatabaseManager {
       const completeProject: Project = {
         id: crypto.randomUUID(),
         projectId,
+        isDeleted: false,
         createdAt: now,
         updatedAt: now,
         ...project
@@ -268,6 +304,7 @@ class DatabaseManager {
           owner,
           userValue1: values.userValue1 ?? existingData?.userValue1 ?? null,
           userValue2: values.userValue2 ?? existingData?.userValue2 ?? null,
+          isDeleted: false,
           updatedAt: now,
         };
         
@@ -533,7 +570,7 @@ class DatabaseManager {
   }
 
   // アドレスグループの操作メソッド
-  async createAddressGroup(group: Omit<AddressGroup, 'id' | 'updatedAt'>): Promise<AddressGroup> {
+  async createAddressGroup(group: Omit<AddressGroup, 'id' | 'isDeleted' | 'updatedAt'>): Promise<AddressGroup> {
     const db = await this.initDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['addressGroups', 'addresses'], 'readwrite');
@@ -543,6 +580,7 @@ class DatabaseManager {
       const now = Date.now();
       const completeGroup: AddressGroup = {
         id: crypto.randomUUID(),
+        isDeleted: false,
         updatedAt: now,
         ...group
       };
@@ -556,6 +594,7 @@ class DatabaseManager {
           return addressStore.put({
             address,
             groupId: completeGroup.id,
+            isDeleted: false,
             updatedAt: now
           });
         });
@@ -618,6 +657,7 @@ class DatabaseManager {
               return addressStore.put({
                 address,
                 groupId: otherGroupWithAddress.id,
+                isDeleted: false,
                 updatedAt: now
               });
             } else {
@@ -631,6 +671,7 @@ class DatabaseManager {
             return addressStore.put({
               address,
               groupId: group.id,
+              isDeleted: false,
               updatedAt: now
             });
           });
@@ -770,6 +811,7 @@ class DatabaseManager {
               return addressStore.put({
                 address,
                 groupId: otherGroupWithAddress.id,
+                isDeleted: false,
                 updatedAt: Date.now()
               });
             } else {
@@ -826,6 +868,7 @@ class DatabaseManager {
                 addressStore.put({
                   ...addressInfo,
                   groupId: correctGroup.id,
+                  isDeleted: false,
                   updatedAt: Date.now()
                 });
               }

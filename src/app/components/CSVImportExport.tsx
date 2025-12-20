@@ -96,7 +96,7 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang
     return errors.length > 0 ? { row: index + 1, errors } : null;
   };
 
-  const convertCSVToAddressGroup = (row: AddressGroupCSV): Omit<AddressGroup, 'id' | 'updatedAt'> => {
+  const convertCSVToAddressGroup = (row: AddressGroupCSV): Omit<AddressGroup, 'id' | 'isDeleted' | 'updatedAt'> => {
     return {
       name: row.name.trim(),
       addresses: row.addresses ? row.addresses.split(';').filter(Boolean) : [],
