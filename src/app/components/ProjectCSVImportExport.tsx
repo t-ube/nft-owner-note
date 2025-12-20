@@ -93,7 +93,7 @@ const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProje
     return errors.length > 0 ? { row: index + 1, errors } : null;
   };
 
-  const convertCSVToProject = (row: ProjectCSV): Omit<Project, 'id' | 'createdAt' | 'updatedAt'> => {
+  const convertCSVToProject = (row: ProjectCSV): Omit<Project, 'id' | 'isDeleted' | 'createdAt' | 'updatedAt'> => {
     return {
       projectId: row.projectId.trim(),
       name: row.name.trim(),
