@@ -231,6 +231,18 @@ class DatabaseManager {
     });
   }
 
+  async upsertProject(project: Project): Promise<Project> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('projects', 'readwrite');
+      const store = transaction.objectStore('projects');
+      const request = store.put(project);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(project);
+    });
+  }
+
   // ProjectOwnerValue Methods
   async setProjectOwnerValues(
     projectId: string,
@@ -265,6 +277,18 @@ class DatabaseManager {
       };
       
       getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+
+  async upsertProjectOwnerValue(value: ProjectOwnerValue): Promise<ProjectOwnerValue> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('projectOwnerValues', 'readwrite');
+      const store = transaction.objectStore('projectOwnerValues');
+      const request = store.put(value);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(value);
     });
   }
 
@@ -341,6 +365,18 @@ class DatabaseManager {
         projects.sort((a, b) => a.name.localeCompare(b.name));
         resolve(projects);
       };
+    });
+  }
+
+  async getAllProjectOwnerValues(): Promise<ProjectOwnerValue[]> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('projectOwnerValues', 'readonly');
+      const store = transaction.objectStore('projectOwnerValues');
+      const request = store.getAll();
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
     });
   }
 
@@ -683,6 +719,18 @@ class DatabaseManager {
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);
+    });
+  }
+
+  async upsertAddressInfo(info: AddressInfo): Promise<AddressInfo> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('addresses', 'readwrite');
+      const store = transaction.objectStore('addresses');
+      const request = store.put(info);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(info);
     });
   }
 
