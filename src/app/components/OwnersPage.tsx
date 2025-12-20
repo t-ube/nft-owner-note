@@ -214,7 +214,7 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
   const handleDeleteConfirm = async () => {
     if (ownerToDelete) {
       try {
-        await dbManager.deleteAddressGroup(ownerToDelete.id);
+        await dbManager.softDeleteAddressGroup(ownerToDelete.id);
         await loadData();
 
         // 拡張機能に通知
