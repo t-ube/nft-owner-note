@@ -104,7 +104,7 @@ export function AddressGroupDialog({
       if (groupId) {
         // アドレス全体に対してもtrimを適用
         const trimmedAddresses = addressGroup.addresses?.map(addr => addr.trim()) || [];
-        savedGroup = await dbManager.updateAddressGroup({
+        savedGroup = await dbManager.softUpdateAddressGroup({
           ...addressGroup,
           addresses: trimmedAddresses
         } as AddressGroup);

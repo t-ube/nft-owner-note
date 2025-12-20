@@ -107,7 +107,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
   const handleDeleteConfirm = async () => {
     if (projectToDelete) {
       try {
-        await dbManager.deleteProject(projectToDelete.projectId);
+        await dbManager.softDeleteProject(projectToDelete.projectId);
         await loadAllProjects();
         if (projectId === projectToDelete.projectId) {
           router.push(`/${lang}`);
