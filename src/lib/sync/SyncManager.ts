@@ -1,8 +1,6 @@
 // lib/sync/SyncManager.ts
 import { SupabaseClient } from '@supabase/supabase-js';
-import { dbManager, AddressGroup, AddressInfo, Project, ProjectOwnerValue } from '@/utils/db';
-
-type SyncStatus = 'idle' | 'syncing' | 'error';
+import { dbManager } from '@/utils/db';
 
 interface SyncResult {
   success: boolean;
@@ -70,7 +68,7 @@ export class SyncManager {
 
     try {
       // ローカルデータ取得
-      const localData = await dbManager.getAllAddressGroups();
+      const localData = await dbManager.getAllAddressGroupsIncludingDeleted();
       
       // リモートデータ取得
       const { data: remoteData, error } = await this.supabase
@@ -88,6 +86,7 @@ export class SyncManager {
           addresses: r.addresses || [],
           xAccount: r.x_account,
           memo: r.memo,
+          isDeleted: r.is_deleted,
           updatedAt: r.updated_at,
         })) || [],
         'id'
@@ -111,6 +110,7 @@ export class SyncManager {
               addresses: item.addresses,
               x_account: item.xAccount,
               memo: item.memo,
+              is_deleted: item.isDeleted,
               updated_at: item.updatedAt,
             })),
             { onConflict: 'user_id,id' }
@@ -119,13 +119,6 @@ export class SyncManager {
         if (upsertError) throw upsertError;
         result.uploaded = merged.toRemote.length;
       }
-
-      // 削除されたデータの処理
-      const localIds = new Set(localData.map(d => d.id));
-      const remoteIds = new Set(remoteData?.map(d => d.id) || []);
-      
-      // リモートにあってローカルにないものは削除対象かもしれない
-      // （削除の同期は別途soft delete機能が必要）
 
     } catch (error) {
       result.success = false;
@@ -140,7 +133,7 @@ export class SyncManager {
     const result: SyncResult = { success: true, uploaded: 0, downloaded: 0, errors: [] };
 
     try {
-      const localData = await dbManager.getAllAddressInfos();
+      const localData = await dbManager.getAllAddressInfosIncludingDeleted();
       
       const { data: remoteData, error } = await this.supabase
         .from('addresses')
@@ -153,6 +146,7 @@ export class SyncManager {
         remoteData?.map(r => ({
           address: r.address,
           groupId: r.group_id,
+          isDeleted: r.is_deleted,
           updatedAt: r.updated_at,
         })) || [],
         'address'
@@ -171,6 +165,7 @@ export class SyncManager {
               address: item.address,
               user_id: this.userId,
               group_id: item.groupId,
+              is_deleted: item.isDeleted,
               updated_at: item.updatedAt,
             })),
             { onConflict: 'user_id,address' }
@@ -192,7 +187,7 @@ export class SyncManager {
     const result: SyncResult = { success: true, uploaded: 0, downloaded: 0, errors: [] };
 
     try {
-      const localData = await dbManager.getAllProjects();
+      const localData = await dbManager.getAllProjectsIncludingDeleted();
       
       const { data: remoteData, error } = await this.supabase
         .from('projects')
@@ -208,6 +203,7 @@ export class SyncManager {
           name: r.name,
           issuer: r.issuer,
           taxon: r.taxon,
+          isDeleted: r.is_deleted,
           createdAt: r.created_at,
           updatedAt: r.updated_at,
         })) || [],
@@ -230,6 +226,7 @@ export class SyncManager {
               name: item.name,
               issuer: item.issuer,
               taxon: item.taxon,
+              is_deleted: item.isDeleted,
               created_at: item.createdAt,
               updated_at: item.updatedAt,
             })),
@@ -252,7 +249,7 @@ export class SyncManager {
     const result: SyncResult = { success: true, uploaded: 0, downloaded: 0, errors: [] };
 
     try {
-      const localData = await dbManager.getAllProjectOwnerValues();
+      const localData = await dbManager.getAllProjectOwnerValuesIncludingDeleted();
       
       const { data: remoteData, error } = await this.supabase
         .from('project_owner_values')
@@ -266,6 +263,7 @@ export class SyncManager {
           id: r.id,
           projectId: r.project_id,
           owner: r.owner,
+          isDeleted: r.is_deleted,
           userValue1: r.user_value1,
           userValue2: r.user_value2,
           updatedAt: r.updated_at,
@@ -287,6 +285,7 @@ export class SyncManager {
               user_id: this.userId,
               project_id: item.projectId,
               owner: item.owner,
+              is_deleted: item.isDeleted,
               user_value1: item.userValue1,
               user_value2: item.userValue2,
               updated_at: item.updatedAt,

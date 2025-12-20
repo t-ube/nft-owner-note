@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, LogOut, Wallet, Shield, ShieldCheck, ShieldX } from "lucide-react";
+import { Copy, Check, LogOut, Wallet, ShieldCheck, ShieldX } from "lucide-react";
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import { useXRPLWallet } from "@/app/contexts/XRPLWalletContext";

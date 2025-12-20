@@ -261,9 +261,10 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
         return ok
       }
       if (walletType === 'joey') {
-        const response = await joey.actions.disconnect()
+        await joey.actions.disconnect()
         setWalletType(null)
         setAccount(null)
+        setSupabaseUser(null)
         return true
       }
       return true

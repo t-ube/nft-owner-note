@@ -71,7 +71,7 @@ export default function MyAccountPageWrapper({ lang }: OwnerListPageProps) {
   const handleDeleteConfirm = async () => {
     if (projectToDelete) {
       try {
-        await dbManager.deleteProject(projectToDelete.projectId);
+        await dbManager.softDeleteProject(projectToDelete.projectId);
         await loadAllProjects();
       } catch (error) {
         console.error('Failed to delete project:', error);

@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, HelpCircle, Wallet } from 'lucide-react';
-import { useXRPLWallet } from '@/app/contexts/XRPLWalletContext';
+import { Plus, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -32,7 +31,6 @@ import {
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import IconTitle from '@/app/components/IconTitle';
-import { WalletSelectDialog } from '@/app/components/WalletSelectDialog';
 
 interface ProjectFormData {
   name: string;
@@ -59,7 +57,6 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
   const router = useRouter();
-  const { account } = useXRPLWallet()
 
   useEffect(() => {
     loadProjects();

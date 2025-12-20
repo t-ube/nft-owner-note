@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { Xumm } from "xumm"
 import type { XummTypes } from 'xumm-sdk'
 import type { UnifiedTx } from '@/types/Wallet'

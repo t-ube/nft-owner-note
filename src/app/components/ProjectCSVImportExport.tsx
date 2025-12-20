@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, Download, AlertCircle, FileDown, MoreVertical } from 'lucide-react';
+import { Upload, Download, AlertCircle, MoreVertical } from 'lucide-react';
 import Papa from 'papaparse';
 import { dbManager, Project } from '@/utils/db';
 import { getDictionary } from '@/i18n/get-dictionary';

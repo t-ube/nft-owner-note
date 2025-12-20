@@ -724,7 +724,6 @@ class DatabaseManager {
     });
   }
 
-  /*
   async updateAddressGroup(group: AddressGroup): Promise<AddressGroup> {
     const db = await this.initDB();
     return new Promise((resolve, reject) => {
@@ -812,7 +811,6 @@ class DatabaseManager {
       transaction.onerror = () => reject(transaction.error);
     });
   }
-  */
 
   async softUpdateAddressGroup(group: AddressGroup): Promise<AddressGroup> {
     const db = await this.initDB();
