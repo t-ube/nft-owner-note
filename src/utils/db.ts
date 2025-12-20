@@ -242,7 +242,7 @@ class DatabaseManager {
   }
 
   // Project Methods
-  async addProject(project: Omit<Project, 'id' | 'projectId' | 'createdAt' | 'updatedAt'>): Promise<Project> {
+  async addProject(project: Omit<Project, 'id' | 'projectId' | 'isDeleted' | 'createdAt' | 'updatedAt'>): Promise<Project> {
     const db = await this.initDB();
     const projectId = await this.generateProjectId(project);
     return new Promise((resolve, reject) => {
@@ -254,6 +254,7 @@ class DatabaseManager {
       const completeProject: Project = {
         id: crypto.randomUUID(),
         projectId,
+        isDeleted: false,
         createdAt: now,
         updatedAt: now,
         ...project
@@ -533,7 +534,7 @@ class DatabaseManager {
   }
 
   // アドレスグループの操作メソッド
-  async createAddressGroup(group: Omit<AddressGroup, 'id' | 'updatedAt'>): Promise<AddressGroup> {
+  async createAddressGroup(group: Omit<AddressGroup, 'id' | 'isDeleted' | 'updatedAt'>): Promise<AddressGroup> {
     const db = await this.initDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['addressGroups', 'addresses'], 'readwrite');
@@ -543,6 +544,7 @@ class DatabaseManager {
       const now = Date.now();
       const completeGroup: AddressGroup = {
         id: crypto.randomUUID(),
+        isDeleted: false,
         updatedAt: now,
         ...group
       };
@@ -556,6 +558,7 @@ class DatabaseManager {
           return addressStore.put({
             address,
             groupId: completeGroup.id,
+            isDeleted: false,
             updatedAt: now
           });
         });
@@ -618,6 +621,7 @@ class DatabaseManager {
               return addressStore.put({
                 address,
                 groupId: otherGroupWithAddress.id,
+                isDeleted: false,
                 updatedAt: now
               });
             } else {
@@ -631,6 +635,7 @@ class DatabaseManager {
             return addressStore.put({
               address,
               groupId: group.id,
+              isDeleted: false,
               updatedAt: now
             });
           });
@@ -758,6 +763,7 @@ class DatabaseManager {
               return addressStore.put({
                 address,
                 groupId: otherGroupWithAddress.id,
+                isDeleted: false,
                 updatedAt: Date.now()
               });
             } else {
@@ -814,6 +820,7 @@ class DatabaseManager {
                 addressStore.put({
                   ...addressInfo,
                   groupId: correctGroup.id,
+                  isDeleted: false,
                   updatedAt: Date.now()
                 });
               }
