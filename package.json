@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "next lint"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@formatjs/intl-localematcher": "^0.5.10",
     "@radix-ui/react-alert-dialog": "^1.1.4",
