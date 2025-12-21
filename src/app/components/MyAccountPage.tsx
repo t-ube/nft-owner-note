@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Copy, Check, LogOut, Wallet, ShieldCheck, ShieldX } from "lucide-react";
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
+import { useSync } from '@/app/contexts/SyncContext';
 import { useXRPLWallet } from "@/app/contexts/XRPLWalletContext";
 
 type Props = { lang: string };
@@ -30,28 +31,22 @@ function shortId(id: string) {
 export default function MyAccountPageWrapper({ lang }: Props) {
   const [dict, setDict] = useState<Dictionary | null>(null);
   const { account, balanceXrp, walletType, disconnect, supabaseUserId, isAuthenticated } = useXRPLWallet();
+  const { syncEnabled, setSyncEnabled, isSyncing, lastSyncAt, syncNow } = useSync();
   const router = useRouter();
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
+
   
   // 設定（ローカルに保持。後でクラウド同期に置き換え可）
-  const [backupEnabled, setBackupEnabled] = useState<boolean>(true);
+  //const [backupEnabled, setBackupEnabled] = useState<boolean>(false);
   const [revenueTrackingEnabled, setRevenueTrackingEnabled] = useState<boolean>(false);
 
   useEffect(() => {
     try {
-      const b = localStorage.getItem("settings.backupEnabled");
       const r = localStorage.getItem("settings.revenueTrackingEnabled");
-      if (b !== null) setBackupEnabled(b === "true");
       if (r !== null) setRevenueTrackingEnabled(r === "true");
     } catch {}
   }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("settings.backupEnabled", String(backupEnabled));
-    } catch {}
-  }, [backupEnabled]);
 
   useEffect(() => {
     try {
@@ -221,8 +216,8 @@ export default function MyAccountPageWrapper({ lang }: Props) {
                 </div>
               </div>
               <Switch
-                checked={backupEnabled}
-                onCheckedChange={setBackupEnabled}
+                checked={syncEnabled}
+                onCheckedChange={setSyncEnabled}
                 aria-label="Enable backup"
               />
             </div>

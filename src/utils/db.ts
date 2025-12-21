@@ -1,4 +1,5 @@
 // utils/db.ts
+import { v4 as uuidv4 } from 'uuid';
 
 export interface Project {
   id: string;
@@ -128,19 +129,32 @@ class DatabaseManager {
 
   // ProjectIDを生成するヘルパーメソッド
   private async generateProjectId(project: { name: string; issuer: string; taxon: string }): Promise<string> {
-    // プロジェクトの情報とタイムスタンプを組み合わせてハッシュを生成
     const timestamp = Date.now().toString();
     const data = `${project.name}:${project.issuer}:${project.taxon}:${timestamp}`;
-    const encoder = new TextEncoder();
-    const buffer = encoder.encode(data);
     
-    // SHA-256ハッシュを生成
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    // crypto.subtleが利用可能かチェック
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
+      const encoder = new TextEncoder();
+      const buffer = encoder.encode(data);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return hashHex.slice(0, 12);
+    }
     
-    // 最初の12文字を使用（十分なユニーク性を確保しつつ、適度な長さに）
-    return hashHex.slice(0, 12);
+    // フォールバック: シンプルなハッシュ関数
+    let hash = 0;
+    for (let i = 0; i < data.length; i++) {
+      const char = data.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    
+    // 正の数に変換して16進数文字列に
+    const positiveHash = Math.abs(hash).toString(16);
+    const randomPart = Math.random().toString(16).slice(2, 8);
+    
+    return (positiveHash + randomPart).slice(0, 12).padEnd(12, '0');
   }
 
   async initDB(): Promise<IDBDatabase> {
@@ -252,7 +266,7 @@ class DatabaseManager {
       const now = Date.now();
 
       const completeProject: Project = {
-        id: crypto.randomUUID(),
+        id: uuidv4(),
         projectId,
         isDeleted: false,
         createdAt: now,
@@ -695,7 +709,7 @@ class DatabaseManager {
 
       const now = Date.now();
       const completeGroup: AddressGroup = {
-        id: crypto.randomUUID(),
+        id: uuidv4(),
         isDeleted: false,
         updatedAt: now,
         ...group
@@ -742,6 +756,29 @@ class DatabaseManager {
     
       getGroupRequest.onsuccess = () => {
         const oldGroup = getGroupRequest.result as AddressGroup;
+
+        if (!oldGroup) {
+          // グループを保存
+          const putRequest = groupStore.put(updatedGroup);
+          
+          // 新しいアドレスを追加
+          const addressPromises = (group.addresses ?? []).map(address => {
+            return addressStore.put({
+              address,
+              groupId: group.id,
+              isDeleted: false,
+              updatedAt: now
+            });
+          });
+          
+          Promise.all(addressPromises)
+            .then(() => {
+              putRequest.onsuccess = () => resolve(updatedGroup);
+              putRequest.onerror = () => reject(putRequest.error);
+            })
+            .catch(error => reject(error));
+          return;
+        }
         
         // 他の全グループを取得
         const getAllGroupsRequest = groupStore.getAll();
@@ -750,8 +787,8 @@ class DatabaseManager {
           const allGroups = getAllGroupsRequest.result as AddressGroup[];
           const otherGroups = allGroups.filter(g => g.id !== group.id && !g.isDeleted);
           
-          const oldAddresses = new Set(oldGroup.addresses);
-          const newAddresses = new Set(group.addresses);
+          const oldAddresses = new Set(oldGroup.addresses ?? []);
+          const newAddresses = new Set(group.addresses ?? []);
     
           // 2. 削除されたアドレスを処理
           const removedAddresses = Array.from(oldAddresses)
@@ -1438,7 +1475,7 @@ class DatabaseManager {
       // 新しいルールを保存
       rules.forEach((rule) => {
         const completeRule: AllowlistRule = {
-          id: crypto.randomUUID(),
+          id: uuidv4(),
           updatedAt: now,
           ...rule
         };

@@ -4,6 +4,15 @@ export const runtime = 'edge';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
+// 暗号化キー生成（256bit = 32bytes）
+function generateEncryptionKey(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { walletAddress } = await req.json();
@@ -21,12 +30,15 @@ export async function POST(req: NextRequest) {
 
     // なければ作成
     if (!user) {
+      const encryptionKey = generateEncryptionKey();
+      
       const { data, error } = await supabase.auth.admin.createUser({
         email,
         email_confirm: true,
         user_metadata: {
           wallet_address: walletAddress,
           provider: 'xaman',
+          encryption_key: encryptionKey,
         },
       });
 

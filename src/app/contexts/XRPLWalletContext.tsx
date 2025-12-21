@@ -25,9 +25,11 @@ type UnifiedCtx = {
   signAndSubmit: (tx: UnifiedTx) => Promise<TxResult>
   clearError: () => void
   balanceXrp: number | null
+  supabase: ReturnType<typeof createSupabaseClient>
   supabaseUser: SupabaseUser | null
   supabaseUserId: string | null
   isAuthenticated: boolean
+  encryptionKey: string | null
 }
 
 const Ctx = createContext<UnifiedCtx | null>(null)
@@ -43,6 +45,7 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
   const supabaseUserId = supabaseUser?.id ?? null
   const isAuthenticated = supabaseUser !== null && account !== null
   const [isInitialized, setIsInitialized] = useState(false)
+  const encryptionKey = supabaseUser?.user_metadata?.encryption_key ?? null
 
   // --- Xaman 側 ---
   const xamanAccount = useXamanAccount()
@@ -102,6 +105,7 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
   }, [supabase])
 
   // アカウントがnullになったらSupabaseからサインアウト
+  /* 危険
   useEffect(() => {
     if (!isInitialized) return
     
@@ -112,6 +116,7 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
       setSupabaseUser(null)
     })
   }, [account, supabaseUser, supabase])
+  */
 
   // アカウント変更を監視してSupabase認証
   useEffect(() => {
@@ -246,17 +251,13 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
   const disconnect = useCallback(async () => {
     clearError()
     try {
-
-      await supabase.auth.signOut()
-      setSupabaseUser(null)
-      
       if (walletType === 'xaman') {
         const ok = await xamanDisconnect()
-        await supabase.auth.signOut()
         if (ok) {
           setWalletType(null)
           setAccount(null)
         }
+        await supabase.auth.signOut()
         setSupabaseUser(null)
         return ok
       }
@@ -264,6 +265,7 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
         await joey.actions.disconnect()
         setWalletType(null)
         setAccount(null)
+        await supabase.auth.signOut()
         setSupabaseUser(null)
         return true
       }
@@ -405,9 +407,11 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
     signAndSubmit,
     clearError,
     balanceXrp,
+    supabase,
     supabaseUser,
     supabaseUserId,
     isAuthenticated,
+    encryptionKey,
   }
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
