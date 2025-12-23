@@ -210,9 +210,9 @@ export default function MyAccountPageWrapper({ lang }: Props) {
             {/* Backup */}
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <div className="font-medium">{t.cloudBackup}</div>
+                <div className="font-medium">{t.cloudSync}</div>
                 <div className="text-sm text-muted-foreground">
-                  {t.backupFeature}
+                  {t.syncFeature}
                 </div>
               </div>
               <Switch

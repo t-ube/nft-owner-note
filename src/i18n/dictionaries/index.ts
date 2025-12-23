@@ -412,8 +412,8 @@ export interface Dictionary {
       last30Days: string;
       commingSoon: string;
       settings: string;
-      cloudBackup: string;
-      backupFeature: string;
+      cloudSync: string;
+      syncFeature: string;
       revenueTracking: string;
       prepareRevenue: string;
       authenticated: string;
