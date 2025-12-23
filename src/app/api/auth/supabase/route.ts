@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
       user: {
         id: user.id,
         wallet_address: walletAddress,
+        user_metadata: user.user_metadata,
       },
     });
   } catch (error) {

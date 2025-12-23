@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { dbManager, Project } from '@/utils/db';
+import { useSync, useSyncListener } from '@/app/contexts/SyncContext';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 
@@ -27,15 +28,21 @@ export default function MyAccountPageWrapper({ lang }: OwnerListPageProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const { deleteProject, updateProject } = useSync();
+  
 
   const loadAllProjects = useCallback(async () => {
     try {
+      console.log('Loading all projects from DB');
       const allProjects = await dbManager.getAllProjects();
       setProjects(allProjects);
+      console.log('Loaded projects:', allProjects);
     } catch (error) {
       console.error('Failed to load projects:', error);
     }
   }, []);
+
+  useSyncListener(loadAllProjects);
 
   useEffect(() => {
     loadAllProjects();
@@ -57,22 +64,17 @@ export default function MyAccountPageWrapper({ lang }: OwnerListPageProps) {
 
   const handleProjectUpdate = useCallback(async (updatedProject: Project) => {
     try {
-      const db = await dbManager.initDB();
-      const transaction = db.transaction('projects', 'readwrite');
-      const store = transaction.objectStore('projects');
-      await store.put(updatedProject);
-      await loadAllProjects();
+      await updateProject(updatedProject);
     } catch (error) {
       console.error('Failed to update project:', error);
       throw error;
     }
-  }, [loadAllProjects]);
+  }, [updateProject]);
 
   const handleDeleteConfirm = async () => {
     if (projectToDelete) {
       try {
-        await dbManager.softDeleteProject(projectToDelete.projectId);
-        await loadAllProjects();
+        await deleteProject(projectToDelete.projectId);
       } catch (error) {
         console.error('Failed to delete project:', error);
       }

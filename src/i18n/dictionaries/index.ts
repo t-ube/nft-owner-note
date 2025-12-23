@@ -17,6 +17,13 @@ export interface Dictionary {
     title: string;
     description: string;
   };
+  syncPromptDialog: {
+    title: string;
+    description: string;
+    enableSync: string;
+    notNow: string;
+    dontShowAgain: string;
+  };
   project: {
     title: string;
     name: string;
@@ -341,6 +348,7 @@ export interface Dictionary {
         actions: {
           add: string;
           save: string;
+          saving: string;
           remove: string;
         };
       };

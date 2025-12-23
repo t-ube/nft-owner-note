@@ -1,6 +1,7 @@
 // lib/sync/SyncManager.ts
 import { SupabaseClient } from '@supabase/supabase-js';
 import { dbManager } from '@/utils/db';
+import { encrypt, decrypt } from '@/lib/crypto';
 
 interface SyncResult {
   success: boolean;
@@ -12,10 +13,12 @@ interface SyncResult {
 export class SyncManager {
   private supabase: SupabaseClient;
   private userId: string;
+  private encryptionKey: string;
 
-  constructor(supabase: SupabaseClient, userId: string) {
+  constructor(supabase: SupabaseClient, userId: string, encryptionKey: string) {
     this.supabase = supabase;
     this.userId = userId;
+    this.encryptionKey = encryptionKey;
   }
 
   // 全データを同期
@@ -94,28 +97,49 @@ export class SyncManager {
 
       // ローカルに保存
       for (const item of merged.toLocal) {
-        await dbManager.updateAddressGroup(item);
+        let decryptedMemo = item.memo;
+        if (item.memo && this.encryptionKey) {
+          try {
+            decryptedMemo = await decrypt(item.memo, this.encryptionKey);
+          } catch (e) {
+            console.warn('Failed to decrypt memo, using raw value:', e);
+          }
+        }
+        
+        await dbManager.upsertAddressGroup({
+          ...item,
+          memo: decryptedMemo,
+        });
         result.downloaded++;
       }
 
       // リモートに保存
       if (merged.toRemote.length > 0) {
-        const { error: upsertError } = await this.supabase
-          .from('address_groups')
-          .upsert(
-            merged.toRemote.map(item => ({
+        const itemsToUpload = await Promise.all(
+          merged.toRemote.map(async item => {
+            let encryptedMemo = item.memo;
+            if (item.memo && this.encryptionKey) {
+              try {
+                encryptedMemo = await encrypt(item.memo, this.encryptionKey);
+              } catch (e) {
+                console.warn('Failed to encrypt memo, using raw value:', e);
+              }
+            }
+            return {
               id: item.id,
               user_id: this.userId,
               name: item.name,
               addresses: item.addresses,
               x_account: item.xAccount,
-              memo: item.memo,
+              memo: encryptedMemo,
               is_deleted: item.isDeleted,
               updated_at: item.updatedAt,
-            })),
-            { onConflict: 'user_id,id' }
-          );
-
+            };
+          })
+        );
+        const { error: upsertError } = await this.supabase
+          .from('address_groups')
+          .upsert(itemsToUpload, { onConflict: 'user_id,id' });
         if (upsertError) throw upsertError;
         result.uploaded = merged.toRemote.length;
       }
@@ -195,6 +219,7 @@ export class SyncManager {
 
       if (error) throw error;
 
+      console.log('Projects sync - local:', localData, 'remote:', remoteData);
       const merged = this.mergeByUpdatedAt(
         localData,
         remoteData?.map(r => ({
@@ -210,12 +235,16 @@ export class SyncManager {
         'id'
       );
 
+      console.log('Projects sync - toLocal:', merged.toLocal.length, 'toRemote:', merged.toRemote.length);
+
       for (const item of merged.toLocal) {
         await dbManager.upsertProject(item);
         result.downloaded++;
       }
 
       if (merged.toRemote.length > 0) {
+        console.log('[SyncManager] Projects - uploading:', merged.toRemote.map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt })));
+
         const { error: upsertError } = await this.supabase
           .from('projects')
           .upsert(
@@ -233,8 +262,15 @@ export class SyncManager {
             { onConflict: 'user_id,id' }
           );
 
-        if (upsertError) throw upsertError;
+        if (upsertError) {
+          console.error('[SyncManager] Projects - upsert error:', upsertError);
+          throw upsertError;
+        }
+        
+        console.log('[SyncManager] Projects - upload success');
         result.uploaded = merged.toRemote.length;
+      } else {
+        console.log('[SyncManager] Projects - nothing to upload');
       }
     } catch (error) {
       result.success = false;

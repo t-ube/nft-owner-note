@@ -10,6 +10,13 @@
     "title": "ウォレットを選択",
     "description": "接続するウォレットを選択してください"
   },
+  "syncPromptDialog": {
+    "title": "クラウド同期を有効化",
+    "description": "データをクラウドに同期して、安全に保管し、複数のデバイスからアクセスできるようにします。",
+    "enableSync": "同期を有効化",
+    "notNow": "今はしない",
+    "dontShowAgain": "次回から表示しない"
+  },
   "project": {
     "title": "新規プロジェクト作成",
     "name": "プロジェクト名",
@@ -334,6 +341,7 @@
         "actions": {
           "add": "追加",
           "save": "保存",
+          "saving": "保存中...",
           "remove": "削除"
         }
       },

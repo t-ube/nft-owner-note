@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { dbManager, Project } from '@/utils/db';
+import { useSync, useSyncListener } from '@/app/contexts/SyncContext';
 import ProjectSidebar from '@/app/components/ProjectSidebar';
 import BulkProjectCreation from '@/app/components/BulkProjectCreation';
 import { 
@@ -57,6 +58,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
   const router = useRouter();
+  const { createProject, deleteProject, updateProject } = useSync();
 
   useEffect(() => {
     loadProjects();
@@ -90,18 +92,20 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
     }
   };
 
+  useSyncListener(loadProjects);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
+
   const handleProjectUpdate = useCallback(async (updatedProject: Project) => {
     try {
-      const db = await dbManager.initDB();
-      const transaction = db.transaction('projects', 'readwrite');
-      const store = transaction.objectStore('projects');
-      await store.put(updatedProject);
-      await loadProjects(); // プロジェクトリストを更新
+      await updateProject(updatedProject);
     } catch (error) {
       console.error('Failed to update project:', error);
       throw error; // エラーを上位に伝播
     }
-  }, []);
+  }, [updateProject]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -123,7 +127,12 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
         return;
       }
 
-      const project = await dbManager.addProject(newProject);
+      const project = await createProject({
+        name: newProject.name,
+        issuer: newProject.issuer,
+        taxon: newProject.taxon
+      });
+      //const project = await dbManager.addProject(newProject);
       setProjects([...projects, project]);
       setNewProject({ name: '', issuer: '', taxon: '' });
       setSuccessMessage(dict?.project.success.created || 'Project created successfully');
@@ -150,8 +159,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
   const handleDeleteConfirm = async () => {
     if (projectToDelete) {
       try {
-        await dbManager.softDeleteProject(projectToDelete.projectId);
-        setProjects(projects.filter(p => p.id !== projectToDelete.id));
+        await deleteProject(projectToDelete.projectId);
         setSuccessMessage(dict?.project.success.deleted || 'Project deleted successfully');
       } catch (error) {
         console.error('Failed to delete project:', error);

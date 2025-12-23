@@ -15,6 +15,7 @@ import {
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import IssuerSiteIcons from '@/app/components/IssuerSiteIcons';
+import { useSync } from '@/app/contexts/SyncContext';
 
 interface ProjectInfoProps {
   lang: string;
@@ -30,6 +31,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ lang, project, onProjectUpdat
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [issuerInfo, setIssuerInfo] = useState<{ groupName: string | null; xAccount: string | null } | null>(null);
+  const { updateProject } = useSync();
 
   useEffect(() => {
     const loadDictionary = async () => {
@@ -67,10 +69,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ lang, project, onProjectUpdat
         updatedAt: Date.now()
       };
 
-      const transaction = await (await dbManager.initDB())
-        .transaction('projects', 'readwrite');
-      const store = transaction.objectStore('projects');
-      await store.put(updatedProject);
+      await updateProject(updatedProject);
 
       onProjectUpdate(updatedProject);
       setIsEditing(false);

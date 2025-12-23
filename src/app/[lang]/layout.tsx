@@ -1,5 +1,6 @@
 // src/app/[lang]/layout.tsx
 import { i18n } from '@/i18n/config';
+import { SyncPromptDialog } from '@/app/components/SyncPromptDialog';
 
 export async function generateStaticParams() {
   return i18n.locales.map((locale) => ({ lang: locale }));
@@ -12,5 +13,10 @@ export default function LocaleLayout({
   children: React.ReactNode;
   params: { lang: string };
 }) {
-  return <div lang={lang}>{children}</div>;
+  return (
+  <div lang={lang}>
+    {children}
+    <SyncPromptDialog lang={lang} />
+  </div>
+  );
 }

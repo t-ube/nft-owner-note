@@ -17,6 +17,7 @@ import NFTSiteWalletIcons from '@/app/components/NFTSiteWalletIcons';
 import Papa from 'papaparse';
 import { Download, Pencil, Loader2 } from "lucide-react";
 import OwnerValueEditor from '@/app/components/OwnerValueEditor';
+import { useSync } from '@/app/contexts/SyncContext';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 
@@ -85,6 +86,8 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [showGrouped, setShowGrouped] = useState(false);
+  const { setProjectOwnerValues } = useSync();
+  
 
   // データ読み込み関数
   const loadData = useCallback(async (): Promise<void> => {
@@ -216,10 +219,10 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
     if (!projectId) return;
 
     try {
-      await dbManager.setProjectOwnerValues(projectId, address, {
+      await setProjectOwnerValues(projectId, address, {
         [field]: value
       });
-
+   
       setOwnerValues(prev => ({
         ...prev,
         [address]: {

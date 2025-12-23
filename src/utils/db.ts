@@ -293,6 +293,26 @@ class DatabaseManager {
     });
   }
 
+  async updateProject(project: Project): Promise<Project> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('projects', 'readwrite');
+      const store = transaction.objectStore('projects');
+      
+      const updatedProject = {
+        ...project,
+        updatedAt: Date.now()
+      };
+
+      console.log('Updating project:', updatedProject);
+      
+      const request = store.put(updatedProject);
+      
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(updatedProject);
+    });
+  }
+
   // ProjectOwnerValue Methods
   async setProjectOwnerValues(
     projectId: string,
@@ -939,6 +959,18 @@ class DatabaseManager {
     
       getGroupRequest.onerror = () => reject(getGroupRequest.error);
       transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  async upsertAddressGroup(group: AddressGroup): Promise<AddressGroup> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('addressGroups', 'readwrite');
+      const store = transaction.objectStore('addressGroups');
+      const request = store.put(group);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(group);
     });
   }
 

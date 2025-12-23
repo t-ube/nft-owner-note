@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useSync, useSyncListener } from '@/app/contexts/SyncContext';
 import ProjectSidebar from '@/app/components/ProjectSidebar';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
@@ -36,6 +37,8 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
   const router = useRouter();
+  const { deleteProject, updateProject } = useSync();
+  
 
   // プロジェクトの読み込み処理を一元化
   const loadProject = useCallback(async () => {
@@ -64,25 +67,26 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
     }
   }, []);
 
+  useSyncListener(loadAllProjects);
+
+  useEffect(() => {
+    loadAllProjects();
+  }, [loadAllProjects]);
+
   // プロジェクト更新処理を一元化
   const handleProjectUpdate = useCallback(async (updatedProject: Project) => {
     try {
-      const db = await dbManager.initDB();
-      const transaction = db.transaction('projects', 'readwrite');
-      const store = transaction.objectStore('projects');
-      await store.put(updatedProject);
+      await updateProject(updatedProject);
       
       // 現在のプロジェクトを更新
       if (updatedProject.projectId === projectId) {
         setProject(updatedProject);
       }
       
-      // プロジェクトリストを更新
-      await loadAllProjects();
     } catch (error) {
       console.error('Failed to update project:', error);
     }
-  }, [projectId, loadAllProjects]);
+  }, [projectId, updateProject]);
 
   // 初期読み込み
   useEffect(() => {
@@ -107,8 +111,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
   const handleDeleteConfirm = async () => {
     if (projectToDelete) {
       try {
-        await dbManager.softDeleteProject(projectToDelete.projectId);
-        await loadAllProjects();
+        await deleteProject(projectToDelete.projectId);
         if (projectId === projectToDelete.projectId) {
           router.push(`/${lang}`);
         }

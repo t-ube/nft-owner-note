@@ -11,10 +11,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { X, Copy, Check } from "lucide-react";
+import { X, Copy, Check, Loader2 } from "lucide-react";
 import { dbManager, AddressGroup } from '@/utils/db';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
+import { useSync } from '@/app/contexts/SyncContext';
 
 interface AddressGroupDialogProps {
   groupId?: string;
@@ -32,6 +33,7 @@ export function AddressGroupDialog({
   lang
 }: AddressGroupDialogProps) {
   const [open, setOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [addressGroup, setAddressGroup] = useState<Partial<AddressGroup>>({
     name: '',
     xAccount: null,
@@ -41,6 +43,7 @@ export function AddressGroupDialog({
   const [newAddress, setNewAddress] = useState('');
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
+  const { createAddressGroup, updateAddressGroup } = useSync();
 
   useEffect(() => {
     const loadDictionary = async () => {
@@ -94,17 +97,18 @@ export function AddressGroupDialog({
   };
 
   const handleSave = async () => {
-    if (!addressGroup.name) {
+    if (!addressGroup.name || isSaving) {
       // 名前は必須
       return;
     }
 
+    setIsSaving(true);
     try {
       let savedGroup: AddressGroup;
       if (groupId) {
         // アドレス全体に対してもtrimを適用
         const trimmedAddresses = addressGroup.addresses?.map(addr => addr.trim()) || [];
-        savedGroup = await dbManager.softUpdateAddressGroup({
+        savedGroup = await updateAddressGroup({
           ...addressGroup,
           addresses: trimmedAddresses
         } as AddressGroup);
@@ -114,7 +118,7 @@ export function AddressGroupDialog({
           ...addressGroup,
           addresses: addressGroup.addresses?.map(addr => addr.trim()) || []
         };
-        savedGroup = await dbManager.createAddressGroup(groupToSave as Omit<AddressGroup, 'id' | 'updatedAt'>);
+        savedGroup = await createAddressGroup(groupToSave as Omit<AddressGroup, 'id' | 'updatedAt'>);
       }
       
       // 拡張機能に通知
@@ -124,6 +128,8 @@ export function AddressGroupDialog({
       setOpen(false);
     } catch (error) {
       console.error('Failed to save address group:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -132,7 +138,10 @@ export function AddressGroupDialog({
   const { dialog: t } = dict.project.owners;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      if (isSaving) return;
+      setOpen(newOpen);
+    }}>
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
@@ -150,6 +159,7 @@ export function AddressGroupDialog({
               value={addressGroup.name || ''}
               onChange={(e) => setAddressGroup(prev => ({ ...prev, name: e.target.value }))}
               placeholder={t.placeholders.name}
+              disabled={isSaving}
             />
           </div>
           <div className="grid gap-2">
@@ -162,6 +172,7 @@ export function AddressGroupDialog({
                 xAccount: e.target.value || null 
               }))}
               placeholder={t.placeholders.xAccount}
+              disabled={isSaving}
             />
           </div>
           <div className="grid gap-2">
@@ -174,6 +185,7 @@ export function AddressGroupDialog({
                 memo: e.target.value || null 
               }))}
               placeholder={t.placeholders.memo}
+              disabled={isSaving}
             />
           </div>
           <div className="grid gap-2">
@@ -183,8 +195,15 @@ export function AddressGroupDialog({
                 value={newAddress}
                 onChange={(e) => setNewAddress(e.target.value)}
                 placeholder={t.placeholders.address}
+                disabled={isSaving}
               />
-              <Button variant="outline" onClick={handleAddAddress}>{t.actions.add}</Button>
+              <Button
+                variant="outline"
+                onClick={handleAddAddress}
+                disabled={isSaving}  
+              >
+                {t.actions.add}
+              </Button>
             </div>
             <div className="space-y-2">
               {addressGroup.addresses?.map((address) => (
@@ -196,6 +215,7 @@ export function AddressGroupDialog({
                       size="icon"
                       onClick={() => handleCopyAddress(address)}
                       className="h-8 w-8 dark:hover:bg-gray-600"
+                      disabled={isSaving}
                     >
                       {copiedAddress === address ? (
                         <Check className="h-4 w-4 text-green-500" />
@@ -208,6 +228,7 @@ export function AddressGroupDialog({
                       size="icon"
                       onClick={() => handleRemoveAddress(address)}
                       className="h-8 w-8 dark:hover:bg-gray-600"
+                      disabled={isSaving}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -218,7 +239,16 @@ export function AddressGroupDialog({
           </div>
         </div>
         <div className="flex justify-end">
-          <Button onClick={handleSave}>{t.actions.save}</Button>
+          <Button onClick={handleSave} disabled={isSaving || !addressGroup.name}>
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {t.actions.saving || 'Saving...'}
+              </>
+            ) : (
+              t.actions.save
+            )}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

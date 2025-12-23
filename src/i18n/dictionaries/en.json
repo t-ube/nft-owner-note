@@ -10,6 +10,13 @@
     "title": "Select Wallet",
     "description": "Please select a wallet to connect to your account."
   },
+  "syncPromptDialog": {
+    "title": "Enable Cloud Sync",
+    "description": "Sync your data to the cloud to keep it safe and accessible across devices.",
+    "enableSync": "Enable Sync",
+    "notNow": "Not Now",
+    "dontShowAgain": "Don't show this again"
+  },
   "project": {
     "title": "Create New Project",
     "name": "Project Name",
@@ -334,6 +341,7 @@
         "actions": {
           "add": "Add",
           "save": "Save",
+          "saving": "Saving...",
           "remove": "Remove"
         }
       },

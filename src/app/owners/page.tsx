@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import OwnersPage from '@/app/components/OwnersPage';
 import ProjectSidebar from '@/app/components/ProjectSidebar';
+import { useSync, useSyncListener } from '@/app/contexts/SyncContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +21,7 @@ export default function OwnerListPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const { deleteProject, updateProject } = useSync();
 
   const loadAllProjects = useCallback(async () => {
     try {
@@ -34,6 +36,8 @@ export default function OwnerListPage() {
     loadAllProjects();
   }, [loadAllProjects]);
 
+  useSyncListener(loadAllProjects);
+  
   const handleDeleteClick = (e: React.MouseEvent, project: Project) => {
     e.stopPropagation();
     setProjectToDelete(project);
@@ -42,22 +46,17 @@ export default function OwnerListPage() {
 
   const handleProjectUpdate = useCallback(async (updatedProject: Project) => {
     try {
-      const db = await dbManager.initDB();
-      const transaction = db.transaction('projects', 'readwrite');
-      const store = transaction.objectStore('projects');
-      await store.put(updatedProject);
-      await loadAllProjects();
+      await updateProject(updatedProject);
     } catch (error) {
       console.error('Failed to update project:', error);
       throw error;
     }
-  }, [loadAllProjects]);
+  }, [updateProject]);
 
   const handleDeleteConfirm = async () => {
     if (projectToDelete) {
       try {
-        await dbManager.softDeleteProject(projectToDelete.projectId);
-        await loadAllProjects();
+        await deleteProject(projectToDelete.projectId);
       } catch (error) {
         console.error('Failed to delete project:', error);
       }
