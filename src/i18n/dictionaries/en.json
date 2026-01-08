@@ -11,7 +11,7 @@
     "description": "Please select a wallet to connect to your account."
   },
   "syncPromptDialog": {
-    "title": "Enable Cloud Sync",
+    "title": "Enable Cloud Sync?",
     "description": "Sync your data to the cloud to keep it safe and accessible across devices.",
     "enableSync": "Enable Sync",
     "notNow": "Not Now",
@@ -409,9 +409,12 @@
       "syncFeature": "Enable/Disable cloud sync feature",
       "revenueTracking": "Revenue Tracking",
       "prepareRevenue": "Prepare revenue management (feature flag)",
-      "authenticated": "Authenticated",
-      "notAuthenticated": "Not Authenticated",
-      "userId": "User ID"
+      "cloud": "Cloud",
+      "local": "Local",
+      "userId": "User ID",
+      "notConnected": "Wallet not connected",
+      "connectPrompt": "Connect your wallet to enable cloud sync and management.",
+      "connectWallet": "Connect Wallet"
     },
     "sidebar": {
       "title": "Owner Note",

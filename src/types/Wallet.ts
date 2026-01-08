@@ -4,7 +4,7 @@ import {
   XummPostPayloadBodyJson
 } from '@/types/Xaman'
 
-export type WalletType = 'xaman' | 'joey'// | 'crossmark'
+export type WalletType = 'xaman' | 'walletconnect' // | 'joey'// | 'crossmark'
 export type TxJson = Record<string, unknown>
 
 export type XamanTx =
@@ -26,6 +26,7 @@ export interface Wallet {
 
 export const Wallets: Wallet[] = [
   { name: 'Xaman', icon: '/images/icon/xaman.svg', walletType: 'xaman' },
-  { name: 'Joey', icon: '/images/icon/joey.svg', walletType: 'joey' }
+  //{ name: 'Joey', icon: '/images/icon/joey.svg', walletType: 'joey' }
+  { name: 'WalletConnect', icon: '/images/icon/wallet-connect.svg', walletType: 'walletconnect' }
   /*{ name: 'Crossmark', icon: '/images/icon/crossmark.ico', walletType: 'crossmark' }*/
 ];

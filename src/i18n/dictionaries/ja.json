@@ -11,7 +11,7 @@
     "description": "接続するウォレットを選択してください"
   },
   "syncPromptDialog": {
-    "title": "クラウド同期を有効化",
+    "title": "クラウド同期を有効にしますか？",
     "description": "データをクラウドに同期して、安全に保管し、複数のデバイスからアクセスできるようにします。",
     "enableSync": "同期を有効化",
     "notNow": "今はしない",
@@ -409,9 +409,12 @@
       "syncFeature": "クラウド同期機能の有効化/無効化",
       "revenueTracking": "収益管理",
       "prepareRevenue": "収益管理機能の有効化/無効化（準備中）",
-      "authenticated": "認証済みユーザー",
-      "notAuthenticated": "未認証ユーザー",
-      "userId": "ユーザーID"
+      "cloud": "クラウド",
+      "local": "ローカル",
+      "userId": "ユーザーID",
+      "notConnected": "ウォレットが接続されていません",
+      "connectPrompt": "ウォレットを接続すると、クラウド同期や管理機能が利用可能になります。",
+      "connectWallet": "ウォレット接続"
     },
     "sidebar": {
       "title": "Owner Note",

@@ -416,9 +416,12 @@ export interface Dictionary {
       syncFeature: string;
       revenueTracking: string;
       prepareRevenue: string;
-      authenticated: string;
-      notAuthenticated: string;
+      cloud: string;
+      local: string;
       userId: string;
+      notConnected: string;
+      connectPrompt: string;
+      connectWallet: string;
     },
     sidebar: {
       title: string;

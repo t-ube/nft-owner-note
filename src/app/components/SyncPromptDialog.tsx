@@ -93,20 +93,6 @@ export function SyncPromptDialog({ lang }: SyncPromptDialogProps) {
     setOpen(false);
   };
 
-  const texts = lang === 'ja' ? {
-    title: 'クラウド同期を有効にしますか？',
-    description: 'クラウド同期を有効にすると、複数のデバイス間でデータを同期できます。データは暗号化されて安全に保存されます。',
-    enableSync: '同期を有効にする',
-    notNow: '今はしない',
-    dontShowAgain: '今後このダイアログを表示しない',
-  } : {
-    title: 'Enable Cloud Sync?',
-    description: 'Enable cloud sync to synchronize your data across multiple devices. Your data will be encrypted and stored securely.',
-    enableSync: 'Enable Sync',
-    notNow: 'Not Now',
-    dontShowAgain: "Don't show this again",
-  };
-
   if (!dict) return null;
 
   const t = dict.syncPromptDialog;

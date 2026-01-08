@@ -3,7 +3,6 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useXRPLWallet } from './XRPLWalletContext';
-import { SyncManager } from '@/lib/sync/SyncManager';
 import { dbManager, AddressGroup, Project, ProjectOwnerValue } from '@/utils/db';
 
 interface SyncContextType {
@@ -28,7 +27,7 @@ const SYNC_ENABLED_KEY = 'ownernote_sync_enabled';
 const LAST_SYNC_AT_KEY = 'ownernote_last_sync_at';
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
-  const { supabase, supabaseUserId, isAuthenticated, encryptionKey } = useXRPLWallet();
+  const { supabase, supabaseUserId, isAuthenticated } = useXRPLWallet();
   
   const [syncEnabled, setSyncEnabledState] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -36,6 +35,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
   
   const hasInitialSynced = useRef(false);
+  const syncInProgressRef = useRef(false);
+  const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const syncListenersRef = useRef<Set<() => void>>(new Set());
 
@@ -84,63 +85,90 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
   // 同期実行
   const syncNow = useCallback(async () => {
-    console.log('syncNow called - checking conditions:', {
-      isAuthenticated,
-      syncEnabled,
-      supabase: !!supabase,
-      supabaseUserId,
-      encryptionKey: encryptionKey,
-    });
-    
-    if (!isAuthenticated || !syncEnabled || !supabase || !supabaseUserId || !encryptionKey) {
-      console.log('Sync skipped - conditions not met');
+    // 既存のチェックロジックを維持
+    if (syncInProgressRef.current || !syncEnabled || !supabaseUserId) return;
+
+    const { data: { session }, error } = await supabase.auth.getSession();
+
+    if (!session || error) {
+      console.warn('[SyncContext] Session is invalid. Skipping sync.');
       return;
     }
-    
-    console.log('Starting sync...');
+
+    syncInProgressRef.current = true;
     setIsSyncing(true);
     try {
-      const syncManager = new SyncManager(supabase, supabaseUserId, encryptionKey);
-      const result = await syncManager.syncAll();
-      console.log('Sync result:', result);
-      if (result.success) {
-        setLastSyncAt(Date.now());
-        notifySyncComplete();
-      } else {
-        console.error('Sync errors:', result.errors);
+      console.log('[SyncContext] Starting API-based sync...');
+
+      // 1. IndexedDBから全データを取得 (db.ts の既存メソッドを使用)
+      const [localGroups, localAddresses, localProjects, localOwnerValues] = await Promise.all([
+        dbManager.getAllAddressGroupsIncludingDeleted(),
+        dbManager.getAllAddressInfosIncludingDeleted(),
+        dbManager.getAllProjectsIncludingDeleted(),
+        dbManager.getAllProjectOwnerValuesIncludingDeleted(),
+      ]);
+
+      // 2. APIにデータを送信 (ブラウザのロックを回避)
+      const response = await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          localData: {
+            addressGroups: localGroups,
+            addresses: localAddresses,
+            projects: localProjects,
+            ownerValues: localOwnerValues,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Sync API error: ${response.statusText}`);
       }
+
+      const { toLocal } = await response.json();
+
+      // 3. APIから受け取った「リモートの方が新しいデータ」をIndexedDBに反映
+      // db.ts の既存の upsert メソッドをループで実行
+      await Promise.all([
+        ...(toLocal.addressGroups || []).map((item: any) => dbManager.upsertAddressGroup(item)),
+        ...(toLocal.addresses || []).map((item: any) => dbManager.upsertAddressInfo(item)),
+        ...(toLocal.projects || []).map((item: any) => dbManager.upsertProject(item)),
+        ...(toLocal.ownerValues || []).map((item: any) => dbManager.upsertProjectOwnerValue(item)),
+      ]);
+
+      // 4. 同期完了後の状態更新
+      setLastSyncAt(Date.now());
+      console.log('[SyncContext] Sync completed via API');
+
     } catch (error) {
-      console.error('Sync failed:', error);
+      console.error('[SyncContext] Sync failed:', error);
+      // 必要であればここでトースト通知などのエラー処理
     } finally {
-      setIsSyncing(false);
+      syncInProgressRef.current = false;
+      setIsSyncing(false); // 同期中フラグを解除
+      notifySyncComplete(); // 全ての処理が終わってから通知
     }
-  }, [isAuthenticated, syncEnabled, supabase, supabaseUserId, encryptionKey, setLastSyncAt, notifySyncComplete]);
+  }, [syncEnabled, supabaseUserId, setLastSyncAt]);
+
+  const requestSync = useCallback(() => {
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    // 変更があってから5000ms後に1回だけ同期を実行する
+    syncTimerRef.current = setTimeout(() => {
+      syncNow();
+    }, 5000);
+  }, [syncNow]);
 
   // 同期設定の保存 + 有効化時に即座に同期
   const setSyncEnabled = useCallback(async (enabled: boolean) => {
     console.log('Setting sync enabled to:', enabled);
     setSyncEnabledState(enabled);
     localStorage.setItem(SYNC_ENABLED_KEY, JSON.stringify(enabled));
-    
-    if (enabled && isAuthenticated && supabase && supabaseUserId && encryptionKey) {
-      setIsSyncing(true);
-      try {
-        const syncManager = new SyncManager(supabase, supabaseUserId, encryptionKey);
-        const result = await syncManager.syncAll();
-        
-        if (result.success) {
-          setLastSyncAt(Date.now());
-          notifySyncComplete();
-        } else {
-          console.error('Sync errors:', result.errors);
-        }
-      } catch (error) {
-        console.error('Sync failed:', error);
-      } finally {
-        setIsSyncing(false);
-      }
+    if (enabled && isAuthenticated && supabaseUserId) {
+      requestSync(); 
     }
-  }, [isAuthenticated, supabase, supabaseUserId, encryptionKey, setLastSyncAt]);
+  }, [isAuthenticated, supabaseUserId, syncNow]);
 
   // 認証完了 + 同期有効時に自動同期（初回のみ）
   useEffect(() => {
@@ -155,47 +183,58 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     syncNow();
   }, [isInitialized, canSync, syncNow]);
 
-  // CRUD操作（省略 - 変更なし）
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // タブが非アクティブになった時に同期を実行
+      if (document.visibilityState === 'hidden' && canSync) {
+        syncNow();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [canSync, syncNow]);
+
+  // CRUD操作
   const createProject = useCallback(async (
     project: Omit<Project, 'id' | 'projectId' | 'isDeleted' | 'createdAt' | 'updatedAt'>
   ) => {
     console.log('Creating project:', project);
     const result = await dbManager.addProject(project);
     console.log('Project created:', result);
-    await syncNow();
+    //requestSync();
     console.log('Sync after project creation done');
     return result;
-  }, [syncNow]);
+  }, [requestSync]);
 
   const deleteProject = useCallback(async (projectId: string) => {
     await dbManager.softDeleteProject(projectId);
-    await syncNow();
-  }, [syncNow]);
+    //requestSync();
+  }, [requestSync]);
 
   const updateProject = useCallback(async (project: Project) => {
     const result = await dbManager.updateProject(project);
-    await syncNow();
+    //requestSync();
     return result;
-  }, [syncNow]);
+  }, [requestSync]);
 
   const createAddressGroup = useCallback(async (
     group: Omit<AddressGroup, 'id' | 'isDeleted' | 'updatedAt'>
   ) => {
     const result = await dbManager.createAddressGroup(group);
-    await syncNow();
+    //requestSync();
     return result;
-  }, [syncNow]);
+  }, [requestSync]);
 
   const updateAddressGroup = useCallback(async (group: AddressGroup) => {
     const result = await dbManager.updateAddressGroup(group);
-    await syncNow();
+    //requestSync();
     return result;
-  }, [syncNow]);
+  }, [requestSync]);
 
   const deleteAddressGroup = useCallback(async (id: string) => {
     await dbManager.softDeleteAddressGroup(id);
-    await syncNow();
-  }, [syncNow]);
+    //requestSync();
+  }, [requestSync]);
 
   const setProjectOwnerValues = useCallback(async (
     projectId: string,
@@ -203,9 +242,9 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     values: { userValue1?: number | null; userValue2?: number | null }
   ) => {
     const result = await dbManager.setProjectOwnerValues(projectId, owner, values);
-    await syncNow();
+    //requestSync();
     return result;
-  }, [syncNow]);
+  }, [requestSync]);
 
   return (
     <SyncContext.Provider

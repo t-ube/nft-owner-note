@@ -32,6 +32,8 @@ export class SyncManager {
 
     try {
       // 各テーブルを同期
+      console.log('[SyncManager] Starting full sync for user:', this.userId);
+
       const addressGroupsResult = await this.syncAddressGroups();
       const addressesResult = await this.syncAddresses();
       const projectsResult = await this.syncProjects();
@@ -57,6 +59,8 @@ export class SyncManager {
       ];
 
       results.success = results.errors.length === 0;
+
+      console.log('[SyncManager] Full sync completed. Uploaded:', results.uploaded, 'Downloaded:', results.downloaded, 'Errors:', results.errors);
     } catch (error) {
       results.success = false;
       results.errors.push(error instanceof Error ? error.message : 'Unknown error');
@@ -71,12 +75,18 @@ export class SyncManager {
 
     try {
       // ローカルデータ取得
+      console.log('[SyncManager] Syncing AddressGroups for user:', this.userId);
       const localData = await dbManager.getAllAddressGroupsIncludingDeleted();
-      
+      console.log('[SyncManager] Local AddressGroups:', localData);
+
       // リモートデータ取得
+      console.log('[SyncManager] Fetching remote AddressGroups from Supabase');
+      console.log('[SyncManager] Supabase client:', this.supabase);
       const { data: remoteData, error } = await this.supabase
         .from('address_groups')
-        .select('*');
+        .select('*')
+        .eq('user_id', this.userId);
+      console.log('[SyncManager] Remote AddressGroups:', remoteData);
 
       if (error) throw error;
 

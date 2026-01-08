@@ -7,11 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, LogOut, Wallet, ShieldCheck, ShieldX } from "lucide-react";
+import { Copy, Check, LogOut, Wallet, Cloud, CloudOff } from "lucide-react";
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import { useSync } from '@/app/contexts/SyncContext';
 import { useXRPLWallet } from "@/app/contexts/XRPLWalletContext";
+import { Wallets } from "@/types/Wallet";
+import { WalletSelectDialog } from '@/app/components/WalletSelectDialog';
 
 type Props = { lang: string };
 
@@ -82,6 +84,14 @@ export default function MyAccountPageWrapper({ lang }: Props) {
     }
   };
 
+  const getWalletName = (type: string): string => {
+    return Wallets.find(v => v.walletType === type)?.name ?? 'Unknown';
+  };
+
+  const getWalletIcon = (type: string): string => {
+    return Wallets.find(v => v.walletType === type)?.icon ?? '';
+  };
+
   const addr = account ?? "";
   const balanceLabel = useMemo(() => {
     if (balanceXrp === null || balanceXrp === undefined) return "—";
@@ -102,86 +112,108 @@ export default function MyAccountPageWrapper({ lang }: Props) {
 
       <div className="mt-4 grid grid-cols-1 gap-4">
         {/* Wallet */}
-        <Card>
+        <Card className="relative overflow-hidden">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">{t.wallet}</CardTitle>
-              <div className="flex items-center gap-2">
+              
+              {/* アイコンのみのステータス表示エリア */}
+              <div className="flex items-center gap-1.5">
                 {walletType && (
-                  <Badge variant="outline" className="text-xs capitalize">
-                    {walletType}
-                  </Badge>
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full border bg-white dark:bg-gray-800 shadow-sm" title={getWalletName(walletType)}>
+                    <img 
+                      src={getWalletIcon(walletType)} 
+                      alt={walletType} 
+                      className="h-4 w-4 object-contain"
+                    />
+                  </div>
                 )}
+                
                 {isAuthenticated ? (
-                  <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
-                    <ShieldCheck className="h-3 w-3 mr-1" />
-                    {t.authenticated ?? "Synced"}
-                  </Badge>
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm" title="Cloud Active">
+                    <Cloud className="h-4 w-4" />
+                  </div>
                 ) : (
-                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100">
-                    <ShieldX className="h-3 w-3 mr-1" />
-                    {t.notAuthenticated ?? "Local"}
-                  </Badge>
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500 shadow-sm" title="Local Only">
+                    <CloudOff className="h-4 w-4" />
+                  </div>
                 )}
               </div>
             </div>
           </CardHeader>
+          
           <CardContent className="space-y-4">
-            {/* Address & Balance */}
-            <div className="flex items-center gap-8">
-              <div>
-                <div className="text-sm text-muted-foreground">{t.address}</div>
-                <div className="flex items-center gap-2">
-                  <div className="font-mono text-sm break-all">
-                    {addr ? shortAddr(addr) : "Not connected"}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleCopyAddress(addr)}
-                    disabled={!addr}
-                    className="h-7 w-7"
-                  >
-                    {copiedAddress === addr ? (
-                      <Check className="h-3 w-3 text-green-500" />
-                    ) : (
-                      <Copy className="h-3 w-3 text-gray-500 hover:text-gray-700" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">{t.balance}</div>
-                <div className="text-lg font-bold break-all">{balanceLabel} {t.xrp}</div>
-              </div>
-            </div>
-
-            {/* User ID (認証済みの場合のみ表示) */}
-            {isAuthenticated && supabaseUserId && (
+            {account ? (
               <>
-                <Separator />
-                <div>
-                  <div className="text-sm text-muted-foreground">{t.userId ?? "User ID"}</div>
-                  <div className="flex items-center gap-2">
-                    <div className="font-mono text-xs text-muted-foreground">
+                {/* Address & Balance */}
+                <div className="flex flex-wrap items-center gap-8">
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t.address}</div>
+                    <div className="flex items-center gap-1.5 bg-muted/30 px-2 py-1 rounded-lg">
+                      <div className="font-mono text-sm font-medium">
+                        {addr ? shortAddr(addr) : "Not connected"}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleCopyAddress(addr)}
+                        disabled={!addr}
+                        className="h-6 w-6"
+                      >
+                        {copiedAddress === addr ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-0">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t.balance}</div>
+                    <div className="text-2xl font-black flex items-baseline gap-1">
+                      {balanceLabel} <span className="text-xs font-medium text-muted-foreground">{t.xrp}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* User ID - 控えめに表示 */}
+                {isAuthenticated && supabaseUserId && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-dashed">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cloud ID:</div>
+                    <div className="font-mono text-[10px] text-muted-foreground/80">
                       {shortId(supabaseUserId)}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
+                    <button 
                       onClick={() => handleCopyUserId(supabaseUserId)}
-                      className="h-6 w-6"
+                      className="text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      {copiedUserId ? (
-                        <Check className="h-3 w-3 text-green-500" />
-                      ) : (
-                        <Copy className="h-3 w-3 text-gray-500 hover:text-gray-700" />
-                      )}
-                    </Button>
+                      {copiedUserId ? <Check className="h-2.5 w-2.5 text-green-500" /> : <Copy className="h-2.5 w-2.5" />}
+                    </button>
                   </div>
-                </div>
+                )}
               </>
-            )}
+              ) : (
+              /* 未ログイン時の表示 */
+              <div className="py-6 flex flex-col items-center justify-center text-center space-y-4">
+                <div className="p-3 bg-muted rounded-full">
+                  <Wallet className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="font-medium">{t.notConnected ?? "Wallet not connected"}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {t.connectPrompt ?? "Connect your wallet to enable cloud sync and management."}
+                  </p>
+                </div>
+                <WalletSelectDialog lang={lang}>
+                  <Button size="lg" className="w-full sm:w-auto font-bold">
+                    <Wallet className="h-4 w-4 mr-2" />
+                    {t.connectWallet ?? "Connect Wallet"}
+                  </Button>
+                </WalletSelectDialog>
+              </div>
+            )
+            }
           </CardContent>
         </Card>
 
@@ -244,22 +276,23 @@ export default function MyAccountPageWrapper({ lang }: Props) {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="py-4 flex justify-center">
+        {account ? (
+          <Card>
+            <CardContent className="py-4 flex justify-center">
               <Button
                 variant="destructive"
                 onClick={async () => {
                   await disconnect();
-                  router.push("/");
                 }}
                 className="gap-2"
               >
                 <LogOut className="h-4 w-4" />
                 {t.logout}
               </Button>
-          </CardContent>
-        </Card>
-
+            </CardContent>
+          </Card>
+        ) : (<></>)
+        }
       </div>
 
     </div>
