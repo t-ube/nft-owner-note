@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { Copy, Check, LogOut, Wallet, Cloud, CloudOff } from "lucide-react";
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import { useSync } from '@/app/contexts/SyncContext';
 import { useXRPLWallet } from "@/app/contexts/XRPLWalletContext";
+import { useSupabaseAuth } from "@/app/contexts/SupabaseAuthContext";
 import { Wallets } from "@/types/Wallet";
 import { WalletSelectDialog } from '@/app/components/WalletSelectDialog';
 
@@ -32,9 +32,9 @@ function shortId(id: string) {
 
 export default function MyAccountPageWrapper({ lang }: Props) {
   const [dict, setDict] = useState<Dictionary | null>(null);
-  const { account, balanceXrp, walletType, disconnect, supabaseUserId, isAuthenticated } = useXRPLWallet();
-  const { syncEnabled, setSyncEnabled, isSyncing, lastSyncAt, syncNow } = useSync();
-  const router = useRouter();
+  const { account, balanceXrp, walletType, disconnect,  } = useXRPLWallet();
+  const { user : supabaseUser, isAuthenticated } = useSupabaseAuth();
+  const { syncEnabled, setSyncEnabled } = useSync();
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
 
@@ -121,10 +121,13 @@ export default function MyAccountPageWrapper({ lang }: Props) {
               <div className="flex items-center gap-1.5">
                 {walletType && (
                   <div className="flex items-center justify-center w-8 h-8 rounded-full border bg-white dark:bg-gray-800 shadow-sm" title={getWalletName(walletType)}>
-                    <img 
+                    <Image 
                       src={getWalletIcon(walletType)} 
                       alt={walletType} 
                       className="h-4 w-4 object-contain"
+                      width={16}
+                      height={16}
+                      unoptimized
                     />
                   </div>
                 )}
@@ -143,7 +146,7 @@ export default function MyAccountPageWrapper({ lang }: Props) {
           </CardHeader>
           
           <CardContent className="space-y-4">
-            {account ? (
+            {true || account ? (
               <>
                 {/* Address & Balance */}
                 <div className="flex flex-wrap items-center gap-8">
@@ -178,14 +181,14 @@ export default function MyAccountPageWrapper({ lang }: Props) {
                 </div>
 
                 {/* User ID - 控えめに表示 */}
-                {isAuthenticated && supabaseUserId && (
+                {isAuthenticated && supabaseUser?.id && (
                   <div className="flex items-center gap-2 pt-2 border-t border-dashed">
                     <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cloud ID:</div>
                     <div className="font-mono text-[10px] text-muted-foreground/80">
-                      {shortId(supabaseUserId)}
+                      {shortId(supabaseUser?.id)}
                     </div>
                     <button 
-                      onClick={() => handleCopyUserId(supabaseUserId)}
+                      onClick={() => handleCopyUserId(supabaseUser?.id)}
                       className="text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {copiedUserId ? <Check className="h-2.5 w-2.5 text-green-500" /> : <Copy className="h-2.5 w-2.5" />}

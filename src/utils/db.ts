@@ -281,11 +281,39 @@ class DatabaseManager {
     });
   }
 
+
   async upsertProject(project: Project): Promise<Project> {
     const db = await this.initDB();
+    const allProjects = await this.getAllProjects();
+
+    const duplicate = allProjects.find(p => 
+      p.projectId === project.projectId && 
+      p.id !== project.id
+    );
+
+    let oldIdToDelete: string | null = null;
+
+    if (duplicate) {
+      if (duplicate.updatedAt >= project.updatedAt) {
+        // 既存の方が新しい場合は、紐付けはそのまま既存(duplicate.id)に維持される
+        console.log('[DB] Local duplicate is newer or same. Ignoring incoming older data.');
+        return duplicate;
+      } else {
+        console.log('[DB] New data is newer. Soft-deleting old duplicate ID:', duplicate.id);
+        // 既存のIDを削除して、新しいIDで上書きする
+        oldIdToDelete = duplicate.id;
+      }
+    }
+
     return new Promise((resolve, reject) => {
       const transaction = db.transaction('projects', 'readwrite');
       const store = transaction.objectStore('projects');
+
+      if (oldIdToDelete) {
+        // 物理削除することで、同じ projectId で新しい ID を put できるようにする
+        store.delete(oldIdToDelete);
+      }
+
       const request = store.put(project);
 
       request.onerror = () => reject(request.error);
@@ -388,6 +416,22 @@ class DatabaseManager {
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);
+    });
+  }
+
+  async getAllProjectOwnerValuesModifiedSince(timestamp: number): Promise<ProjectOwnerValue[]> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('projectOwnerValues', 'readonly');
+      const store = transaction.objectStore('projectOwnerValues');
+      const request = store.getAll();
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const allItems = request.result as ProjectOwnerValue[];
+        const filtered = allItems.filter(item => (item.updatedAt || 0) > timestamp);
+        resolve(filtered);
+      };
     });
   }
 
@@ -497,6 +541,23 @@ class DatabaseManager {
         const projects = request.result;
         projects.sort((a, b) => a.name.localeCompare(b.name));
         resolve(projects);
+      };
+    });
+  }
+
+  async getAllProjectsModifiedSince(timestamp: number): Promise<Project[]> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('projects', 'readonly');
+      const store = transaction.objectStore('projects');
+      const request = store.getAll();
+  
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const allItems = request.result as Project[];
+        const filtered = allItems.filter(item => (item.updatedAt || 0) > timestamp);
+        filtered.sort((a, b) => a.name.localeCompare(b.name));
+        resolve(filtered);
       };
     });
   }
@@ -962,11 +1023,61 @@ class DatabaseManager {
     });
   }
 
+  // AddressGroupの内容を比較する //
+  private isSameContentAddressGroup(a: AddressGroup, b: AddressGroup): boolean {
+    const isBasicMatch = 
+      (a.name ?? '') === (b.name ?? '') &&
+      (a.xAccount ?? '') === (b.xAccount ?? '') &&
+      (a.memo ?? '') === (b.memo ?? '');
+    if (!isBasicMatch) return false;
+    if (a.addresses.length !== b.addresses.length) return false;
+    const sortedExisting = [...a.addresses].sort();
+    const sortedNew = [...b.addresses].sort();
+    return sortedExisting.every((val, index) => val === sortedNew[index]);
+  }
+
+  // アドレスグループの更新 //
+  // サーバーデータの二重化を自動的に解消するため、以下の仕様とします //
+  // 端末Aで入力、端末Bで入力、二つを同期したときにサーバーデータは二重化します //
+  // ローカルでの同期では最新時刻のデータを採用します //
+  // ローカル内の既存のデータと重複していた場合、古い方にハードデリートします //
+  // 新しいデータにソフトデリートがすでにかけられていた場合でも、古い方はハードデリートします //
   async upsertAddressGroup(group: AddressGroup): Promise<AddressGroup> {
     const db = await this.initDB();
+
+    // 同一内容のデータが既に存在するかチェック
+    const allGroups = await this.getAllAddressGroups();
+    
+    const duplicate = allGroups.find(g => 
+      !g.isDeleted && 
+      g.id !== group.id && // IDが違う
+      this.isSameContentAddressGroup(g, group) // 内容が同じ
+    );
+
+    let oldIdToDelete: string | null = null;
+
+    if (duplicate) {
+      if (duplicate.updatedAt >= group.updatedAt) {
+        // 既存の方が新しい場合は、紐付けはそのまま既存(duplicate.id)に維持される
+        console.log('[DB] Local duplicate is newer or same. Ignoring incoming older data.');
+        return duplicate;
+      } else {
+        console.log('[DB] New data is newer. Soft-deleting old duplicate ID:', duplicate.id);
+        // 既存のIDを削除して、新しいIDで上書きする
+        oldIdToDelete = duplicate.id;
+      }
+    }
+
     return new Promise((resolve, reject) => {
       const transaction = db.transaction('addressGroups', 'readwrite');
       const store = transaction.objectStore('addressGroups');
+      
+      if (oldIdToDelete) {
+        // 物理削除する
+        store.delete(oldIdToDelete);
+      }
+
+      // 最新データを保存
       const request = store.put(group);
 
       request.onerror = () => reject(request.error);
@@ -1035,6 +1146,23 @@ class DatabaseManager {
     });
   }
 
+  // 差分アップロード用関数 //
+  async getAllAddressGroupsModifiedSince(timestamp: number): Promise<AddressGroup[]> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('addressGroups', 'readonly');
+      const store = transaction.objectStore('addressGroups');
+      const request = store.getAll();
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const allItems = request.result as AddressGroup[];
+        const filtered = allItems.filter(item => (item.updatedAt || 0) > timestamp);
+        resolve(filtered);
+      };
+    });
+  }
+
   async getAddressInfo(address: string): Promise<AddressInfo | undefined> {
     const db = await this.initDB();
     return new Promise((resolve, reject) => {
@@ -1074,6 +1202,22 @@ class DatabaseManager {
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);
+    });
+  }
+
+  async getAllAddressInfosModifiedSince(timestamp: number): Promise<AddressInfo[]> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('addresses', 'readonly');
+      const store = transaction.objectStore('addresses');
+      const request = store.getAll();
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const allItems = request.result as AddressInfo[];
+        const filtered = allItems.filter(item => (item.updatedAt || 0) > timestamp);
+        resolve(filtered);
+      };
     });
   }
 

@@ -2,8 +2,20 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { useXRPLWallet } from './XRPLWalletContext';
-import { dbManager, AddressGroup, Project, ProjectOwnerValue } from '@/utils/db';
+import { useSupabaseAuth } from "@/app/contexts/SupabaseAuthContext";
+import { dbManager, AddressGroup, Project, ProjectOwnerValue, AddressInfo } from '@/utils/db';
+
+// APIレスポンスの型定義
+interface SyncResponse {
+  success: boolean;
+  toLocal: {
+    addressGroups?: AddressGroup[];
+    addresses?: AddressInfo[];
+    projects?: Project[];
+    ownerValues?: ProjectOwnerValue[];
+  };
+  error?: string;
+}
 
 interface SyncContextType {
   syncEnabled: boolean;
@@ -27,7 +39,7 @@ const SYNC_ENABLED_KEY = 'ownernote_sync_enabled';
 const LAST_SYNC_AT_KEY = 'ownernote_last_sync_at';
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
-  const { supabase, supabaseUserId, isAuthenticated } = useXRPLWallet();
+  const { supabase, user : supabaseUser, isAuthenticated, signOut } = useSupabaseAuth();
   
   const [syncEnabled, setSyncEnabledState] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -39,28 +51,50 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const syncListenersRef = useRef<Set<() => void>>(new Set());
+  const syncEnabledRef = useRef(syncEnabled);
+  const lastSyncAtRef = useRef<number | null>(null);
+
+  const getSyncKey = (userId: string) => `${LAST_SYNC_AT_KEY}_${userId}`;
 
   // 初期化: localStorageから設定を読み込み
   useEffect(() => {
     const savedEnabled = localStorage.getItem(SYNC_ENABLED_KEY);
     if (savedEnabled !== null) {
       console.log('Loaded sync enabled from storage:', savedEnabled);
-      setSyncEnabledState(JSON.parse(savedEnabled));
-    }
-    
-    const savedLastSync = localStorage.getItem(LAST_SYNC_AT_KEY);
-    if (savedLastSync !== null) {
-      setLastSyncAtState(JSON.parse(savedLastSync));
+      const isEnabled = JSON.parse(savedEnabled);
+      setSyncEnabledState(isEnabled);
+      syncEnabledRef.current = isEnabled;
     }
     
     setIsInitialized(true);
   }, []);
 
+  useEffect(() => {
+    if (!supabaseUser?.id) return;
+
+    const userSyncKey = getSyncKey(supabaseUser.id);
+    const savedLastSync = localStorage.getItem(userSyncKey);
+    
+    if (savedLastSync !== null) {
+      const timestamp = parseInt(savedLastSync);
+      lastSyncAtRef.current = timestamp;
+      setLastSyncAtState(timestamp);
+    } else {
+      // 新しいユーザー
+      lastSyncAtRef.current = null;
+      setLastSyncAtState(null);
+    }
+  }, [supabaseUser?.id]); // ユーザーが切り替わったら再実行
+
   // lastSyncAtを更新するヘルパー
   const setLastSyncAt = useCallback((timestamp: number) => {
+    if (!supabaseUser?.id) return;
+
+    const userSyncKey = getSyncKey(supabaseUser.id);
+    lastSyncAtRef.current = timestamp;
     setLastSyncAtState(timestamp);
-    localStorage.setItem(LAST_SYNC_AT_KEY, JSON.stringify(timestamp));
-  }, []);
+    localStorage.setItem(userSyncKey, JSON.stringify(timestamp));
+  }, [supabaseUser?.id]);
 
   // リスナー登録（戻り値は解除関数）
   const onSyncComplete = useCallback((callback: () => void) => {
@@ -81,81 +115,106 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const canSync = isAuthenticated && syncEnabled && supabase && supabaseUserId;
+  const canSync = isAuthenticated && syncEnabled && supabase && supabaseUser?.id;
 
   // 同期実行
   const syncNow = useCallback(async () => {
+    console.log("syncNow");
+
     // 既存のチェックロジックを維持
-    if (syncInProgressRef.current || !syncEnabled || !supabaseUserId) return;
+    console.log(syncInProgressRef.current);
+    console.log(syncEnabledRef.current);
+    console.log(supabaseUser?.id);
+    console.log(supabase);
 
-    const { data: { session }, error } = await supabase.auth.getSession();
-
-    if (!session || error) {
-      console.warn('[SyncContext] Session is invalid. Skipping sync.');
-      return;
-    }
+    if (syncInProgressRef.current || !syncEnabledRef.current || !supabaseUser?.id || !supabase) return;
 
     syncInProgressRef.current = true;
     setIsSyncing(true);
+
+    console.log("Proceeding to sync...");
+
     try {
       console.log('[SyncContext] Starting API-based sync...');
 
-      // 1. IndexedDBから全データを取得 (db.ts の既存メソッドを使用)
+      // IndexedDBから時刻からの差分データを取得
+      const lastSyncTime = lastSyncAtRef.current || 0;
+
       const [localGroups, localAddresses, localProjects, localOwnerValues] = await Promise.all([
-        dbManager.getAllAddressGroupsIncludingDeleted(),
-        dbManager.getAllAddressInfosIncludingDeleted(),
-        dbManager.getAllProjectsIncludingDeleted(),
-        dbManager.getAllProjectOwnerValuesIncludingDeleted(),
+        dbManager.getAllAddressGroupsModifiedSince(lastSyncTime),
+        dbManager.getAllAddressInfosModifiedSince(lastSyncTime),
+        dbManager.getAllProjectsModifiedSince(lastSyncTime),
+        dbManager.getAllProjectOwnerValuesModifiedSince(lastSyncTime),
       ]);
 
-      // 2. APIにデータを送信 (ブラウザのロックを回避)
+      const localData = {
+        addressGroups: localGroups,
+        addresses: localAddresses,
+        projects: localProjects,
+        ownerValues: localOwnerValues,
+      };
+
+      const jsonString = JSON.stringify({ localData });
+      const blob = new Blob([jsonString]);
+      const sizeInBytes = blob.size;
+      const sizeInKB = sizeInBytes / 1024;
+
+      console.log(`[SyncContext] Payload size: ${sizeInBytes} bytes (${sizeInKB.toFixed(2)} KB)`);
+
+      // APIにデータを送信 (ブラウザのロックを回避)
       const response = await fetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          localData: {
-            addressGroups: localGroups,
-            addresses: localAddresses,
-            projects: localProjects,
-            ownerValues: localOwnerValues,
-          },
-        }),
+        body: jsonString,
       });
+
+      if (response.status === 401) {
+        // 認証切れ
+        console.warn('[SyncContext] 401 Unauthorized detected. Signing out...');
+        await signOut(); // セッション切れなのでサインアウトを実行
+        return; // 処理を中断
+      }
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || `Sync API error: ${response.statusText}`);
       }
 
-      const { toLocal } = await response.json();
+      const { toLocal } = (await response.json()) as SyncResponse;
 
-      // 3. APIから受け取った「リモートの方が新しいデータ」をIndexedDBに反映
+      // APIから受け取った「リモートの方が新しいデータ」をIndexedDBに反映
       // db.ts の既存の upsert メソッドをループで実行
+      if (toLocal.addressGroups && toLocal.addressGroups.length > 0) {
+        for (const item of toLocal.addressGroups) {
+          await dbManager.upsertAddressGroup(item);
+        }
+      }
+
       await Promise.all([
-        ...(toLocal.addressGroups || []).map((item: any) => dbManager.upsertAddressGroup(item)),
-        ...(toLocal.addresses || []).map((item: any) => dbManager.upsertAddressInfo(item)),
-        ...(toLocal.projects || []).map((item: any) => dbManager.upsertProject(item)),
-        ...(toLocal.ownerValues || []).map((item: any) => dbManager.upsertProjectOwnerValue(item)),
+        ...(toLocal.addresses || []).map((item: AddressInfo) => dbManager.upsertAddressInfo(item)),
+        ...(toLocal.projects || []).map((item: Project) => dbManager.upsertProject(item)),
+        ...(toLocal.ownerValues || []).map((item: ProjectOwnerValue) => dbManager.upsertProjectOwnerValue(item)),
       ]);
 
-      // 4. 同期完了後の状態更新
+      // 同期完了後の状態更新
       setLastSyncAt(Date.now());
       console.log('[SyncContext] Sync completed via API');
 
     } catch (error) {
       console.error('[SyncContext] Sync failed:', error);
-      // 必要であればここでトースト通知などのエラー処理
     } finally {
       syncInProgressRef.current = false;
       setIsSyncing(false); // 同期中フラグを解除
       notifySyncComplete(); // 全ての処理が終わってから通知
     }
-  }, [syncEnabled, supabaseUserId, setLastSyncAt]);
+  }, [supabaseUser?.id, supabase, setLastSyncAt, notifySyncComplete, signOut]);
 
   const requestSync = useCallback(() => {
+    console.log("requestSync");
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     // 変更があってから5000ms後に1回だけ同期を実行する
     syncTimerRef.current = setTimeout(() => {
+      console.log("call syncNow");
       syncNow();
     }, 5000);
   }, [syncNow]);
@@ -164,11 +223,15 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const setSyncEnabled = useCallback(async (enabled: boolean) => {
     console.log('Setting sync enabled to:', enabled);
     setSyncEnabledState(enabled);
+    syncEnabledRef.current = enabled;
     localStorage.setItem(SYNC_ENABLED_KEY, JSON.stringify(enabled));
-    if (enabled && isAuthenticated && supabaseUserId) {
-      requestSync(); 
+    console.log(isAuthenticated)
+    console.log(supabaseUser?.id)
+    if (enabled && isAuthenticated && supabaseUser?.id) {
+      console.log("call requestSync");
+      requestSync();
     }
-  }, [isAuthenticated, supabaseUserId, syncNow]);
+  }, [isAuthenticated, supabaseUser?.id, requestSync]);
 
   // 認証完了 + 同期有効時に自動同期（初回のみ）
   useEffect(() => {
@@ -201,40 +264,33 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     console.log('Creating project:', project);
     const result = await dbManager.addProject(project);
     console.log('Project created:', result);
-    //requestSync();
-    console.log('Sync after project creation done');
     return result;
-  }, [requestSync]);
+  }, []);
 
   const deleteProject = useCallback(async (projectId: string) => {
     await dbManager.softDeleteProject(projectId);
-    //requestSync();
-  }, [requestSync]);
+  }, []);
 
   const updateProject = useCallback(async (project: Project) => {
     const result = await dbManager.updateProject(project);
-    //requestSync();
     return result;
-  }, [requestSync]);
+  }, []);
 
   const createAddressGroup = useCallback(async (
     group: Omit<AddressGroup, 'id' | 'isDeleted' | 'updatedAt'>
   ) => {
     const result = await dbManager.createAddressGroup(group);
-    //requestSync();
     return result;
-  }, [requestSync]);
+  }, []);
 
   const updateAddressGroup = useCallback(async (group: AddressGroup) => {
     const result = await dbManager.updateAddressGroup(group);
-    //requestSync();
     return result;
-  }, [requestSync]);
+  }, []);
 
   const deleteAddressGroup = useCallback(async (id: string) => {
     await dbManager.softDeleteAddressGroup(id);
-    //requestSync();
-  }, [requestSync]);
+  }, []);
 
   const setProjectOwnerValues = useCallback(async (
     projectId: string,
@@ -242,9 +298,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     values: { userValue1?: number | null; userValue2?: number | null }
   ) => {
     const result = await dbManager.setProjectOwnerValues(projectId, owner, values);
-    //requestSync();
     return result;
-  }, [requestSync]);
+  }, []);
 
   return (
     <SyncContext.Provider

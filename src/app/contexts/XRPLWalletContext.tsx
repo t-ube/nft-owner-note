@@ -1,11 +1,7 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import type { WalletType, UnifiedTx, TxResult } from '@/types/Wallet'
-
-// Supabase
-import { createSupabaseClient } from '@/lib/supabase/client'
-import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 // Xaman
 import { useConnect as useXamanConnect, useDisconnect as useXamanDisconnect, useAccount as useXamanAccount } from '@/app/contexts/XamanContext'
@@ -25,10 +21,6 @@ type UnifiedCtx = {
   signAndSubmit: (tx: UnifiedTx) => Promise<TxResult>
   clearError: () => void
   balanceXrp: number | null
-  supabase: ReturnType<typeof createSupabaseClient>
-  supabaseUser: SupabaseUser | null
-  supabaseUserId: string | null
-  isAuthenticated: boolean
 }
 
 const Ctx = createContext<UnifiedCtx | null>(null)
@@ -39,37 +31,7 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
   const [isConnecting, setIsConnecting] = useState(false)
   const [account, setAccount] = useState<string | null>(null)
   const [balanceXrp, setBalanceXrp] = useState<number | null>(null)
-  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null)
-  const supabase = useMemo(() => createSupabaseClient(), [])
-  const supabaseUserId = supabaseUser?.id ?? null
-  const isAuthenticated = supabaseUser !== null && account !== null
-  const [isInitialized, setIsInitialized] = useState(false)
-
-  // ========== DEBUG: supabaseUser変更を追跡 ==========
-  useEffect(() => {
-    console.log('[DEBUG] supabaseUser changed:', {
-      user: supabaseUser,
-      userId: supabaseUser?.id,
-      email: supabaseUser?.email,
-      timestamp: new Date().toISOString()
-    })
-  }, [supabaseUser])
-
-  // ========== DEBUG: supabaseUserId変更を追跡 ==========
-  useEffect(() => {
-    console.log('[DEBUG] supabaseUserId changed:', supabaseUserId)
-  }, [supabaseUserId])
-
-  // ========== DEBUG: isAuthenticated変更を追跡 ==========
-  useEffect(() => {
-    console.log('[DEBUG] isAuthenticated changed:', {
-      isAuthenticated,
-      account,
-      supabaseUser: !!supabaseUser,
-      supabaseUserId
-    })
-  }, [isAuthenticated, account, supabaseUser, supabaseUserId])
-
+ 
   // ========== DEBUG: account変更を追跡 ==========
   useEffect(() => {
     console.log('[DEBUG] account useEffect triggered, account:', account)
@@ -84,98 +46,6 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
 
   // --- Joey 側 ---
   const joey = useJoey()
-
-  // Supabaseセッション監視
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      console.log('[DEBUG] Initial getUser:', data.user?.id)
-      setSupabaseUser(data.user)
-    })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        console.log('[DEBUG] onAuthStateChange:', _event, session?.user?.id)
-        setSupabaseUser(session?.user ?? null)
-      }
-    )
-
-    return () => subscription.unsubscribe()
-  }, [supabase])
-
-  // Supabase認証関数
-  const authenticateWithSupabase = useCallback(async (walletAddress: string): Promise<boolean> => {
-    console.log('[DEBUG] authenticateWithSupabase called:', walletAddress)
-    try {
-      const res = await fetch('/api/auth/supabase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json()
-        console.log('[DEBUG] authenticateWithSupabase failed:', data)
-        throw new Error(data.error || 'Auth failed')
-      }
-
-      const { success, user } = await res.json()
-      console.log('[DEBUG] authenticateWithSupabase response:', { success, user })
-
-      if (success) {
-        // APIがクッキーにセッションを保存済み
-        
-        if (user) {
-          console.log('[DEBUG] authenticateWithSupabase success, user:', user.id)
-          setSupabaseUser({
-            id: user.id,
-            email: user.email,
-            user_metadata: user.user_metadata,
-            aud: 'authenticated',
-            created_at: '',
-          } as SupabaseUser)
-          return true
-        }
-      }
-
-      return false
-    } catch (err) {
-      console.error('[DEBUG] Supabase auth error:', err)
-      return false
-    }
-  }, [supabase])
-
-  // アカウント変更を監視してSupabase認証
-  useEffect(() => {    
-    console.log('[DEBUG] Auth trigger check:', { account, supabaseUser: !!supabaseUser })
-    if (account == null) {
-      if (!isInitialized) {
-        return;
-      }
-      console.log('[DEBUG] Auth skipped: account is null')
-      supabase.auth.signOut()
-      setSupabaseUser(null)
-      setWalletType(null)
-      return
-    }
-    if (supabaseUser != null) {
-      console.log(supabaseUser)
-      if (supabaseUser.user_metadata?.wallet_address === account) {
-        console.log('[DEBUG] Auth skipped: already authenticated')
-        return
-      }
-    }
-    
-    console.log('[DEBUG] Starting Supabase authentication for account:', account)
-    const authenticate = async () => {
-      const ok = await authenticateWithSupabase(account)
-      if (!ok) {
-        console.warn('[DEBUG] Supabase authentication failed, but wallet connected')
-      } else {
-        console.log('[DEBUG] Supabase authentication succeeded')
-      }
-    }
-    authenticate()
-  }, [account])
 
   // Joey接続  
   const joeyConnect = useCallback(async (): Promise<boolean> => {
@@ -303,16 +173,12 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
           setWalletType(null)
           setAccount(null)
         }
-        supabase.auth.signOut()
-        setSupabaseUser(null)
         return ok
       }
       if (walletType === 'walletconnect') {
         await joey.actions.disconnect()
         setWalletType(null)
         setAccount(null)
-        supabase.auth.signOut()
-        setSupabaseUser(null)
         return true
       }
       return true
@@ -320,7 +186,7 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
       setError(e instanceof Error ? e.message : 'Unknown error')
       return false
     }
-  }, [clearError, walletType, xamanDisconnect, joey.actions, supabase])
+  }, [clearError, walletType, xamanDisconnect, joey.actions])
 
   // 統合的な signAndSubmit
   const signAndSubmit = useCallback(async (tx: UnifiedTx): Promise<TxResult> => {
@@ -346,15 +212,6 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
 
   // 初回接続時にセッション復元
   useEffect(() => {
-    if (isInitialized) return
-
-    console.log('[DEBUG] Session restore check:', {
-      isInitialized,
-      walletType,
-      xamanAddress: xamanAccount?.address,
-      joeyAccounts: joey.accounts?.length
-    })
-
     const restoreSession = async () => {
       console.log('[DEBUG] Session restore check starting...')
 
@@ -363,7 +220,6 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
         console.log('[DEBUG] Restoring Xaman session:', xamanAccount.address)
         setWalletType('xaman')
         setAccount(xamanAccount.address)
-        setIsInitialized(true)
         return
       }
 
@@ -374,7 +230,6 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
           console.log('[DEBUG] Restoring Joey session:', addr)
           setWalletType('walletconnect')
           setAccount(addr)
-          setIsInitialized(true)
           return
         }
       }
@@ -384,18 +239,16 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
 
       if (xamanChecked && joeyChecked) {
         console.log('[DEBUG] No session to restore. Initialization complete.')
-        setIsInitialized(true)
       }
     }
 
     restoreSession()
-  }, [xamanAccount, joey.accounts, isInitialized])
+  }, [xamanAccount, joey.accounts])
 
   // walletType 変更時にアカウント更新
   useEffect(() => {
-    if (!isInitialized) return
-
     if (!walletType) {
+      if (account !== null) setAccount(null)
       setAccount(null)
       return
     }
@@ -414,7 +267,7 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
       setAccount(currentAddress)
     }
 
-  }, [walletType, xamanAccount?.address, joey.accounts, joey.chain, isInitialized, account])
+  }, [walletType, xamanAccount?.address, joey.accounts, joey.chain, account])
 
   // Joey のアカウント変更を監視
   useEffect(() => {
@@ -423,11 +276,17 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
     }
     if (!joey.session) {
       setAccount(null)
+      if (walletType !== null) {
+        setWalletType(null)
+      }
       return
     }
     const a = joey.accounts?.[0]
     if (!a) {
       setAccount(null)
+      if (walletType !== null) {
+        setWalletType(null)
+      }
       return
     }
     if (joey.accounts?.length) {
@@ -445,10 +304,13 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
         console.error('Joey reconnect error:', e)
         setError(e instanceof Error ? e.message : 'Unknown error')
         setAccount(null)
+        if (walletType !== null) {
+          setWalletType(null)
+        }
       }
     })()
 
-  }, [walletType, joey.session, joey.accounts, joey.chain])
+  }, [walletType, joey.session, joey.accounts, joey.actions])
 
   // XRP残高取得
   const getXrpBalance = useCallback(async (address: string): Promise<number | null> => {
@@ -488,10 +350,6 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
     signAndSubmit,
     clearError,
     balanceXrp,
-    supabase,
-    supabaseUser,
-    supabaseUserId,
-    isAuthenticated,
   }
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

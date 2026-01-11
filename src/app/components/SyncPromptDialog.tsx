@@ -15,7 +15,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useSync } from '@/app/contexts/SyncContext';
-import { useXRPLWallet } from '@/app/contexts/XRPLWalletContext';
+import { useSupabaseAuth } from "@/app/contexts/SupabaseAuthContext";
 import { Cloud } from 'lucide-react';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
@@ -30,7 +30,7 @@ export function SyncPromptDialog({ lang }: SyncPromptDialogProps) {
   const [open, setOpen] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const { syncEnabled, setSyncEnabled } = useSync();
-  const { isAuthenticated } = useXRPLWallet();
+  const { isAuthenticated } = useSupabaseAuth();
   const [dict, setDict] = useState<Dictionary | null>(null);
 
   // 一度でもチェック済みならスキップ

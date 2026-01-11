@@ -365,7 +365,11 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
           <Checkbox
             id="showGrouped"
             checked={showGrouped}
-            onCheckedChange={(checked) => setShowGrouped(checked as boolean)}
+            onCheckedChange={(checked: boolean | "indeterminate") => {
+              if (typeof checked === "boolean") {
+                setShowGrouped(checked);
+              }
+            }}
           />
             <label htmlFor="showGrouped" className="text-sm">
               {ownerList.actions.showGrouped}

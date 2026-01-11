@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { match as matchLocale } from '@formatjs/intl-localematcher';
 import Negotiator from 'negotiator';
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { i18n } from './i18n/config';
 
 function getLocale(request: NextRequest): string {
@@ -15,6 +15,50 @@ function getLocale(request: NextRequest): string {
   return matchLocale(languages, locales, i18n.defaultLocale);
 }
 
+/*
+async function updateSupabaseSession(request: NextRequest, response: NextResponse) {
+  // response を let にして、内部で再生成できるようにします
+  let currentResponse = response;
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          // 1. リクエストの Cookie を更新
+          request.cookies.set({ name, value, ...options });
+          // 2. 新しいリクエスト情報を反映したレスポンスを生成
+          currentResponse = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          });
+          // 3. レスポンスの Cookie も更新
+          currentResponse.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options: CookieOptions) {
+          request.cookies.set({ name, value: '', ...options });
+          currentResponse = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          });
+          currentResponse.cookies.set({ name, value: '', ...options });
+        },
+      },
+    }
+  );
+
+  await supabase.auth.getUser();
+
+  return currentResponse;
+}
+*/
+
 async function updateSupabaseSession(request: NextRequest, response: NextResponse) {
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,11 +68,11 @@ async function updateSupabaseSession(request: NextRequest, response: NextRespons
         get(name: string) {
           return request.cookies.get(name)?.value;
         },
-        set(name: string, value: string, options: any) {
+        set(name: string, value: string, options: CookieOptions) {
           request.cookies.set({ name, value, ...options });
           response.cookies.set({ name, value, ...options });
         },
-        remove(name: string, options: any) {
+        remove(name: string, options: CookieOptions) {
           request.cookies.set({ name, value: '', ...options });
           response.cookies.set({ name, value: '', ...options });
         },
@@ -40,7 +84,8 @@ async function updateSupabaseSession(request: NextRequest, response: NextRespons
 
   return response;
 }
-  
+
+
 /*
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -64,14 +109,14 @@ export function middleware(request: NextRequest) {
   return updateSupabaseSession(request, response);
 }
 */
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const isPageRequest = !pathname.startsWith('/api') && 
                          !pathname.startsWith('/_next') && 
                          !pathname.includes('.');
 
-  // 2. ページリクエストの場合のみ、i18nのリダイレクトチェックを行う
+  // ページリクエストの場合のみ、i18nのリダイレクトチェックを行う
   if (isPageRequest) {
     const pathnameIsMissingLocale = i18n.locales.every(
       (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
@@ -83,14 +128,19 @@ export function middleware(request: NextRequest) {
         new URL(`/${locale}${pathname === '/' ? '' : pathname}`, request.url)
       );
       // リダイレクト時もセッション更新
-      return updateSupabaseSession(request, redirectResponse);
+      return await updateSupabaseSession(request, redirectResponse);
     }
   }
 
-  // 3. APIリクエストや通常のページ遷移の場合
+  // APIリクエストや通常のページ遷移の場合
   // ここで updateSupabaseSession を通すことで、APIルートでもCookieが適切に処理される
-  const response = NextResponse.next({ request });
-  return updateSupabaseSession(request, response);
+  const response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
+
+  return await updateSupabaseSession(request, response);
 }
 
 /*
