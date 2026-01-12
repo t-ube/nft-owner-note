@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   DropdownMenu,
@@ -35,6 +35,9 @@ interface ValidationError {
 const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProjectsUpdated, lang }) => {
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
 
   useEffect(() => {
     const loadDictionary = async () => {
@@ -239,14 +242,7 @@ const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProje
               {t.buttons.exportCSV}
             </DropdownMenuItem>
             <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.csv';
-                input.onchange = (e) => handleImport(e as unknown as React.ChangeEvent<HTMLInputElement>);
-                input.click();
-              }}
+              onSelect={() => fileInputRef.current?.click()}
             >
               <Upload className="h-4 w-4 mr-2" />
               {t.buttons.importCSV}
@@ -254,6 +250,15 @@ const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProje
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".csv,text/csv" 
+        onChange={handleImport}
+        className="hidden"
+        style={{ display: 'none' }}
+      />
     </div>
   );
 };
