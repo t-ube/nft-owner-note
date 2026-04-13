@@ -155,9 +155,10 @@ const ProjectSidebar = ({
                 {t.integration}
               </Button>
 
-              <h2 className="text-xl font-bold dark:text-white">{t.projectsTitle}</h2>
-              
-              <ProjectCSVImportExport onProjectsUpdated={onProjectsUpdated} lang={lang} />
+              <div className="mt-6 mb-2 flex items-center justify-between">
+                <h2 className="text-xl font-bold dark:text-white">{t.projectsTitle}</h2>
+                <ProjectCSVImportExport onProjectsUpdated={onProjectsUpdated} lang={lang} />
+              </div>
               
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />

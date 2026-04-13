@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   DropdownMenu,
@@ -36,6 +36,8 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang
   const [error, setError] = useState<string | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [fileInputKey] = useState(0);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const loadDictionary = async () => {
@@ -271,19 +273,12 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang
                 <Download className="h-4 w-4 mr-2" />
                 {t.buttons.exportCSV}
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  const input = document.createElement('input');
-                  input.type = 'file';
-                  input.accept = '.csv';
-                  input.onchange = (e) => handleImport(e as unknown as React.ChangeEvent<HTMLInputElement>);
-                  input.click();
-                }}
-              >
+
+              <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>
                 <Upload className="h-4 w-4 mr-2" />
-                {t.buttons.importCSV}
+                  {t.buttons.importCSV}
               </DropdownMenuItem>
+
               <DropdownMenuItem onClick={generateSampleCSV}>
                 <FileDown className="h-4 w-4 mr-2" />
                 {t.buttons.downloadSample}
@@ -292,6 +287,15 @@ const CSVImportExport: React.FC<CSVImportExportProps> = ({ onGroupsUpdated, lang
           </DropdownMenu>
         </div>
       </div>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".csv,text/csv" 
+        onChange={handleImport}
+        className="hidden"
+        style={{ display: 'none' }}
+      />
     </div>
   );
 };

@@ -1,7 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, Download, AlertCircle } from 'lucide-react';
+import { Upload, Download, AlertCircle, MoreVertical } from 'lucide-react';
 import Papa from 'papaparse';
 import { dbManager, Project } from '@/utils/db';
 import { getDictionary } from '@/i18n/get-dictionary';
@@ -29,6 +35,9 @@ interface ValidationError {
 const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProjectsUpdated, lang }) => {
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
 
   useEffect(() => {
     const loadDictionary = async () => {
@@ -189,7 +198,7 @@ const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProje
         </Alert>
       )}
       
-      <div className="flex gap-1">
+      <div className="hidden flex gap-1">
         <Button
           variant="outline"
           size="sm"
@@ -217,6 +226,38 @@ const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProje
           </Button>
         </div>
       </div>
+
+      {/* 共通 */}
+      <div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleExport}>
+              <Download className="h-4 w-4 mr-2" />
+              {t.buttons.exportCSV}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              {t.buttons.importCSV}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".csv,text/csv" 
+        onChange={handleImport}
+        className="hidden"
+        style={{ display: 'none' }}
+      />
     </div>
   );
 };
