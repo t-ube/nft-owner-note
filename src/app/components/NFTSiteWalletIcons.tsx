@@ -40,7 +40,10 @@ const NFTSiteWalletIcons: React.FC<NFTSiteWalletIconsProps> = ({ wallet, issuer,
                 variant="ghost"
                 size="sm"
                 className="p-1 h-6 w-6 hover:bg-gray-100 rounded-full"
-                onClick={() => window.open(site.url, '_blank')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(site.url, '_blank')
+                }}
               >
                 <Image
                   src={`/${site.icon}`}

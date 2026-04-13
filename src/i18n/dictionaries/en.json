@@ -210,6 +210,7 @@
         "table": {
           "serial": "Serial",
           "tokenId": "Token ID",
+          "links": "Links",
           "owner": "Owner",
           "nftName": "NFT Name",
           "mintedAt": "Minted At",
@@ -323,7 +324,9 @@
         "actions": {
           "add": "Add",
           "save": "Save",
-          "remove": "Remove"
+          "remove": "Remove",
+          "removeThisOwner": "Remove this owner",
+          "addWalletAddress": "Add a wallet address"
         }
       },
       "totalOwners": "Total Owners",

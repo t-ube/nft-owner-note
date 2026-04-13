@@ -248,14 +248,12 @@ const CrossProjectOwnerPage: React.FC<CrossProjectOwnerPageProps> = ({
                   onUpdate={handleBatchUpdate}
                   isUpdating={isUpdating}
                   updateProgress={updateProgress}
-                  dictionary={dict.project.integration}
                 />
               </TabsContent>
 
               <TabsContent value="allowlist">
                 <AllowlistGenerator
                   selectedProjects={selectedProjects}
-                  dict={dict}
                   lang={lang}
                   onUpdate={handleBatchUpdate}
                   isUpdating={isUpdating}

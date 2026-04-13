@@ -36,12 +36,16 @@ const OwnerValueEditor: React.FC<OwnerValueEditorProps> = ({
         className="w-20 text-right"
         step="any"
         disabled={isSubmitting}
+        onClick={(e) => e.stopPropagation()}
       />
       <div className="flex gap-1 shrink-0">
         <Button
           size="icon"
           variant="ghost"
-          onClick={handleSave}
+          onClick={(e) => {
+            e.stopPropagation()
+            handleSave()
+          }}
           disabled={isSubmitting}
           className="h-7 w-7"
         >
@@ -50,7 +54,10 @@ const OwnerValueEditor: React.FC<OwnerValueEditorProps> = ({
         <Button
           size="icon"
           variant="ghost"
-          onClick={onCancel}
+          onClick={(e) => {
+            e.stopPropagation()
+            onCancel()
+          }}
           disabled={isSubmitting}
           className="h-7 w-7"
         >

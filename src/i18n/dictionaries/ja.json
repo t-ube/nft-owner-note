@@ -210,6 +210,7 @@
         "table": {
           "serial": "シリアル",
           "tokenId": "トークンID",
+          "links": "リンク",
           "owner": "オーナー",
           "nftName": "NFT名",
           "mintedAt": "ミント日時",
@@ -323,7 +324,9 @@
         "actions": {
           "add": "追加",
           "save": "保存",
-          "remove": "削除"
+          "remove": "削除",
+          "removeThisOwner": "このオーナーを削除",
+          "addWalletAddress": "ウォレットアドレスを追加してください"
         }
       },
       "totalOwners": "件のオーナー",
