@@ -35,7 +35,13 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjec
   const [isLoading, setIsLoading] = useState(true);
   const [dict, setDict] = useState<Dictionary | null>(null);
 
+  useEffect(() => {
+    console.log('ProjectDetail mount');
+    return () => console.log('ProjectDetail unmount');
+  }, []);
+
   const loadProjectData = useCallback(async () => {
+    console.log('Loading project data for projectId:', projectId);
     setIsLoading(true);
     try {
       const projectData = await dbManager.getProjectByProjectId(projectId);
@@ -47,6 +53,14 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjec
     } finally {
       setIsLoading(false);
     }
+  }, [projectId]);
+
+  useEffect(() => {
+    console.log('Current project state:', project);
+  }, [project]);
+
+  useEffect(() => {
+    console.log('ProjectDetail projectId changed:', projectId);
   }, [projectId]);
 
   useEffect(() => {
@@ -62,6 +76,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjec
   }, [lang]);
 
   const handleProjectUpdate = (updatedProject: Project) => {
+    console.log('Project updated:', updatedProject);
     setProject(updatedProject);
     onProjectsUpdated();
   };
@@ -95,6 +110,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjec
     useEffect(() => {
       const autoLoad = async () => {
         if (hasMore && !isLoading) {
+          console.log('Auto-loading more NFTs...');
           await loadMore();
         }
       };

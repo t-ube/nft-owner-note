@@ -235,6 +235,7 @@ export interface Dictionary {
         table: {
           serial: string;
           tokenId: string;
+          links: string;
           owner: string;
           nftName: string;
           mintedAt: string;
@@ -350,6 +351,8 @@ export interface Dictionary {
           save: string;
           saving: string;
           remove: string;
+          removeThisOwner: string;
+          addWalletAddress: string;
         };
       };
       totalOwners: string;

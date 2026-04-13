@@ -9,6 +9,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AddressGroupDialog } from './AddressGroupDialog';
@@ -20,6 +30,7 @@ import OwnerValueEditor from '@/app/components/OwnerValueEditor';
 import { useSync } from '@/app/contexts/SyncContext';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
+import { OwnerDetailSheet } from '@/app/components/OwnerDetailSheet';
 
 interface OwnerStats {
   address: string;
@@ -87,10 +98,21 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [showGrouped, setShowGrouped] = useState(false);
   const { setProjectOwnerValues } = useSync();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [ownerToDelete, setOwnerToDelete] = useState<AddressGroup | null>(null);
+  const [selectedOwner, setSelectedOwner] = useState<AddressGroup | null>(null);
+  const [initialAddresses, setInitialAddresses] = useState<string[]>([]);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   
+
+  useEffect(() => {
+    console.log('OwnerList mount');
+    return () => console.log('OwnerList unmount');
+  }, []);
 
   // データ読み込み関数
   const loadData = useCallback(async (): Promise<void> => {
+    console.log('Loading owner list data...');
     const [groups, infos, project] = await Promise.all([
       dbManager.getAllAddressGroups(),
       dbManager.getAllAddressInfos(),
@@ -108,6 +130,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
   }, [issuer, taxon]);
 
   useEffect(() => {
+    console.log('OwnerList mounted, loading data...');
     void loadData();
   }, [loadData]);
 
@@ -216,6 +239,8 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
   const ranks = useMemo(() => calculateRank(displayStats), [displayStats, calculateRank]);
 
   const handleValueSave = async (address: string, field: 'userValue1' | 'userValue2', value: number | null) => {
+    console.log(`Saving value for ${address}: ${field} = ${value}`);
+
     if (!projectId) return;
 
     try {
@@ -330,6 +355,46 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
     setAddressInfos(_.keyBy(infos, 'address'));
   };
 
+  const handleDeleteConfirm = async () => {
+    if (ownerToDelete) {
+      try {
+        await dbManager.softDeleteAddressGroup(ownerToDelete.id);
+        await loadData();
+
+        // 詳細を開いていた場合閉じる
+        setIsDetailOpen(false);
+
+        // 拡張機能に通知
+        window.postMessage({ type: 'OWNERNOTE_UPDATED' }, '*');
+        
+      } catch (error) {
+        console.error('Failed to delete owner:', error);
+      }
+    }
+    setIsDeleteDialogOpen(false);
+    setOwnerToDelete(null);
+  };
+
+  const handleRowClick = (stat: OwnerStats | GroupedStats) => {
+    // グループ化表示の時は何もしない
+    if (showGrouped) return;
+
+    // モバイルサイズ（sm未満）の時のみ動作
+    if (window.innerWidth < 640) {
+      const ownerStat = stat as OwnerStats;
+      if (ownerStat.group) {
+        // 既存オーナーの場合
+        setSelectedOwner(ownerStat.group);
+        setInitialAddresses([]);
+      } else {
+        // 未登録アドレスの場合（新規作成モードへ）
+        setSelectedOwner(null);
+        setInitialAddresses([ownerStat.address]);
+      }
+      setIsDetailOpen(true);
+    }
+  };
+
   const formatAddress = (address: string) => {
     return `${address.substring(0, 4)}...${address.substring(address.length - 4)}`;
   };
@@ -342,7 +407,8 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
         href={`https://x.com/${username}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-1 text-blue-500 hover:text-blue-600"
+        className="inline-flex items-center gap-1 text-blue-500 hover:text-blue-600 hover:underline transition-all"
+        onClick={(e) => e.stopPropagation()}
       >
         @{username}
       </a>
@@ -401,7 +467,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
           <TableHeader>
             <TableRow>
               <TableHead className="w-16 text-center whitespace-normal">{ownerList.table.rank}</TableHead>
-              <TableHead className="min-w-[120px] max-w-[160px] whitespace-normal">{ownerList.table.owner}</TableHead>
+              <TableHead className="min-w-[120px] max-w-[160px] whitespace-normal hidden sm:table-cell">{ownerList.table.owner}</TableHead>
               <TableHead className="min-w-[160px] max-w-[200px] whitespace-normal break-words">
                 {ownerList.table.name}
               </TableHead>
@@ -421,13 +487,14 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
                 key={stat.type === 'group' 
                   ? `group-${stat.groupId}` 
                   : `individual-${stat.address}`
-                } 
+                }
                 className="group"
+                onClick={() => {handleRowClick(stat)}}
               >
                 <TableCell className="text-center font-medium">
                   {ranks[index]}
                 </TableCell>
-                <TableCell className="font-mono">
+                <TableCell className="font-mono hidden sm:table-cell">
                   {isGroupedStat(stat) ? (
                     <div className="flex items-center gap-2">
                       <span className="font-mono">{formatAddress(stat.addresses[0])}</span>
@@ -440,25 +507,59 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
                   ) : (
                     <div className="flex items-center gap-2">
                       <span className="font-mono">{formatAddress((stat as OwnerStats).address)}</span>
-                      <AddressGroupDialog
-                        initialAddresses={[(stat as OwnerStats).address]}
-                        groupId={(stat as OwnerStats).group?.id}
-                        onSave={handleGroupSave}
-                        lang={lang}
-                      >
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+
+                      {/* PC版: 既存のダイアログを使用 */}
+                      <div className="hidden sm:block">
+                        <AddressGroupDialog
+                          initialAddresses={[(stat as OwnerStats).address]}
+                          groupId={(stat as OwnerStats).group?.id}
+                          onSave={handleGroupSave}
+                          lang={lang}
                         >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </AddressGroupDialog>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </AddressGroupDialog>
+                      </div>
                     </div>
                   )}
                 </TableCell>
                 <TableCell className="min-w-[160px] max-w-[200px] whitespace-normal break-words">
-                  {isGroupedStat(stat) ? (stat as GroupedStats).groupName || '-' : (stat as OwnerStats).group?.name || '-'}
+                  {isGroupedStat(stat) ? (
+                    <>
+                      {/* PC用：名前がなければハイフン */}
+                      <span className="hidden sm:inline">
+                        {(stat as GroupedStats).groupName || '-'}
+                      </span>
+                      {/* スマホ用：名前がなければ短縮ID(アドレス) */}
+                      <span className="sm:hidden">
+                        {(stat as GroupedStats).groupName || (
+                          <span className="text-xs font-mono text-muted-foreground bg-muted/50 px-1 rounded">
+                            {`${(stat as GroupedStats).groupId?.slice(0, 6)}...${(stat as GroupedStats).groupId?.slice(-4)}`}
+                          </span>
+                        )}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {/* PC用：名前がなければハイフン */}
+                      <span className="hidden sm:inline">
+                        {(stat as OwnerStats).group?.name || '-'}
+                      </span>
+                      {/* スマホ用：名前がなければ短縮アドレス */}
+                      <span className="sm:hidden">
+                        {(stat as OwnerStats).group?.name || (
+                          <span className="text-xs font-mono text-muted-foreground bg-muted/50 px-1 rounded">
+                            {`${(stat as OwnerStats).address.slice(0, 6)}...${(stat as OwnerStats).address.slice(-4)}`}
+                          </span>
+                        )}
+                      </span>
+                    </>
+                  )}
                 </TableCell>
                 <TableCell>
                   {formatXAccount(isGroupedStat(stat) ? (stat as GroupedStats).xAccount : (stat as OwnerStats).group?.xAccount)}
@@ -481,7 +582,12 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                          onClick={() => setEditingCell({ address: (stat as OwnerStats).address, field: 'userValue1' })}
+                          onClick={
+                            (e) => {
+                              e.stopPropagation();
+                              setEditingCell({ address: (stat as OwnerStats).address, field: 'userValue1' })
+                            }
+                          }
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -529,6 +635,40 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
           </TableBody>
         </Table>
       </div>
+      <OwnerDetailSheet
+        owner={selectedOwner}
+        initialAddresses={initialAddresses}
+        isOpen={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        onSave={async () => {
+          await loadData();
+        }}
+        onDelete={async (owner) => {
+          setOwnerToDelete(owner);
+          setIsDeleteDialogOpen(true);
+        }}
+        lang={lang}
+      />
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{dict?.project.owners.deleteDialog.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {dict?.project.owners.deleteDialog.description.replace('{name}', ownerToDelete?.name || '')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{dict?.project.owners.deleteDialog.cancel}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {dict?.project.owners.deleteDialog.confirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

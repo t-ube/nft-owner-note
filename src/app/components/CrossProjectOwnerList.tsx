@@ -10,13 +10,25 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Download, Pencil } from 'lucide-react';
 import { AddressGroupDialog } from './AddressGroupDialog';
 import { BatchUpdateComponent, UpdateProgress } from '@/app/components/BatchUpdateComponent';
 import { dbManager, Project, NFToken, AddressGroup, AddressInfo } from '@/utils/db';
 import _ from 'lodash';
 import Papa from 'papaparse';
+import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
+import { OwnerDetailSheet } from '@/app/components/OwnerDetailSheet';
 
 interface AggregatedOwnerStats {
   address: string;
@@ -52,7 +64,6 @@ interface CrossProjectOwnerListProps {
   onUpdate: () => Promise<void>;
   isUpdating: boolean;
   updateProgress: UpdateProgress | null;
-  dictionary: Dictionary['project']['integration'];
 }
 
 const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
@@ -60,13 +71,37 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
   lang,
   onUpdate,
   isUpdating,
-  updateProgress,
-  dictionary
+  updateProgress
 }) => {
   const [nfts, setNFTs] = useState<Record<string, NFToken[]>>({});
   const [addressGroups, setAddressGroups] = useState<Record<string, AddressGroup>>({});
   const [addressInfos, setAddressInfos] = useState<Record<string, AddressInfo>>({});
   const [showGrouped, setShowGrouped] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [ownerToDelete, setOwnerToDelete] = useState<AddressGroup | null>(null);
+  const [selectedOwner, setSelectedOwner] = useState<AddressGroup | null>(null);
+  const [initialAddresses, setInitialAddresses] = useState<string[]>([]);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [dict, setDict] = useState<Dictionary | null>(null);
+
+  // 辞書のロード
+  useEffect(() => {
+    const loadDictionary = async () => {
+      const dictionary = await getDictionary(lang as 'en' | 'ja');
+      setDict(dictionary);
+    };
+    loadDictionary();
+  }, [lang]);
+
+  // アドレスデータのロード
+  const loadAddressData = async () => {
+    const [groups, infos] = await Promise.all([
+      dbManager.getAllAddressGroups(),
+      dbManager.getAllAddressInfos(),
+    ]);
+    setAddressGroups(_.keyBy(groups, 'id'));
+    setAddressInfos(_.keyBy(infos, 'address'));
+  };
 
   // データの読み込み
   useEffect(() => {
@@ -79,12 +114,8 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
         }
         setNFTs(nftData);
 
-        const [groups, infos] = await Promise.all([
-          dbManager.getAllAddressGroups(),
-          dbManager.getAllAddressInfos(),
-        ]);
-        setAddressGroups(_.keyBy(groups, 'id'));
-        setAddressInfos(_.keyBy(infos, 'address'));
+        await loadAddressData();
+
       } catch (error) {
         console.error('Failed to load NFT data:', error);
       }
@@ -223,7 +254,8 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
         href={`https://x.com/${username}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-1 text-blue-500 hover:text-blue-600"
+        className="inline-flex items-center gap-1 text-blue-500 hover:text-blue-600 hover:underline transition-all"
+        onClick={(e) => e.stopPropagation()}
       >
         @{username}
       </a>
@@ -276,6 +308,48 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
     setAddressInfos(_.keyBy(infos, 'address'));
   };
 
+  // 削除確認ダイアログの処理
+  const handleDeleteConfirm = async () => {
+    if (ownerToDelete) {
+      try {
+        await dbManager.softDeleteAddressGroup(ownerToDelete.id);
+        await loadAddressData();
+
+        // 詳細を開いていた場合閉じる
+        setIsDetailOpen(false);
+
+        // 拡張機能に通知
+        window.postMessage({ type: 'OWNERNOTE_UPDATED' }, '*');
+        
+      } catch (error) {
+        console.error('Failed to delete owner:', error);
+      }
+    }
+    setIsDeleteDialogOpen(false);
+    setOwnerToDelete(null);
+  };
+
+  // 行クリック時の処理
+  const handleRowClick = (stat: DisplayStat) => {
+    // グループ化表示の時は何もしない
+    if (isGroupedStat(stat)) return;
+
+    if (stat.group) {
+      // 既存オーナーの場合
+      setSelectedOwner(stat.group);
+      setInitialAddresses([]);
+    } else {
+      // 未登録アドレスの場合（新規作成モードへ）
+      setSelectedOwner(null);
+      setInitialAddresses([stat.address]);
+    }
+    setIsDetailOpen(true);
+  };
+
+  if (!dict) return null;
+
+  const { integration: integrationText } = dict.project;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-2 sm:px-0">
@@ -287,11 +361,11 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
               onCheckedChange={(checked) => setShowGrouped(checked as boolean)}
             />
             <label htmlFor="showGrouped" className="text-sm">
-              {dictionary.actions.showGrouped}
+              {integrationText.actions.showGrouped}
             </label>
           </div>
           <div className="text-sm text-gray-500">
-            {dictionary.status.showingOwners.replace('{count}', displayStats.length.toString())}
+            {integrationText.status.showingOwners.replace('{count}', displayStats.length.toString())}
           </div>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
@@ -301,9 +375,9 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
             progress={updateProgress}
             projects={selectedProjects}
             dictionary={{
-              updating: dictionary.actions.updateNFTs,
-              projectProgress: dictionary.status.updatingProject,
-              complete: dictionary.status.updateComplete
+              updating: integrationText.actions.updateNFTs,
+              projectProgress: integrationText.status.updatingProject,
+              complete: integrationText.status.updateComplete
             }}
           />
           <Button
@@ -313,26 +387,26 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
             className="flex items-center gap-2"
           >
             <Download className="h-4 w-4" />
-            {dictionary.actions.exportRank}
+            {integrationText.actions.exportRank}
           </Button>
         </div>
       </div>
 
       <Card className="mx-[-0.5rem] sm:mx-0 rounded-none sm:rounded-lg border-x-0 sm:border-x">
         <CardHeader className="px-3 sm:px-6">
-          <CardTitle>{dictionary.table.title}</CardTitle>
+          <CardTitle>{integrationText.table.title}</CardTitle>
         </CardHeader>
         <CardContent className="px-2 sm:px-6">
           <div className="border rounded-md overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-16 text-center whitespace-normal">{dictionary.table.rank}</TableHead>
-                  <TableHead className="min-w-[140px] max-w-[200px] whitespace-normal">{dictionary.table.owner}</TableHead>
-                  <TableHead className="min-w-[160px] max-w-[200px] whitespace-normal break-words">{dictionary.table.name}</TableHead>
-                  <TableHead className="min-w-[120px] max-w-[160px] whitespace-normal break-words">{dictionary.table.xAccount}</TableHead>
-                  <TableHead className="min-w-[80px] text-right whitespace-normal">{dictionary.table.totalNfts}</TableHead>
-                  <TableHead className="min-w-[80px] text-right hidden sm:table-cell whitespace-normal">{dictionary.table.share}</TableHead>
+                  <TableHead className="w-16 text-center whitespace-normal">{integrationText.table.rank}</TableHead>
+                  <TableHead className="min-w-[140px] max-w-[200px] whitespace-normal">{integrationText.table.owner}</TableHead>
+                  <TableHead className="min-w-[160px] max-w-[200px] whitespace-normal break-words hidden lg:table-cell">{integrationText.table.name}</TableHead>
+                  <TableHead className="min-w-[120px] max-w-[160px] whitespace-normal break-words">{integrationText.table.xAccount}</TableHead>
+                  <TableHead className="min-w-[80px] text-right whitespace-normal">{integrationText.table.totalNfts}</TableHead>
+                  <TableHead className="min-w-[80px] text-right hidden sm:table-cell whitespace-normal">{integrationText.table.share}</TableHead>
                   {selectedProjects.map(project => (
                     <TableHead 
                       key={project.projectId} 
@@ -348,9 +422,14 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
                   <TableRow 
                     key={isGroupedStat(stat) ? `group-${stat.groupId}` : `individual-${stat.address}`} 
                     className="group"
+                    onClick={() => {
+                    if (window.innerWidth < 640) { // smのブレイクポイント
+                      handleRowClick(stat);
+                    }
+                  }}
                   >
                     <TableCell className="font-medium">{ranks[index]}</TableCell>
-                    <TableCell className="font-mono">
+                    <TableCell className="font-mono hidden lg:table-cell">
                       {isGroupedStat(stat) ? (
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-sm">{formatAddress(stat.addresses[0])}</span>
@@ -379,24 +458,54 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
                             </AddressGroupDialog>
                           </div>
                         )}
+                    </TableCell>
+                    <TableCell>
+                      {isGroupedStat(stat) ? (
+                      <>
+                        {/* PC用：名前がなければハイフン */}
+                        <span className="hidden sm:inline">
+                          {(stat as GroupedStats).groupName || '-'}
+                        </span>
+                        {/* スマホ用：名前がなければ短縮ID(アドレス) */}
+                        <span className="sm:hidden">
+                          {(stat as GroupedStats).groupName || (
+                            <span className="text-xs font-mono text-muted-foreground bg-muted/50 px-1 rounded">
+                              {`${(stat as GroupedStats).groupId?.slice(0, 6)}...${(stat as GroupedStats).groupId?.slice(-4)}`}
+                            </span>
+                          )}
+                        </span>
+                      </>
+                      ) : (
+                        <>
+                          {/* PC用：名前がなければハイフン */}
+                          <span className="hidden sm:inline">
+                            {(stat as AggregatedOwnerStats).group?.name || '-'}
+                          </span>
+                          {/* スマホ用：名前がなければ短縮アドレス */}
+                          <span className="sm:hidden">
+                            {(stat as AggregatedOwnerStats).group?.name || (
+                              <span className="text-xs font-mono text-muted-foreground bg-muted/50 px-1 rounded">
+                                {`${(stat as AggregatedOwnerStats).address.slice(0, 6)}...${(stat as AggregatedOwnerStats).address.slice(-4)}`}
+                              </span>
+                            )}
+                          </span>
+                        </>
+                      )}
+                    </TableCell>
+                    <TableCell className="table-cell">
+                      {formatXAccount(isGroupedStat(stat) ? stat.xAccount : stat.group?.xAccount)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {stat.totalNFTs.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right hidden sm:table-cell">
+                      {stat.holdingRatio.toFixed(2)}%
+                    </TableCell>
+                    {selectedProjects.map(project => (
+                      <TableCell key={project.projectId} className="text-right">
+                        {(stat.projectHoldings[project.projectId] || 0).toLocaleString()}
                       </TableCell>
-                      <TableCell className="table-cell">
-                        {isGroupedStat(stat) ? stat.groupName || '-' : stat.group?.name || '-'}
-                      </TableCell>
-                      <TableCell className="table-cell">
-                        {formatXAccount(isGroupedStat(stat) ? stat.xAccount : stat.group?.xAccount)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {stat.totalNFTs.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right hidden sm:table-cell">
-                        {stat.holdingRatio.toFixed(2)}%
-                      </TableCell>
-                      {selectedProjects.map(project => (
-                        <TableCell key={project.projectId} className="text-right">
-                          {(stat.projectHoldings[project.projectId] || 0).toLocaleString()}
-                        </TableCell>
-                      ))}
+                    ))}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -404,6 +513,40 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
             </div>
           </CardContent>
         </Card>
+        <OwnerDetailSheet
+          owner={selectedOwner}
+          initialAddresses={initialAddresses}
+          isOpen={isDetailOpen}
+          onOpenChange={setIsDetailOpen}
+          onSave={async () => {
+            await loadAddressData();
+          }}
+          onDelete={async (owner) => {
+            setOwnerToDelete(owner);
+            setIsDeleteDialogOpen(true);
+          }}
+          lang={lang}
+        />
+  
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{dict?.project.owners.deleteDialog.title}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {dict?.project.owners.deleteDialog.description.replace('{name}', ownerToDelete?.name || '')}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{dict?.project.owners.deleteDialog.cancel}</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleDeleteConfirm}
+                className="bg-red-500 hover:bg-red-600"
+              >
+                {dict?.project.owners.deleteDialog.confirm}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   };

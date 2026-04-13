@@ -30,9 +30,11 @@ import { AddressGroupDialog } from '@/app/components/AddressGroupDialog';
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import CSVImportExport from '@/app/components/CSVImportExport';
+import { OwnerDetailSheet } from '@/app/components/OwnerDetailSheet';
 import _ from 'lodash';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
+
 
 type SortField = 'name' | 'addresses' | 'xAccount' | 'userValue1' | 'userValue2' | 'updatedAt';
 type SortDirection = 'asc' | 'desc' | null;
@@ -57,10 +59,12 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
   const [ownerToDelete, setOwnerToDelete] = useState<AddressGroup | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
+  const [selectedOwner, setSelectedOwner] = useState<AddressGroup | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   
   // データ読み込み関数
-  const loadData = React.useCallback(async () => {
-    setIsLoading(true);
+  const loadData = React.useCallback(async (isInitialLoad = false) => {
+    if (isInitialLoad) setIsLoading(true);
     try {
       const [groups, infos] = await Promise.all([
         dbManager.getAllAddressGroups(),
@@ -71,12 +75,13 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
       setAddressInfos(_.keyBy(infos, 'address'));
     } catch (error) {
       console.error('Failed to load data:', error);
+    } finally {
+      if (isInitialLoad) setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   useEffect(() => {
-    loadData();
+    loadData(true);
   }, [loadData]);
 
   useEffect(() => {
@@ -112,7 +117,20 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
   };
 
   const handleGroupSave = async () => {
-    await loadData();
+    await loadData(false);
+  };
+
+  const handleGroupSaveEdit = async () => {
+    await loadData(false);
+    if (selectedOwner) {
+      setOwners(prevOwners => {
+        const updated = prevOwners.find(o => o.id === selectedOwner.id);
+        if (updated) {
+          setSelectedOwner(updated);
+        }
+        return prevOwners;
+      });
+    }
   };
 
   const getSortedOwners = () => {
@@ -165,9 +183,10 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
         href={`https://x.com/${username}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-1 text-blue-500 hover:text-blue-600"
+        className="inline-flex items-center gap-1 text-blue-500 hover:text-blue-600 hover:underline transition-all"
+        onClick={(e) => e.stopPropagation()}
       >
-        @{username}
+        <span className="text-sm">@{username}</span>
       </a>
     );
   };
@@ -215,7 +234,10 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
     if (ownerToDelete) {
       try {
         await dbManager.softDeleteAddressGroup(ownerToDelete.id);
-        await loadData();
+        await loadData(false);
+
+        // 詳細を開いていた場合閉じる
+        setIsDetailOpen(false);
 
         // 拡張機能に通知
         window.postMessage({ type: 'OWNERNOTE_UPDATED' }, '*');
@@ -268,12 +290,29 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
                 />
               </div>
               <div className="flex items-center gap-2">
-                <AddressGroupDialog onSave={handleGroupSave} lang={lang}>
-                  <Button className="flex-1 lg:flex-none">
+                {/* PC版: 既存のダイアログを使用 */}
+                <div className="hidden sm:block">
+                  <AddressGroupDialog onSave={handleGroupSave} lang={lang}>
+                    <Button className="lg:flex-none">
+                      <Plus className="h-4 w-4 mr-2" />
+                      {t.actions.newOwner}
+                    </Button>
+                  </AddressGroupDialog>
+                </div>
+
+                {/* モバイル版: ボタンタップでシートを「新規モード」で開く */}
+                <div className="sm:hidden flex-1">
+                  <Button 
+                    className="w-full" 
+                    onClick={() => {
+                      setSelectedOwner(null);
+                      setIsDetailOpen(true);
+                    }}
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     {t.actions.newOwner}
                   </Button>
-                </AddressGroupDialog>
+                </div>
                 <CSVImportExport onGroupsUpdated={loadData} lang={lang} />
               </div>
             </div>
@@ -285,17 +324,39 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
               <TableHeader>
                 <TableRow>
                   <SortableHeader field="name">{t.table.ownerName}</SortableHeader>
-                  <SortableHeader field="addresses">{t.table.walletAddresses}</SortableHeader>
-                  <SortableHeader field="xAccount" className="hidden sm:table-cell">{t.table.xAccount}</SortableHeader>
+                  <SortableHeader field="addresses" className="hidden sm:table-cell">{t.table.walletAddresses}</SortableHeader>
+                  <SortableHeader field="xAccount">{t.table.xAccount}</SortableHeader>
                   <TableHead className="hidden sm:table-cell">{t.table.memo}</TableHead>
-                  <TableHead>{t.table.actions}</TableHead>
+                  <TableHead className='hidden sm:table-cell'>{t.table.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredOwners.map((owner) => (
-                  <TableRow key={owner.id}>
-                    <TableCell>{owner.name}</TableCell>
-                    <TableCell>
+                  <TableRow
+                    key={owner.id}
+                    className="cursor-pointer sm:cursor-default"
+                    onClick={() => {
+                      if (window.innerWidth < 640) { // smのブレイクポイント
+                        setSelectedOwner(owner);
+                        setIsDetailOpen(true);
+                      }
+                    }}
+                  >
+                    <TableCell className="py-4 sm:py-2 px-4">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-semibold sm:font-medium text-base sm:text-sm">
+                          {owner.name}
+                        </span>
+                        {/* スマホのみ：名前の下にアドレスを表示 */}
+                        {owner.addresses.length > 0 && (
+                          <div className="sm:hidden opacity-60 text-[11px] font-mono leading-none">
+                            {`${owner.addresses[0].substring(0, 6)}...${owner.addresses[0].substring(owner.addresses[0].length - 4)}`}
+                            {owner.addresses.length > 1 && ` (+${owner.addresses.length - 1})`}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       {owner.addresses.length > 0 ? (
                         <div className="flex items-center gap-2">
                           <span className="font-mono">
@@ -310,7 +371,10 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0"
-                            onClick={() => handleCopyAddress(owner.addresses[0])}
+                            onClick={(e) => {
+                              e.stopPropagation(); // 行のクリックイベント発火を防ぐ
+                              handleCopyAddress(owner.addresses[0]);
+                            }}
                           >
                             {copiedAddress === owner.addresses[0] ? (
                               <Check className="h-3 w-3 text-green-500" />
@@ -323,9 +387,9 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
                         '-'
                       )}
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell">{formatXAccount(owner.xAccount)}</TableCell>
+                    <TableCell>{formatXAccount(owner.xAccount)}</TableCell>
                     <TableCell className="hidden sm:table-cell">{owner.memo || '-'}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <AddressGroupDialog
                           groupId={owner.id}
@@ -344,7 +408,10 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
                           variant="ghost"
                           size="sm"
                           className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleDeleteClick(owner)}
+                          onClick={(e) => {
+                            e.stopPropagation(); // 行のクリックイベント発火を防ぐ
+                            handleDeleteClick(owner);
+                          }}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -357,6 +424,21 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
           </div>
         </CardContent>
       </Card>
+
+      {/* モバイル用詳細パネル */}
+      <OwnerDetailSheet
+        owner={selectedOwner}
+        initialAddresses={[]}
+        isOpen={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        onSave={handleGroupSaveEdit}
+        onDelete={(owner) => {
+          // 削除確認ダイアログへ繋ぐ
+          setOwnerToDelete(owner);
+          setIsDeleteDialogOpen(true);
+        }}
+        lang={lang}
+      />
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>

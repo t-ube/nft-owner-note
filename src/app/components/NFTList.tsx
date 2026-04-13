@@ -21,6 +21,16 @@ import {
   PaginationItem,
   PaginationLink,
 } from "@/components/ui/pagination";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useNFTContext } from '@/app/contexts/NFTContext';
 import { RefreshCcw, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Pencil } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -28,6 +38,7 @@ import { dbManager, AddressGroup, AddressInfo, NFToken } from '@/utils/db';
 import { AddressGroupDialog } from '@/app/components/AddressGroupDialog';
 import NFTSiteIcons from '@/app/components/NFTSiteIcons';
 import { NFTFilters, FilterState } from '@/app/components/NFTFilters';
+import { OwnerDetailSheet } from '@/app/components/OwnerDetailSheet';
 import _ from 'lodash';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
@@ -72,6 +83,12 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
   });
   const [filters, setFilters] = useState({});
   const { updatingNFTs, updateNFTHistory, updateAllNFTHistory } = useNFTContext();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [ownerToDelete, setOwnerToDelete] = useState<AddressGroup | null>(null);
+  const [selectedOwner, setSelectedOwner] = useState<AddressGroup | null>(null);
+  const [initialAddresses, setInitialAddresses] = useState<string[]>([]);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  
 
   const fetchNFTs = async () => {
     setIsLoading(true);
@@ -105,15 +122,16 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
     loadDictionary();
   }, [lang]);
 
+  const loadAddressData = async () => {
+    const [groups, infos] = await Promise.all([
+      dbManager.getAllAddressGroups(),
+      dbManager.getAllAddressInfos(),
+    ]);
+    setAddressGroups(_.keyBy(groups, 'id'));
+    setAddressInfos(_.keyBy(infos, 'address'));
+  };
+
   useEffect(() => {
-    const loadAddressData = async () => {
-      const [groups, infos] = await Promise.all([
-        dbManager.getAllAddressGroups(),
-        dbManager.getAllAddressInfos(),
-      ]);
-      setAddressGroups(_.keyBy(groups, 'id'));
-      setAddressInfos(_.keyBy(infos, 'address'));
-    };
     loadAddressData();
   }, []);
 
@@ -172,6 +190,40 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
     setAddressInfos(_.keyBy(infos, 'address'));
   };
 
+  const handleDeleteConfirm = async () => {
+    if (ownerToDelete) {
+      try {
+        await dbManager.softDeleteAddressGroup(ownerToDelete.id);
+        await loadAddressData();
+
+        // 詳細を開いていた場合閉じる
+        setIsDetailOpen(false);
+
+        // 拡張機能に通知
+        window.postMessage({ type: 'OWNERNOTE_UPDATED' }, '*');
+        
+      } catch (error) {
+        console.error('Failed to delete owner:', error);
+      }
+    }
+    setIsDeleteDialogOpen(false);
+    setOwnerToDelete(null);
+  };
+
+  const handleRowClick = (addressInfo: AddressInfo | string) => {
+    if (typeof addressInfo !== 'string') {
+      const group = addressInfo?.groupId ? addressGroups[addressInfo.groupId] : null;
+      // 既存オーナーの場合
+      setSelectedOwner(group);
+      setInitialAddresses([]);
+    } else {
+      // 未登録アドレスの場合（新規作成モードへ）
+      setSelectedOwner(null);
+      setInitialAddresses([addressInfo || '']);
+    }
+    setIsDetailOpen(true);
+  };
+
   const handleColorChange = async (nftId: string, newColor: ColorType) => {
     const nft = nfts.find(n => n.nft_id === nftId);
     if (!nft) return;
@@ -214,10 +266,13 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
     return nftListPage.format.amount.replace('{amount}', amount.toLocaleString());
   };
 
+  /*
+  // Token IDを省略表示
   const formatTokenId = (tokenId: string) => {
     if (tokenId.length <= 12) return tokenId;
     return `${tokenId.substring(0, 6)}...${tokenId.substring(tokenId.length - 6)}`;
   };
+  */
 
   const formatAddress = (address: string) => {
     return `${address.substring(0, 4)}...${address.substring(address.length - 4)}`;
@@ -330,7 +385,7 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
           <TableHeader>
             <TableRow>
               <SortableHeader field="nft_serial">{nftListPage.table.serial}</SortableHeader>
-              <SortableHeader field="tokenId">{nftListPage.table.tokenId}</SortableHeader>
+              <TableHead>{nftListPage.table.links}</TableHead>
               <SortableHeader field="owner">{nftListPage.table.owner}</SortableHeader>
               <SortableHeader field="name">{nftListPage.table.nftName}</SortableHeader>
               <SortableHeader field="lastSaleAmount" className="hidden lg:table-cell">{nftListPage.table.lastSale}</SortableHeader>
@@ -347,15 +402,21 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
               const group = addressInfo?.groupId ? addressGroups[addressInfo.groupId] : null;
   
               return (
-                <TableRow key={nft.nft_id}>
+                <TableRow
+                  key={nft.nft_id}
+                  onClick={() => {
+                    if (window.innerWidth < 640) { // smのブレイクポイント
+                      handleRowClick(addressInfo ? addressInfo : nft.owner);
+                    }
+                  }}
+                >
                   <TableCell className="font-mono text-xs">
                     {nft.nft_serial}
                   </TableCell>
                   <TableCell className="font-mono text-xs">
-                    {formatTokenId(nft.nft_id)}
                     <NFTSiteIcons tokenId={nft.nft_id} />
                   </TableCell>
-                  <TableCell className="font-mono group relative">
+                  <TableCell className="font-mono group relative hidden sm:table-cell">
                     <div className="flex items-center gap-2">
                       {formatAddress(nft.owner)}
                       <AddressGroupDialog
@@ -379,6 +440,13 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
                       </div>
                     )}
                   </TableCell>
+                  <TableCell className="sm:hidden">
+                    {group ? (group.name) : (
+                      <span className="text-xs font-mono text-muted-foreground bg-muted/50 px-1 rounded">
+                        {`${nft.owner.slice(0, 6)}...${nft.owner.slice(-4)}`}
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     {nft.name}
                   </TableCell>
@@ -395,12 +463,17 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
                       </span>
                     ) : '-'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Select
                       value={nft.color === null ? 'none' : nft.color || 'none'}
                       onValueChange={(value) => handleColorChange(nft.nft_id, value as ColorType)}
                     >
-                      <SelectTrigger className="w-24 text-xs">
+                      <SelectTrigger
+                        className="w-24 text-xs"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <SelectValue placeholder="No Color" />
                       </SelectTrigger>
                       <SelectContent>
@@ -418,7 +491,10 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
                       variant="ghost"
                       size="sm"
                       className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                      onClick={() => handleUpdateNFTHistory(nft.nft_id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUpdateNFTHistory(nft.nft_id)
+                      }}
                       disabled={updatingNFTs.has(nft.nft_id)}
                     >
                       <RefreshCcw className={`h-4 w-4 ${updatingNFTs.has(nft.nft_id) ? 'animate-spin' : ''}`} />
@@ -471,6 +547,41 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
           </PaginationContent>
         </Pagination>
       </div>
+
+      <OwnerDetailSheet
+        owner={selectedOwner}
+        initialAddresses={initialAddresses}
+        isOpen={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        onSave={async () => {
+          await loadAddressData();
+        }}
+        onDelete={async (owner) => {
+          setOwnerToDelete(owner);
+          setIsDeleteDialogOpen(true);
+        }}
+        lang={lang}
+      />
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{dict?.project.owners.deleteDialog.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {dict?.project.owners.deleteDialog.description.replace('{name}', ownerToDelete?.name || '')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{dict?.project.owners.deleteDialog.cancel}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {dict?.project.owners.deleteDialog.confirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

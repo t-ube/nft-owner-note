@@ -22,7 +22,12 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   //const supabase = createSupabaseClient()
   const supabase = useMemo(() => createSupabaseClient(), []);
   const isauthenticating = useRef(false)
+  const userRef = useRef(user)
   
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
     setUser(null)
@@ -39,8 +44,11 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     // セッションの変更（ログイン、ログアウト、トークン更新）を監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Supabase Auth Event:', event)
-      setUser(session?.user ?? null)
-      setIsLoading(false)
+      if (session?.user?.id !== userRef.current?.id) {
+        console.log('Supabase Auth State Changed, updating user:', session?.user?.id)
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+      }
     })
 
     return () => subscription.unsubscribe()

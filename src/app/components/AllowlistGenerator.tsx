@@ -13,6 +13,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { MoreVertical } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,19 +34,25 @@ import _ from 'lodash';
 import OwnerValueEditor from '@/app/components/OwnerValueEditor';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import { BatchUpdateComponent, UpdateProgress } from '@/app/components/BatchUpdateComponent';
+import { getDictionary } from '@/i18n/get-dictionary';
+import { OwnerDetailSheet } from '@/app/components/OwnerDetailSheet';
 
 interface AllowlistGeneratorProps {
   selectedProjects: Project[];
-  dict: Dictionary;
   lang: string;
   onUpdate: () => Promise<void>;
   isUpdating: boolean;
   updateProgress: UpdateProgress | null;
 }
 
+type OwnerStat = {
+  address: string;
+  group: AddressGroup | null;
+  totalNFTs: number;
+};
+
 const AllowlistGenerator: React.FC<AllowlistGeneratorProps> = ({
   selectedProjects,
-  dict,
   lang,
   onUpdate,
   isUpdating,
@@ -50,6 +66,31 @@ const AllowlistGenerator: React.FC<AllowlistGeneratorProps> = ({
   const [rules, setRules] = useState<AllowlistRule[]>([]);
   const [isLoadingRules, setIsLoadingRules] = useState(true);
   const [previousProjectIds, setPreviousProjectIds] = useState<Set<string>>(new Set());
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [ownerToDelete, setOwnerToDelete] = useState<AddressGroup | null>(null);
+  const [selectedOwner, setSelectedOwner] = useState<AddressGroup | null>(null);
+  const [initialAddresses, setInitialAddresses] = useState<string[]>([]);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [dict, setDict] = useState<Dictionary | null>(null);
+
+  // 辞書のロード
+  useEffect(() => {
+    const loadDictionary = async () => {
+      const dictionary = await getDictionary(lang as 'en' | 'ja');
+      setDict(dictionary);
+    };
+    loadDictionary();
+  }, [lang]);
+
+  // アドレスデータのロード
+  const loadAddressData = async () => {
+    const [groups, infos] = await Promise.all([
+      dbManager.getAllAddressGroups(),
+      dbManager.getAllAddressInfos(),
+    ]);
+    setAddressGroups(_.keyBy(groups, 'id'));
+    setAddressInfos(_.keyBy(infos, 'address'));
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -63,12 +104,7 @@ const AllowlistGenerator: React.FC<AllowlistGeneratorProps> = ({
         setNFTs(allNFTs.flat().filter(nft => !nft.is_burned));
   
         // Load address groups and infos
-        const [groups, infos] = await Promise.all([
-          dbManager.getAllAddressGroups(),
-          dbManager.getAllAddressInfos(),
-        ]);
-        setAddressGroups(_.keyBy(groups, 'id'));
-        setAddressInfos(_.keyBy(infos, 'address'));
+        await loadAddressData();
   
         // AL更新の処理
         const currentProjectIds = new Set(selectedProjects.map(p => p.projectId));
@@ -134,7 +170,7 @@ const AllowlistGenerator: React.FC<AllowlistGeneratorProps> = ({
     saveRules();
   }, [rules]);
 
-  const ownerStats = useMemo(() => {
+  const ownerStats = useMemo<OwnerStat[]>(() => {
     const ownerNFTs = _.groupBy(nfts, 'owner');
     
     return Object.entries(ownerNFTs).map(([address, ownerNFTs]) => {
@@ -251,6 +287,43 @@ const AllowlistGenerator: React.FC<AllowlistGeneratorProps> = ({
     const infos = await dbManager.getAllAddressInfos();
     setAddressInfos(_.keyBy(infos, 'address'));
   };
+
+  // 削除確認ダイアログの処理
+  const handleDeleteConfirm = async () => {
+    if (ownerToDelete) {
+      try {
+        await dbManager.softDeleteAddressGroup(ownerToDelete.id);
+        await loadAddressData();
+
+        // 詳細を開いていた場合閉じる
+        setIsDetailOpen(false);
+
+        // 拡張機能に通知
+        window.postMessage({ type: 'OWNERNOTE_UPDATED' }, '*');
+        
+      } catch (error) {
+        console.error('Failed to delete owner:', error);
+      }
+    }
+    setIsDeleteDialogOpen(false);
+    setOwnerToDelete(null);
+  };
+
+  // 行クリック時の処理
+  const handleRowClick = (stat: OwnerStat) => {
+    if (stat.group) {
+      // 既存オーナーの場合
+      setSelectedOwner(stat.group);
+      setInitialAddresses([]);
+    } else {
+      // 未登録アドレスの場合（新規作成モードへ）
+      setSelectedOwner(null);
+      setInitialAddresses([stat.address]);
+    }
+    setIsDetailOpen(true);
+  };
+
+  if (!dict) return null;
 
   const t = dict.project.allowlist;
 
@@ -409,7 +482,7 @@ const AllowlistGenerator: React.FC<AllowlistGeneratorProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[140px] max-w-[200px] whitespace-normal">{t.address}</TableHead>
+              <TableHead className="min-w-[140px] max-w-[200px] whitespace-normal hidden lg:table-cell">{t.address}</TableHead>
               <TableHead className="min-w-[140px] max-w-[200px] whitespace-normal break-words">{t.name}</TableHead>
               <TableHead className="min-w-[100px] text-right whitespace-normal">{t.totalNFTs}</TableHead>
               <TableHead className="min-w-[120px] text-right whitespace-normal">
@@ -424,8 +497,15 @@ const AllowlistGenerator: React.FC<AllowlistGeneratorProps> = ({
           </TableHeader>
           <TableBody>
             {ownerStats.map((stat) => (
-              <TableRow key={stat.address} className="group">
-                <TableCell className="font-mono">
+              <TableRow 
+                key={stat.address}
+                className="group"
+                onClick={() => {
+                  if (window.innerWidth < 640) { // smのブレイクポイント
+                    handleRowClick(stat);
+                  }}}
+              >
+                <TableCell className="font-mono hidden lg:table-cell">
                   <div className="flex items-center gap-2">
                     <span>{formatAddress(stat.address)}</span>
                     <AddressGroupDialog
@@ -445,7 +525,20 @@ const AllowlistGenerator: React.FC<AllowlistGeneratorProps> = ({
                   </div>
                 </TableCell>
                 <TableCell>
-                  {stat.group?.name || '-'}
+                  <>
+                    {/* PC用：名前がなければハイフン */}
+                    <span className="hidden sm:inline">
+                      {stat.group?.name || '-'}
+                    </span>
+                    {/* スマホ用：名前がなければ短縮アドレス */}
+                    <span className="sm:hidden">
+                      {stat.group?.name || (
+                        <span className="text-xs font-mono text-muted-foreground bg-muted/50 px-1 rounded">
+                          {`${stat.address.slice(0, 6)}...${stat.address.slice(-4)}`}
+                        </span>
+                      )}
+                    </span>
+                  </>
                 </TableCell>
                 <TableCell className="text-right">
                   {stat.totalNFTs.toLocaleString()}
@@ -472,7 +565,8 @@ const AllowlistGenerator: React.FC<AllowlistGeneratorProps> = ({
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setEditingMints(stat.address);
                         }}
                       >
@@ -486,6 +580,40 @@ const AllowlistGenerator: React.FC<AllowlistGeneratorProps> = ({
           </TableBody>
         </Table>
       </div>
+      <OwnerDetailSheet
+        owner={selectedOwner}
+        initialAddresses={initialAddresses}
+        isOpen={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        onSave={async () => {
+          await loadAddressData();
+        }}
+        onDelete={async (owner) => {
+          setOwnerToDelete(owner);
+          setIsDeleteDialogOpen(true);
+        }}
+        lang={lang}
+      />
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{dict?.project.owners.deleteDialog.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {dict?.project.owners.deleteDialog.description.replace('{name}', ownerToDelete?.name || '')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{dict?.project.owners.deleteDialog.cancel}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {dict?.project.owners.deleteDialog.confirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
