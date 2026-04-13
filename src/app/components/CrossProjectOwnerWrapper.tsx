@@ -98,8 +98,8 @@ export default function CrossProjectOwnerWrapper({ lang }: CrossProjectOwnerPage
         onProjectUpdate={handleProjectUpdate}
         lang={lang}
       />
-      <div className="flex-1 overflow-auto">
-        <CrossProjectOwnerPage 
+      <div className="flex-1 overflow-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
+        <CrossProjectOwnerPage
           lang={lang} 
           projects={projects}
           onProjectsUpdated={refreshProjects}

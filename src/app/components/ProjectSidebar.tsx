@@ -2,19 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from "next-themes";
 import Image from 'next/image';
-import { 
-  Folder, 
-  Search, 
-  Trash2, 
-  Users, 
-  Menu, 
-  X, 
-  Moon, 
-  Sun, 
-  Network, 
-  ChevronDown, 
+import {
+  Folder,
+  Search,
+  Trash2,
+  Users,
+  Moon,
+  Sun,
+  Network,
+  ChevronDown,
   Pencil,
-  Book
+  Book,
+  LayoutGrid,
+  Menu as MenuIcon,
+  X
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -88,17 +89,121 @@ const ProjectSidebar = ({
   if (!dict) return null;
   const { sidebar: t } = dict.project;
 
+  const isProjectsActive = pathname === `/${lang}` || pathname.startsWith(`/${lang}/projects`);
+  const isOwnersActive = pathname.startsWith(`/${lang}/owners`);
+  const isCrossActive = pathname.startsWith(`/${lang}/cross-project`);
+
+  const settingsContent = (
+    <>
+      <div className="pb-2">
+        <Button
+          variant="outline"
+          className="w-full justify-start dark:border-gray-600 dark:text-gray-200"
+          onClick={() => {
+            window.open(lang === 'en' ? 'https://shirome.gitbook.io/owner-note/en' : 'https://shirome.gitbook.io/owner-note', '_blank');
+            setIsOpen(false);
+          }}
+        >
+          <Book className="h-4 w-4 mr-2" />
+          {t.manual}
+        </Button>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <select
+          onChange={(e) => {
+            const currentPath = pathname.split('/').slice(2).join('/');
+            router.push(`/${e.target.value}/${currentPath}`);
+          }}
+          value={pathname.split('/')[1]}
+          className="flex-1 p-2 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+        >
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+        </select>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
+          className="relative w-10 h-10"
+        >
+          <Sun className="absolute h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        </Button>
+      </div>
+
+      <div className="relative">
+        <div className="flex items-center justify-between pt-2 pb-1">
+          <span className="text-sm text-gray-500 dark:text-gray-400">Developed by shirome</span>
+          <a
+            href="https://x.com/shirome_x"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Image
+              src="/images/x-logo-black.png"
+              alt="X (Twitter)"
+              width={20}
+              height={20}
+              className="opacity-75 hover:opacity-100 transition-opacity dark:invert"
+            />
+          </a>
+        </div>
+
+        <div>
+          <button
+            onClick={() => setIsCreditsOpen(!isCreditsOpen)}
+            className={`
+              px-2 py-1 text-xs font-medium
+              bg-gray-100 dark:bg-gray-700
+              text-gray-600 dark:text-gray-300
+              rounded-t-lg shadow-sm
+              transition-all
+              hover:bg-gray-200 dark:hover:bg-gray-600
+              ${isCreditsOpen ? 'bg-gray-200 dark:bg-gray-600' : ''}
+              inline-flex items-center gap-1
+            `}
+          >
+            XRPL Community Contributors
+            <ChevronDown
+              className={`h-3 w-3 transition-transform duration-200 ${
+                isCreditsOpen ? 'transform rotate-180' : ''
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className={`
+          overflow-hidden transition-all duration-500 ease-in-out
+          ${isCreditsOpen ? 'max-h-32 mt-2 opacity-100' : 'max-h-0 opacity-0 mb-0'}
+        `}>
+          <div className="pb-5 text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex flex-wrap gap-1">
+              {CONTRIBUTORS.map((contributor, index) => (
+                <span key={index} className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                  {contributor}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <>
       {/* ハンバーガーメニューボタン */}
       <button
         onClick={toggleSidebar}
         className="lg:hidden fixed top-4 right-4 z-50 p-2 rounded-md bg-white dark:bg-gray-800 shadow-md"
+        aria-label="Menu"
       >
         {isOpen ? (
           <X className="h-6 w-6 dark:text-white" />
         ) : (
-          <Menu className="h-6 w-6 dark:text-white" />
+          <MenuIcon className="h-6 w-6 dark:text-white" />
         )}
       </button>
 
@@ -117,6 +222,7 @@ const ProjectSidebar = ({
         transform transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         flex flex-col h-[100dvh] lg:h-screen
+        pb-16 lg:pb-0
         overflow-hidden
       `}>
         {/* スクロール可能なコンテナ */}
@@ -124,15 +230,20 @@ const ProjectSidebar = ({
           {/* 上部固定部分 */}
           <div className="p-4 flex-shrink-0">
             <h1
-              className="text-2xl font-bold mb-8 cursor-pointer hover:text-gray-600 dark:text-white dark:hover:text-gray-300 transition-colors"
+              className="text-2xl font-bold mb-4 lg:mb-8 cursor-pointer hover:text-gray-600 dark:text-white dark:hover:text-gray-300 transition-colors"
               onClick={handleOwnerNoteClick}
             >
               {t.title}
             </h1>
 
+            {/* モバイル: 設定を上寄せで表示 */}
+            <div className="lg:hidden">
+              {settingsContent}
+            </div>
+
             <Button
               variant="outline"
-              className="w-full mb-4 justify-start dark:border-gray-600 dark:text-gray-200"
+              className="w-full mb-4 justify-start dark:border-gray-600 dark:text-gray-200 hidden lg:inline-flex"
               onClick={() => {
                 router.push(`/${lang}/owners`);
                 setIsOpen(false);
@@ -142,7 +253,7 @@ const ProjectSidebar = ({
               {t.ownersList}
             </Button>
 
-            <div className="space-y-4">
+            <div className="space-y-4 hidden lg:block">
               <Button
                 variant="outline"
                 className="w-full justify-start dark:border-gray-600 dark:text-gray-200"
@@ -172,8 +283,8 @@ const ProjectSidebar = ({
             </div>
           </div>
 
-          {/* スクロール可能なプロジェクトリスト */}
-          <div className="flex-1 overflow-y-auto min-h-0">
+          {/* スクロール可能なプロジェクトリスト（PC のみ） */}
+          <div className="flex-1 overflow-y-auto min-h-0 hidden lg:block">
             {filteredProjects.length === 0 ? (
               <div className="px-4 py-2 text-gray-500 dark:text-gray-400 text-sm">
                 {t.noProjects}
@@ -309,105 +420,69 @@ const ProjectSidebar = ({
             )}
           </div>
 
-          {/* 下部固定部分 */}
-          <div className="p-4 pb-0 border-t dark:border-gray-700 flex-shrink-0">
-            <div className="pb-2">
-              <Button
-                variant="outline"
-                className="w-full justify-start dark:border-gray-600 dark:text-gray-200"
-                onClick={() => {
-                  window.open(lang === 'en' ? 'https://shirome.gitbook.io/owner-note/en' : 'https://shirome.gitbook.io/owner-note', '_blank');
-                  setIsOpen(false);
-                }}
-              >
-                <Book className="h-4 w-4 mr-2" />
-                {t.manual}
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <select
-                onChange={(e) => {
-                  const currentPath = pathname.split('/').slice(2).join('/');
-                  router.push(`/${e.target.value}/${currentPath}`);
-                }}
-                value={pathname.split('/')[1]}
-                className="flex-1 p-2 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
-              >
-                <option value="en">English</option>
-                <option value="ja">日本語</option>
-              </select>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
-                className="relative w-10 h-10"
-              >
-                <Sun className="absolute h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              </Button>
-            </div>
-
-            <div className="relative">
-              <div className="flex items-center justify-between pt-2 pb-1">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Developed by shirome</span>
-                <a
-                  href="https://x.com/shirome_x"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <Image 
-                    src="/images/x-logo-black.png" 
-                    alt="X (Twitter)" 
-                    width={20}
-                    height={20}
-                    className="opacity-75 hover:opacity-100 transition-opacity dark:invert" 
-                  />
-                </a>
-              </div>
-
-              <div>
-                <button
-                  onClick={() => setIsCreditsOpen(!isCreditsOpen)}
-                  className={`
-                    px-2 py-1 text-xs font-medium
-                    bg-gray-100 dark:bg-gray-700 
-                    text-gray-600 dark:text-gray-300
-                    rounded-t-lg shadow-sm
-                    transition-all
-                    hover:bg-gray-200 dark:hover:bg-gray-600
-                    ${isCreditsOpen ? 'bg-gray-200 dark:bg-gray-600' : ''}
-                    inline-flex items-center gap-1
-                  `}
-                >
-                  XRPL Community Contributors
-                  <ChevronDown 
-                    className={`h-3 w-3 transition-transform duration-200 ${
-                      isCreditsOpen ? 'transform rotate-180' : ''
-                    }`}
-                  />
-                </button>
-              </div>
-              
-              <div className={`
-                overflow-hidden transition-all duration-500 ease-in-out
-                ${isCreditsOpen ? 'max-h-32 mt-2 opacity-100' : 'max-h-0 opacity-0 mb-0'}
-              `}>
-                <div className="pb-5 text-xs text-gray-500 dark:text-gray-400">
-                  <div className="flex flex-wrap gap-1">
-                    {CONTRIBUTORS.map((contributor, index) => (
-                      <span key={index} className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                        {contributor}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* 下部固定部分（PC のみ） */}
+          <div className="p-4 pb-0 border-t dark:border-gray-700 flex-shrink-0 hidden lg:block">
+            {settingsContent}
           </div>
         </div>
       </aside>
+
+      {/* モバイル用ボトムナビゲーション */}
+      <nav
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-t dark:border-gray-700 shadow-[0_-2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_-2px_8px_rgba(0,0,0,0.3)]"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <div className="grid grid-cols-3 h-16">
+          <button
+            type="button"
+            onClick={() => {
+              setIsOpen(false);
+              router.push(`/${lang}/`);
+            }}
+            className={`flex flex-col items-center justify-center gap-1 text-xs transition-colors ${
+              isProjectsActive
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+            aria-label={t.bottomNav.projects}
+          >
+            <LayoutGrid className="h-5 w-5" />
+            <span className="truncate max-w-full px-1">{t.bottomNav.projects}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsOpen(false);
+              router.push(`/${lang}/owners`);
+            }}
+            className={`flex flex-col items-center justify-center gap-1 text-xs transition-colors ${
+              isOwnersActive
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+            aria-label={t.bottomNav.owners}
+          >
+            <Users className="h-5 w-5" />
+            <span className="truncate max-w-full px-1">{t.bottomNav.owners}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsOpen(false);
+              router.push(`/${lang}/cross-project`);
+            }}
+            className={`flex flex-col items-center justify-center gap-1 text-xs transition-colors ${
+              isCrossActive
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+            aria-label={t.bottomNav.crossProject}
+          >
+            <Network className="h-5 w-5" />
+            <span className="truncate max-w-full px-1">{t.bottomNav.crossProject}</span>
+          </button>
+        </div>
+      </nav>
     </>
   );
 };

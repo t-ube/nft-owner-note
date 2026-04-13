@@ -393,6 +393,12 @@
       "footer": {
         "developedBy": "Developed by shirome",
         "followOnX": "Follow on X"
+      },
+      "bottomNav": {
+        "projects": "Projects",
+        "owners": "Owners",
+        "crossProject": "Cross",
+        "more": "More"
       }
     },
     "integration": {

@@ -401,6 +401,12 @@ export interface Dictionary {
         developedBy: string;
         followOnX: string;
       };
+      bottomNav: {
+        projects: string;
+        owners: string;
+        crossProject: string;
+        more: string;
+      };
     };
     integration: {
       title: string;

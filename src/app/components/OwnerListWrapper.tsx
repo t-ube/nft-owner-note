@@ -98,7 +98,7 @@ export default function OwnerListWrapper({ lang }: OwnerListPageProps) {
         onProjectUpdate={handleProjectUpdate}
         lang={lang}
       />
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
         <OwnersPage lang={lang} />
       </div>
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

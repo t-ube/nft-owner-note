@@ -16,6 +16,7 @@ import { Dictionary } from '@/i18n/dictionaries/index';
 interface ProjectCSVImportExportProps {
   onProjectsUpdated: () => void;
   lang: string;
+  importOnly?: boolean;
 }
 
 // CSV形式のデータ型を定義
@@ -32,7 +33,7 @@ interface ValidationError {
   errors: string[];
 }
 
-const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProjectsUpdated, lang }) => {
+const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProjectsUpdated, lang, importOnly = false }) => {
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -228,27 +229,38 @@ const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProje
       </div>
 
       {/* 共通 */}
-      <div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleExport}>
-              <Download className="h-4 w-4 mr-2" />
-              {t.buttons.exportCSV}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              {t.buttons.importCSV}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      {importOnly ? (
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Upload className="h-4 w-4 mr-2" />
+          {t.buttons.importCSV}
+        </Button>
+      ) : (
+        <div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExport}>
+                <Download className="h-4 w-4 mr-2" />
+                {t.buttons.exportCSV}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {t.buttons.importCSV}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
 
       <input
         type="file"

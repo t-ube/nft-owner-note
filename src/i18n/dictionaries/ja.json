@@ -393,6 +393,12 @@
       "footer": {
         "developedBy": "開発者：shirome",
         "followOnX": "Xでフォロー"
+      },
+      "bottomNav": {
+        "projects": "プロジェクト",
+        "owners": "オーナー",
+        "crossProject": "連携",
+        "more": "メニュー"
       }
     },
     "integration": {

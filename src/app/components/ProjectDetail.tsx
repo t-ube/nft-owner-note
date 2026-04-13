@@ -111,7 +111,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjec
       taxon={project.taxon}
     >
       <NFTWrapper>
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
           <div className="p-3 sm:p-6">
             <div className="flex justify-between items-center mb-4 sm:mb-6">
               <div>
