@@ -22,6 +22,13 @@ type UnifiedCtx = {
   signAndSubmit: (tx: UnifiedTx) => Promise<TxResult>
   clearError: () => void
   balanceXrp: number | null
+  /**
+   * Joey-only: trigger the sync sign-in flow for an already-connected Joey
+   * wallet. Skips the WC connect step. If the server already has a valid
+   * cookie for the current address, returns immediately without prompting.
+   */
+  authenticateJoeySync: () => Promise<{ ok: boolean; error?: string }>
+  isAuthenticatingJoey: boolean
 }
 
 const Ctx = createContext<UnifiedCtx | null>(null)
@@ -30,6 +37,7 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
   const [walletType, setWalletType] = useState<WalletType | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
+  const [isAuthenticatingJoey, setIsAuthenticatingJoey] = useState(false)
   const [account, setAccount] = useState<string | null>(null)
   const [balanceXrp, setBalanceXrp] = useState<number | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
@@ -45,11 +53,24 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
     session: syncSession,
     isLoading: isSyncLoading,
     requestSignIn,
+    refresh: refreshSyncSession,
     signOut: syncSignOut,
   } = useSyncSession()
 
   // --- Joey ---
   const joey = useJoey()
+
+  function extractXrplAddress(caipAccount?: string | null): string | null {
+    if (!caipAccount) return null
+
+    const parts = caipAccount.split(':')
+    if (parts.length !== 3) return null
+
+    const [namespace, , address] = parts
+    if (namespace !== 'xrpl') return null
+
+    return address
+  }
 
   const joeyConnect = useCallback(async (): Promise<boolean> => {
     setError(null)
@@ -73,17 +94,111 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
     }
   }, [joey.actions, joey.accounts, joey.session])
 
-  function extractXrplAddress(caipAccount?: string | null): string | null {
-    if (!caipAccount) return null
+  // Joey two-step flow: separate sync sign-in invoked from MyAccount UI.
+  // Assumes WC connect already completed.
+  const authenticateJoeySync = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
+    setError(null)
 
-    const parts = caipAccount.split(':')
-    if (parts.length !== 3) return null
+    if (walletType !== 'joey') {
+      const msg = 'Joey is not the active wallet'
+      setError(msg)
+      return { ok: false, error: msg }
+    }
+    if (!joey.session || !joey.accounts?.length) {
+      const msg = 'Joey is not connected'
+      setError(msg)
+      return { ok: false, error: msg }
+    }
 
-    const [namespace, , address] = parts
-    if (namespace !== 'xrpl') return null
+    const topic = joey.session.topic
+    const address = extractXrplAddress(joey.accounts[0])
+    if (!address) {
+      const msg = 'Could not resolve XRPL address from Joey session'
+      setError(msg)
+      return { ok: false, error: msg }
+    }
 
-    return address
-  }
+    setIsAuthenticatingJoey(true)
+    try {
+      // 1. Existing cookie check — if the server already has a valid sync
+      //    session for this address, we don't need to sign again.
+      try {
+        const sessionRes = await fetch('/api/auth/sync/session', { cache: 'no-store' })
+        if (sessionRes.ok) {
+          const data = await sessionRes.json()
+          if (data?.session?.address === address) {
+            console.log('[authenticateJoeySync] existing sync session, skipping sign')
+            await refreshSyncSession()
+            return { ok: true }
+          }
+        }
+      } catch (e) {
+        console.warn('[authenticateJoeySync] session check failed, proceeding to sign', e)
+      }
+
+      const api = joey.api
+      if (!api) {
+        const msg = 'Joey API is not initialized'
+        setError(msg)
+        return { ok: false, error: msg }
+      }
+
+      // 2. Sign-only AccountSet via methods.signTransaction (matches Joey docs).
+      const tx = {
+        TransactionType: 'AccountSet',
+        Account: address,
+      }
+      console.log('[authenticateJoeySync] calling signTransaction', { tx_signer: address, tx })
+
+      const signRes = await api.signTransaction(
+        {
+          tx_signer: address,
+          tx_json: tx,
+          options: { autofill: true, submit: false },
+        } as unknown as Parameters<typeof api.signTransaction>[0],
+        { sessionId: topic, chainId: joey.chain }
+      )
+      console.log('[authenticateJoeySync] signTransaction returned', {
+        error: signRes.error,
+        hasData: !!signRes.data,
+      })
+      if (signRes.error) {
+        throw signRes.error
+      }
+      const signedTxJson = signRes.data?.tx_json
+      if (!signedTxJson) {
+        throw new Error('Joey returned no signed tx_json')
+      }
+
+      // 3. Server-side verify and session issuance.
+      const verifyRes = await fetch('/api/auth/joey/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tx_json: signedTxJson,
+          deviceLabel: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        }),
+      })
+      if (!verifyRes.ok) {
+        const data = await verifyRes.json().catch(() => ({}))
+        const msg = data.detail
+          ? `${data.error || 'Verification failed'}: ${data.detail}`
+          : data.error || 'Verification failed'
+        throw new Error(msg)
+      }
+
+      await refreshSyncSession()
+      console.log('[authenticateJoeySync] success')
+      return { ok: true }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error'
+      console.error('[authenticateJoeySync] failed:', e)
+      setError(msg)
+      return { ok: false, error: msg }
+    } finally {
+      setIsAuthenticatingJoey(false)
+    }
+  }, [walletType, joey.session, joey.accounts, joey.api, joey.chain, refreshSyncSession])
 
   const clearError = useCallback(() => {
     setError(null)
@@ -291,6 +406,8 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
     connect,
     disconnect,
     signAndSubmit,
+    authenticateJoeySync,
+    isAuthenticatingJoey,
     clearError,
     balanceXrp,
   }

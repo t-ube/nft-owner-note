@@ -25,7 +25,14 @@ function shortAddr(addr: string) {
 
 export default function MyAccountPage({ lang }: Props) {
   const [dict, setDict] = useState<Dictionary | null>(null);
-  const { account, balanceXrp, walletType, disconnect } = useXRPLWallet();
+  const {
+    account,
+    balanceXrp,
+    walletType,
+    disconnect,
+    authenticateJoeySync,
+    isAuthenticatingJoey,
+  } = useXRPLWallet();
   const { session: syncSession } = useSyncSession();
   const router = useRouter();
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
@@ -198,6 +205,26 @@ export default function MyAccountPage({ lang }: Props) {
                 </div>
               </div>
             )}
+
+            {/* Joey は接続と認証が二段階。WC 接続済みでまだ sync session が
+                ない(あるいはアドレス不一致)ときだけ認証ボタンを出す。 */}
+            {walletType === 'joey' &&
+              account &&
+              syncSession?.address !== account && (
+                <div className="flex justify-end pt-2">
+                  <Button
+                    onClick={async () => {
+                      const result = await authenticateJoeySync();
+                      if (!result.ok && result.error) {
+                        console.error('Joey authenticate failed:', result.error);
+                      }
+                    }}
+                    disabled={isAuthenticatingJoey}
+                  >
+                    {isAuthenticatingJoey ? '...' : cs.signIn}
+                  </Button>
+                </div>
+              )}
           </CardContent>
         </Card>
 
