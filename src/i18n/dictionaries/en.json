@@ -403,7 +403,21 @@
       "cloudBackup": "Cloud Backup",
       "backupFeature": "Enable/disable backup feature",
       "revenueTracking": "Revenue Tracking",
-      "prepareRevenue": "Prepare revenue management (feature flag)"
+      "prepareRevenue": "Prepare revenue management (feature flag)",
+      "cloudSync": {
+        "title": "Cloud Sync",
+        "description": "Sign with your wallet to enable cross-device sync.",
+        "signedInAs": "Signed in as",
+        "expiresAt": "Expires",
+        "signIn": "Sign in to enable sync",
+        "signOut": "Sign out of sync",
+        "notSignedIn": "Not signed in",
+        "dialogTitle": "Sign in to enable Cloud Sync",
+        "dialogDescription": "Open Xaman and approve the sign-in request to authorize this device.",
+        "openInXaman": "Open in Xaman",
+        "cancel": "Cancel",
+        "signError": "Sign-in failed or was cancelled."
+      }
     },
     "sidebar": {
       "title": "Owner Note",

@@ -403,7 +403,21 @@
       "cloudBackup": "クラウドバックアップ",
       "backupFeature": "バックアップ機能の有効化/無効化",
       "revenueTracking": "収益管理",
-      "prepareRevenue": "収益管理機能の有効化/無効化（準備中）"
+      "prepareRevenue": "収益管理機能の有効化/無効化（準備中）",
+      "cloudSync": {
+        "title": "クラウド同期",
+        "description": "ウォレットで署名して端末間同期を有効化します。",
+        "signedInAs": "署名済みアドレス",
+        "expiresAt": "有効期限",
+        "signIn": "署名して同期を有効化",
+        "signOut": "同期セッションをログアウト",
+        "notSignedIn": "未署名",
+        "dialogTitle": "クラウド同期の署名",
+        "dialogDescription": "Xaman でサインインリクエストを承認してください。",
+        "openInXaman": "Xaman で開く",
+        "cancel": "キャンセル",
+        "signError": "署名に失敗、またはキャンセルされました。"
+      }
     },
     "sidebar": {
       "title": "Owner Note",

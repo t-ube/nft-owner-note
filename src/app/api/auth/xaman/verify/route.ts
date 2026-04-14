@@ -1,0 +1,94 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { XummSdk } from 'xumm-sdk';
+import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  attachSessionCookie,
+  computeExpiresAt,
+  generateToken,
+  hashToken,
+} from '@/lib/auth/syncSession';
+
+export const runtime = 'nodejs';
+
+export async function POST(req: NextRequest) {
+  const apiKey = process.env.XAMAN_SERVER_API_KEY;
+  const apiSecret = process.env.XAMAN_SERVER_API_SECRET;
+  if (!apiKey || !apiSecret) {
+    return NextResponse.json(
+      { error: 'Xaman server credentials are not configured' },
+      { status: 500 }
+    );
+  }
+
+  let body: { uuid?: unknown; deviceLabel?: unknown };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  const uuid = typeof body.uuid === 'string' ? body.uuid : null;
+  const deviceLabel = typeof body.deviceLabel === 'string' ? body.deviceLabel : null;
+  if (!uuid) {
+    return NextResponse.json({ error: 'uuid is required' }, { status: 400 });
+  }
+
+  try {
+    const sdk = new XummSdk(apiKey, apiSecret);
+    const payload = await sdk.payload.get(uuid);
+
+    if (!payload) {
+      return NextResponse.json({ error: 'Payload not found' }, { status: 404 });
+    }
+    if (!payload.meta.signed) {
+      return NextResponse.json({ error: 'Payload was not signed' }, { status: 400 });
+    }
+
+    const address = payload.response.account;
+    if (!address) {
+      return NextResponse.json({ error: 'No account in payload response' }, { status: 400 });
+    }
+
+    const token = generateToken();
+    const tokenHash = hashToken(token);
+    const expiresAt = computeExpiresAt();
+
+    const supabase = createAdminClient();
+    const { error: insertError } = await supabase.from('sync_sessions').insert({
+      token_hash: tokenHash,
+      address,
+      device_label: deviceLabel,
+      expires_at: expiresAt.toISOString(),
+      last_seen_at: new Date().toISOString(),
+    });
+
+    if (insertError) {
+      console.error('Failed to insert sync_sessions row:', insertError);
+      return NextResponse.json(
+        {
+          error: 'Failed to create session',
+          detail: insertError.message,
+          code: insertError.code,
+          hint: insertError.hint,
+        },
+        { status: 500 }
+      );
+    }
+
+    const response = NextResponse.json({
+      address,
+      expiresAt: expiresAt.toISOString(),
+    });
+    attachSessionCookie(response, token, expiresAt);
+    return response;
+  } catch (err) {
+    console.error('Xaman verify error:', err);
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        detail: err instanceof Error ? err.message : String(err),
+      },
+      { status: 500 }
+    );
+  }
+}

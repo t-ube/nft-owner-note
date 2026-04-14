@@ -411,6 +411,20 @@ export interface Dictionary {
       backupFeature: string;
       revenueTracking: string;
       prepareRevenue: string;
+      cloudSync: {
+        title: string;
+        description: string;
+        signedInAs: string;
+        expiresAt: string;
+        signIn: string;
+        signOut: string;
+        notSignedIn: string;
+        dialogTitle: string;
+        dialogDescription: string;
+        openInXaman: string;
+        cancel: string;
+        signError: string;
+      };
     };
     sidebar: {
       title: string;
