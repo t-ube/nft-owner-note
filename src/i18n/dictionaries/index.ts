@@ -407,8 +407,8 @@ export interface Dictionary {
       last30Days: string;
       commingSoon: string;
       settings: string;
-      cloudBackup: string;
-      backupFeature: string;
+      dataProvision: string;
+      dataProvisionDescription: string;
       revenueTracking: string;
       prepareRevenue: string;
       cloudSync: {

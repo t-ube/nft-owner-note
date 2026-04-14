@@ -77,6 +77,14 @@ CREATE TABLE project_owner_values (
 CREATE INDEX idx_project_owner_values_address ON project_owner_values (address);
 CREATE INDEX idx_project_owner_values_updated ON project_owner_values (address, updated_at);
 
+-- User Settings
+-- Per-address preference flags. One row per XRPL address.
+CREATE TABLE user_settings (
+  address TEXT PRIMARY KEY,
+  data_provision_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  updated_at BIGINT NOT NULL
+);
+
 -- RLS: enable with no policies so anon/authenticated cannot read.
 -- service_role bypasses RLS, which is what API routes use via
 -- SUPABASE_SERVICE_ROLE_KEY. Application-layer code must match the
@@ -86,3 +94,4 @@ ALTER TABLE address_groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE addresses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_owner_values ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
