@@ -49,7 +49,14 @@ export async function POST(req: NextRequest) {
     if (!res.ok) {
       const text = await res.text();
       console.error('Xaman payload create failed:', res.status, text);
-      return NextResponse.json({ error: 'Failed to create payload' }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: 'Failed to create payload',
+          status: res.status,
+          detail: text,
+        },
+        { status: 500 }
+      );
     }
 
     const payload = (await res.json()) as {
@@ -69,6 +76,13 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error('Xaman challenge error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        detail: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      },
+      { status: 500 }
+    );
   }
 }
