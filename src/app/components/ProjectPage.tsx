@@ -368,7 +368,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
                 {dict?.project.sidebar.noProjects}
               </div>
             ) : (
-              <div className="-mx-2 divide-y dark:divide-gray-700 max-h-[50vh] overflow-y-auto">
+              <div className="-mx-2 divide-y dark:divide-gray-700">
                 {filteredProjects.map((project) => (
                   <div
                     key={project.id}
