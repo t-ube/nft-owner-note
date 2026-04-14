@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { NFTContextProvider } from '@/app/contexts/NFTContext';
 import ProjectDetail from './ProjectDetail';
 import { dbManager, Project } from '@/utils/db';
+import { useSyncSession } from '@/app/contexts/SyncSessionContext';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RefreshCcw, AlertCircle } from 'lucide-react';
 import {
@@ -36,6 +37,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
   const router = useRouter();
+  const { syncCompleteCount } = useSyncSession();
 
   // プロジェクトの読み込み処理を一元化
   const loadProject = useCallback(async () => {
@@ -84,11 +86,11 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
     }
   }, [projectId, loadAllProjects]);
 
-  // 初期読み込み
+  // 初期読み込み + sync 完了後の再読み込み
   useEffect(() => {
     loadProject();
     loadAllProjects();
-  }, [loadProject, loadAllProjects]);
+  }, [loadProject, loadAllProjects, syncCompleteCount]);
 
   useEffect(() => {
     const loadDictionary = async () => {

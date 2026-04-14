@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Search, Plus, Users, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Pencil, Copy, Check } from 'lucide-react';
 import { AddressGroupDialog } from '@/app/components/AddressGroupDialog';
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
+import { useSyncSession } from '@/app/contexts/SyncSessionContext';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import CSVImportExport from '@/app/components/CSVImportExport';
 import { OwnerDetailSheet } from '@/app/components/OwnerDetailSheet';
@@ -60,6 +61,7 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [selectedOwner, setSelectedOwner] = useState<AddressGroup | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const { syncCompleteCount } = useSyncSession();
 
   // データ読み込み関数
   const loadData = React.useCallback(async (isInitialLoad = false) => {
@@ -81,7 +83,7 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
 
   useEffect(() => {
     loadData(true);
-  }, [loadData]);
+  }, [loadData, syncCompleteCount]);
 
   useEffect(() => {
     const loadDictionary = async () => {

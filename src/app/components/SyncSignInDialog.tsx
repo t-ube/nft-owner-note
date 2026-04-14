@@ -9,6 +9,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { setXamanBackupKey } from '@/lib/sync/backupKey'
 
 type Challenge = {
   uuid: string
@@ -76,6 +77,13 @@ export function SyncSignInDialog({
         const data = await res.json().catch(() => ({}))
         sessionStorage.removeItem(PENDING_UUID_KEY)
         sessionStorage.removeItem(PENDING_AT_KEY)
+        if (data?.address && data?.signInHex) {
+          try {
+            await setXamanBackupKey(data.address as string, data.signInHex as string)
+          } catch (cryptoErr) {
+            console.error('[SyncSignInDialog] backup key derivation failed', cryptoErr)
+          }
+        }
         if (data?.address && onVerified) {
           onVerified(data.address as string)
         }

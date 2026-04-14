@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
     const payload = (await res.json()) as {
       meta?: { signed?: boolean };
-      response?: { account?: string };
+      response?: { account?: string; hex?: string };
     };
     if (!payload?.meta) {
       return NextResponse.json({ error: 'Payload not found' }, { status: 404 });
@@ -69,6 +69,10 @@ export async function POST(req: NextRequest) {
     if (!address) {
       return NextResponse.json({ error: 'No account in payload response' }, { status: 400 });
     }
+    // The signed hex is forwarded to the client so it can derive a
+    // deterministic backup-encryption key locally via HKDF. The server
+    // never persists it.
+    const signInHex = payload.response?.hex ?? null;
 
     const token = generateToken();
     const tokenHash = await hashToken(token);
@@ -99,6 +103,7 @@ export async function POST(req: NextRequest) {
     const response = NextResponse.json({
       address,
       expiresAt: expiresAt.toISOString(),
+      signInHex,
     });
     attachSessionCookie(response, token, expiresAt);
     return response;

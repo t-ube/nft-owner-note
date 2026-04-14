@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { dbManager, Project } from '@/utils/db';
+import { useSyncSession } from '@/app/contexts/SyncSessionContext';
 import ProjectSidebar from '@/app/components/ProjectSidebar';
 import BulkProjectCreation from '@/app/components/BulkProjectCreation';
 import ProjectCSVImportExport from '@/app/components/ProjectCSVImportExport';
@@ -58,10 +59,15 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
   const router = useRouter();
+  const { syncCompleteCount } = useSyncSession();
 
   useEffect(() => {
     loadProjects();
-  }, []);
+    // syncCompleteCount advances whenever a cloud sync finishes, so any
+    // remote changes merged into IDB are picked up here without a manual
+    // refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncCompleteCount]);
 
   useEffect(() => {
     const loadDictionary = async () => {

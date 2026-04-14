@@ -35,6 +35,7 @@ import { useNFTContext } from '@/app/contexts/NFTContext';
 import { RefreshCcw, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Pencil } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { dbManager, AddressGroup, AddressInfo, NFToken } from '@/utils/db';
+import { useSyncSession } from '@/app/contexts/SyncSessionContext';
 import { AddressGroupDialog } from '@/app/components/AddressGroupDialog';
 import NFTSiteIcons from '@/app/components/NFTSiteIcons';
 import { NFTFilters, FilterState } from '@/app/components/NFTFilters';
@@ -88,6 +89,7 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
   const [selectedOwner, setSelectedOwner] = useState<AddressGroup | null>(null);
   const [initialAddresses, setInitialAddresses] = useState<string[]>([]);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const { syncCompleteCount } = useSyncSession();
 
   const fetchNFTs = async () => {
     setIsLoading(true);
@@ -132,7 +134,7 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
 
   useEffect(() => {
     loadAddressData();
-  }, []);
+  }, [syncCompleteCount]);
 
   useEffect(() => {
     fetchNFTs();
@@ -140,7 +142,7 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
 
   useEffect(() => {
     fetchNFTs();
-  }, [projectId, currentPage, sort, filters]);
+  }, [projectId, currentPage, sort, filters, syncCompleteCount]);
 
   const handleSort = (field: SortField) => {
     setSort(prev => {

@@ -11,8 +11,12 @@ import React, {
 } from 'react'
 import { usePathname } from 'next/navigation'
 import { SyncSignInDialog } from '@/app/components/SyncSignInDialog'
+import { CloudSyncIndicator } from '@/app/components/CloudSyncIndicator'
 import { getDictionary } from '@/i18n/get-dictionary'
 import type { Dictionary } from '@/i18n/dictionaries/index'
+import { dbManager } from '@/utils/db'
+import { syncManager } from '@/lib/sync/SyncManager'
+import { clearAllBackupKeys, setXamanBackupKey } from '@/lib/sync/backupKey'
 
 export type SyncSession = {
   address: string
@@ -24,6 +28,14 @@ type SignInResult = { address: string } | null
 type SyncSessionCtx = {
   session: SyncSession | null
   isLoading: boolean
+  isSyncing: boolean
+  /**
+   * Monotonic counter that increments each time a cloud sync finishes
+   * (success or failure). Components that read data from IndexedDB can
+   * use this as a useEffect dependency to re-fetch their snapshots when
+   * remote changes have been merged into the local store.
+   */
+  syncCompleteCount: number
   refresh: () => Promise<void>
   signOut: () => Promise<void>
   requestSignIn: () => Promise<SignInResult>
@@ -34,10 +46,13 @@ const Ctx = createContext<SyncSessionCtx | null>(null)
 const PENDING_UUID_KEY = 'pendingXamanUuid'
 const PENDING_AT_KEY = 'pendingXamanAt'
 const PENDING_TTL_MS = 10 * 60 * 1000
+const LAST_ADDRESS_KEY = 'xon.last-signed-in-address'
 
 export function SyncSessionProvider({ children }: React.PropsWithChildren) {
   const [session, setSession] = useState<SyncSession | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [activeSyncCount, setActiveSyncCount] = useState(0)
+  const [syncCompleteCount, setSyncCompleteCount] = useState(0)
   const [dialogOpen, setDialogOpen] = useState(false)
   const resolverRef = useRef<((result: SignInResult) => void) | null>(null)
 
@@ -91,6 +106,13 @@ export function SyncSessionProvider({ children }: React.PropsWithChildren) {
         sessionStorage.removeItem(PENDING_UUID_KEY)
         sessionStorage.removeItem(PENDING_AT_KEY)
         const data = await res.json().catch(() => null)
+        if (data?.address && data?.signInHex) {
+          try {
+            await setXamanBackupKey(data.address as string, data.signInHex as string)
+          } catch (cryptoErr) {
+            console.error('[SyncSessionContext] backup key derivation failed', cryptoErr)
+          }
+        }
         // Resolve any pending signIn promise from a previous tab/visit
         if (data?.address && resolverRef.current) {
           resolverRef.current({ address: data.address })
@@ -109,6 +131,7 @@ export function SyncSessionProvider({ children }: React.PropsWithChildren) {
     } catch (err) {
       console.error('Failed to sign out sync session:', err)
     }
+    clearAllBackupKeys()
     setSession(null)
   }, [])
 
@@ -166,13 +189,86 @@ export function SyncSessionProvider({ children }: React.PropsWithChildren) {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [checkPending, refresh])
 
+  // Auto-sync: run once when a session becomes available, then debounce-sync
+  // on any local IndexedDB mutation from user actions. Remote-applied rows use
+  // dbManager.upsert*, which intentionally does not emit onChange, so remote
+  // downloads never re-trigger a sync.
+  //
+  // Address switch detection: localStorage tracks the last signed-in address.
+  // If the new sign-in is for a *different* address, the local IDB is wiped
+  // before sync so the previous user's data does not bleed into the new
+  // user's cloud account. First-ever sign-in (no previous address) keeps the
+  // pre-login data and uploads it as part of the first sync — this is how a
+  // user "claims" their existing local data with their wallet.
+  useEffect(() => {
+    const address = session?.address
+    if (!address) return
+
+    let cancelled = false
+
+    const runSync = () => {
+      setActiveSyncCount(c => c + 1)
+      syncManager
+        .syncAll(address)
+        .catch(err => {
+          console.error('[auto-sync] failed', err)
+        })
+        .finally(() => {
+          setActiveSyncCount(c => Math.max(0, c - 1))
+          setSyncCompleteCount(c => c + 1)
+        })
+    }
+
+    const init = async () => {
+      const lastAddress =
+        typeof localStorage !== 'undefined'
+          ? localStorage.getItem(LAST_ADDRESS_KEY)
+          : null
+      if (lastAddress && lastAddress !== address) {
+        try {
+          await dbManager.clearAllUserData()
+        } catch (err) {
+          console.error('[auto-sync] failed to clear local data on address switch', err)
+        }
+      }
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(LAST_ADDRESS_KEY, address)
+      }
+      if (cancelled) return
+      runSync()
+    }
+
+    void init()
+
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const unsubscribe = dbManager.onChange(() => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(runSync, 2000)
+    })
+
+    return () => {
+      cancelled = true
+      unsubscribe()
+      if (timer) clearTimeout(timer)
+    }
+  }, [session?.address])
+
   const cs = dict.project.myAccount.cloudSync
 
   return (
     <Ctx.Provider
-      value={{ session, isLoading, refresh, signOut, requestSignIn }}
+      value={{
+        session,
+        isLoading,
+        isSyncing: activeSyncCount > 0,
+        syncCompleteCount,
+        refresh,
+        signOut,
+        requestSignIn,
+      }}
     >
       {children}
+      <CloudSyncIndicator active={activeSyncCount > 0} />
       <SyncSignInDialog
         open={dialogOpen}
         onOpenChange={handleDialogChange}
