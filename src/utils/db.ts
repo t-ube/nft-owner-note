@@ -134,9 +134,26 @@ function syncMetaKey(address: string, table: SyncTable): string {
   return `${address}:${table}`;
 }
 
+const BASE_DB_NAME = 'OwnerNoteDB';
+const ACTIVE_ADDRESS_KEY = 'xon.active-db-address';
+
+// Sync-relevant stores copied from the guest DB into a fresh per-address
+// DB on the first sign-in, so pre-login data follows the user into the
+// wallet-bound backup.
+const CLAIMABLE_STORES = [
+  'projects',
+  'projectOwnerValues',
+  'nfts',
+  'addressGroups',
+  'addresses',
+  'allowlist',
+  'allowlistRules',
+] as const;
+
 class DatabaseManager {
-  private dbName = 'OwnerNoteDB';
+  private dbName: string = BASE_DB_NAME;
   private version = 4;
+  private activeAddressLoaded = false;
   private changeListeners: Set<() => void> = new Set();
 
   onChange(listener: () => void): () => void {
@@ -144,6 +161,142 @@ class DatabaseManager {
     return () => {
       this.changeListeners.delete(listener);
     };
+  }
+
+  /**
+   * On first use, check localStorage for the previously-active address
+   * and point dbName at that per-address DB so subsequent initDB() calls
+   * open the right store. Called lazily from initDB so SSR bundles that
+   * import this module but never actually call it do not crash on a
+   * missing `localStorage`.
+   */
+  private loadActiveAddressIfNeeded(): void {
+    if (this.activeAddressLoaded) return;
+    this.activeAddressLoaded = true;
+    if (typeof localStorage === 'undefined') return;
+    const stored = localStorage.getItem(ACTIVE_ADDRESS_KEY);
+    if (stored) {
+      this.dbName = `${BASE_DB_NAME}:${stored}`;
+    }
+  }
+
+  /**
+   * Switch the active IndexedDB database to the one bound to the given
+   * XRPL address (or back to the guest DB when address is null).
+   *
+   * Rules:
+   *  - Called from the sign-in flow. NOT called on logout — a logged
+   *    out user keeps writing to their last active DB, so switching
+   *    wallets is the only thing that moves data between DBs.
+   *  - If this is the first time switching from the guest DB into an
+   *    address DB, the guest DB's sync-relevant stores are copied into
+   *    the address DB so pre-login work is preserved (the "claim"
+   *    behavior).
+   *  - Same-address calls are a no-op.
+   *  - After a real switch, notifyChange fires so listeners
+   *    (sync debounce, UI re-fetch via syncCompleteCount) can react.
+   */
+  async setActiveAddress(address: string | null): Promise<void> {
+    this.loadActiveAddressIfNeeded();
+    const newDbName = address ? `${BASE_DB_NAME}:${address}` : BASE_DB_NAME;
+    if (newDbName === this.dbName) return;
+
+    const wasGuest = this.dbName === BASE_DB_NAME;
+
+    if (wasGuest && address) {
+      try {
+        await this.claimGuestDataFor(address);
+      } catch (err) {
+        console.error('[db] claim from guest failed', err);
+      }
+    }
+
+    this.dbName = newDbName;
+    if (typeof localStorage !== 'undefined') {
+      if (address) {
+        localStorage.setItem(ACTIVE_ADDRESS_KEY, address);
+      } else {
+        localStorage.removeItem(ACTIVE_ADDRESS_KEY);
+      }
+    }
+    this.notifyChange();
+  }
+
+  getActiveAddress(): string | null {
+    this.loadActiveAddressIfNeeded();
+    if (this.dbName === BASE_DB_NAME) return null;
+    return this.dbName.slice(BASE_DB_NAME.length + 1);
+  }
+
+  /**
+   * Copy sync-relevant stores from the guest DB into a fresh address
+   * DB. No-op if the address DB already has data (so repeat sign-ins
+   * with the same address never overwrite). No-op if the guest DB has
+   * nothing worth copying.
+   */
+  private async claimGuestDataFor(address: string): Promise<void> {
+    const addressDbName = `${BASE_DB_NAME}:${address}`;
+    let guestDb: IDBDatabase | null = null;
+    let targetDb: IDBDatabase | null = null;
+    try {
+      guestDb = await this.openDb(BASE_DB_NAME);
+      targetDb = await this.openDb(addressDbName);
+
+      if (await this.anyStoreHasRows(targetDb)) return;
+      if (!(await this.anyStoreHasRows(guestDb))) return;
+
+      for (const storeName of CLAIMABLE_STORES) {
+        if (!guestDb.objectStoreNames.contains(storeName)) continue;
+        if (!targetDb.objectStoreNames.contains(storeName)) continue;
+        const items = await this.readAll(guestDb, storeName);
+        if (items.length === 0) continue;
+        await this.writeAll(targetDb, storeName, items);
+      }
+    } finally {
+      if (guestDb) guestDb.close();
+      if (targetDb) targetDb.close();
+    }
+  }
+
+  private anyStoreHasRows(db: IDBDatabase): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      const names = CLAIMABLE_STORES.filter((s) => db.objectStoreNames.contains(s));
+      if (names.length === 0) {
+        resolve(false);
+        return;
+      }
+      const tx = db.transaction(names, 'readonly');
+      let found = false;
+      let pending = names.length;
+      for (const name of names) {
+        const req = tx.objectStore(name).count();
+        req.onsuccess = () => {
+          if (req.result > 0) found = true;
+          if (--pending === 0) resolve(found);
+        };
+        req.onerror = () => reject(req.error);
+      }
+    });
+  }
+
+  private readAll<T = unknown>(db: IDBDatabase, storeName: string): Promise<T[]> {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const req = tx.objectStore(storeName).getAll();
+      req.onsuccess = () => resolve(req.result as T[]);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  private writeAll(db: IDBDatabase, storeName: string, items: unknown[]): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      for (const item of items) store.put(item);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
   }
 
   /**
@@ -211,8 +364,13 @@ class DatabaseManager {
   }
 
   async initDB(): Promise<IDBDatabase> {
+    this.loadActiveAddressIfNeeded();
+    return this.openDb(this.dbName);
+  }
+
+  private openDb(name: string): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, this.version);
+      const request = indexedDB.open(name, this.version);
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);

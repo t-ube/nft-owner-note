@@ -46,7 +46,6 @@ const Ctx = createContext<SyncSessionCtx | null>(null)
 const PENDING_UUID_KEY = 'pendingXamanUuid'
 const PENDING_AT_KEY = 'pendingXamanAt'
 const PENDING_TTL_MS = 10 * 60 * 1000
-const LAST_ADDRESS_KEY = 'xon.last-signed-in-address'
 
 export function SyncSessionProvider({ children }: React.PropsWithChildren) {
   const [session, setSession] = useState<SyncSession | null>(null)
@@ -189,17 +188,17 @@ export function SyncSessionProvider({ children }: React.PropsWithChildren) {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [checkPending, refresh])
 
-  // Auto-sync: run once when a session becomes available, then debounce-sync
-  // on any local IndexedDB mutation from user actions. Remote-applied rows use
-  // dbManager.upsert*, which intentionally does not emit onChange, so remote
-  // downloads never re-trigger a sync.
+  // Auto-sync: when a session becomes available, activate the
+  // corresponding per-address IDB (migrating pre-login data from the
+  // guest DB if this is a first-ever sign-in), then run an initial
+  // sync and subscribe to dbManager changes for debounced re-sync.
   //
-  // Address switch detection: localStorage tracks the last signed-in address.
-  // If the new sign-in is for a *different* address, the local IDB is wiped
-  // before sync so the previous user's data does not bleed into the new
-  // user's cloud account. First-ever sign-in (no previous address) keeps the
-  // pre-login data and uploads it as part of the first sync — this is how a
-  // user "claims" their existing local data with their wallet.
+  // Remote-applied rows use dbManager.upsert*, which intentionally
+  // does not emit onChange, so remote downloads never re-trigger a sync.
+  //
+  // Logout does NOT switch the DB back — a logged-out user keeps
+  // writing to their last active DB, and the next sign-in with the
+  // same address simply continues where they left off.
   useEffect(() => {
     const address = session?.address
     if (!address) return
@@ -220,20 +219,15 @@ export function SyncSessionProvider({ children }: React.PropsWithChildren) {
     }
 
     const init = async () => {
-      const lastAddress =
-        typeof localStorage !== 'undefined'
-          ? localStorage.getItem(LAST_ADDRESS_KEY)
-          : null
-      if (lastAddress && lastAddress !== address) {
-        try {
-          await dbManager.clearAllUserData()
-        } catch (err) {
-          console.error('[auto-sync] failed to clear local data on address switch', err)
-        }
+      try {
+        await dbManager.setActiveAddress(address)
+      } catch (err) {
+        console.error('[auto-sync] setActiveAddress failed', err)
       }
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(LAST_ADDRESS_KEY, address)
-      }
+      // Nudge every page that depends on syncCompleteCount to re-fetch
+      // from the newly-activated DB even before the first sync finishes,
+      // so the UI does not flash stale data from the previous DB.
+      setSyncCompleteCount(c => c + 1)
       if (cancelled) return
       runSync()
     }
