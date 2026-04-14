@@ -6,6 +6,17 @@ const dictionaries = {
 
 
 export interface Dictionary {
+  menu: {
+    connect: string;
+    disconnect: string;
+    login: string;
+    logout: string;
+    settings: string;
+  };
+  walletSelect: {
+    title: string;
+    description: string;
+  };
   project: {
     title: string;
     name: string;
@@ -381,8 +392,29 @@ export interface Dictionary {
         errorPrefix: string;
       };
     };
+    myAccount: {
+      title: string;
+      wallet: string;
+      address: string;
+      balance: string;
+      walletType: string;
+      copyAddress: string;
+      addressCopied: string;
+      disconnect: string;
+      logout: string;
+      xrp: string;
+      revenue: string;
+      last30Days: string;
+      commingSoon: string;
+      settings: string;
+      cloudBackup: string;
+      backupFeature: string;
+      revenueTracking: string;
+      prepareRevenue: string;
+    };
     sidebar: {
       title: string;
+      myAccount: string;
       ownersList: string;
       integration: string;
       projectsTitle: string;
@@ -405,6 +437,7 @@ export interface Dictionary {
         projects: string;
         owners: string;
         crossProject: string;
+        myAccount: string;
         more: string;
       };
     };

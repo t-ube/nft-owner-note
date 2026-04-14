@@ -15,6 +15,7 @@ import {
   Book,
   LayoutGrid,
   Menu as MenuIcon,
+  Wallet,
   X
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -92,6 +93,7 @@ const ProjectSidebar = ({
   const isProjectsActive = pathname === `/${lang}` || pathname.startsWith(`/${lang}/projects`);
   const isOwnersActive = pathname.startsWith(`/${lang}/owners`);
   const isCrossActive = pathname.startsWith(`/${lang}/cross-project`);
+  const isMyAccountActive = pathname.startsWith(`/${lang}/my-account`);
 
   const settingsContent = (
     <>
@@ -241,19 +243,19 @@ const ProjectSidebar = ({
               {settingsContent}
             </div>
 
-            <Button
-              variant="outline"
-              className="w-full mb-4 justify-start dark:border-gray-600 dark:text-gray-200 hidden lg:inline-flex"
-              onClick={() => {
-                router.push(`/${lang}/owners`);
-                setIsOpen(false);
-              }}
-            >
-              <Users className="h-4 w-4 mr-2" />
-              {t.ownersList}
-            </Button>
+            <div className="space-y-2 hidden lg:block">
+              <Button
+                variant="outline"
+                className="w-full justify-start dark:border-gray-600 dark:text-gray-200"
+                onClick={() => {
+                  router.push(`/${lang}/owners`);
+                  setIsOpen(false);
+                }}
+              >
+                <Users className="h-4 w-4 mr-2" />
+                {t.ownersList}
+              </Button>
 
-            <div className="space-y-4 hidden lg:block">
               <Button
                 variant="outline"
                 className="w-full justify-start dark:border-gray-600 dark:text-gray-200"
@@ -266,7 +268,19 @@ const ProjectSidebar = ({
                 {t.integration}
               </Button>
 
-              <div className="mt-6 mb-2 flex items-center justify-between">
+              <Button
+                variant="outline"
+                className="w-full justify-start dark:border-gray-600 dark:text-gray-200"
+                onClick={() => {
+                  router.push(`/${lang}/my-account`);
+                  setIsOpen(false);
+                }}
+              >
+                <Wallet className="h-4 w-4 mr-2" />
+                {t.myAccount}
+              </Button>
+
+              <div className="mt-4 mb-2 flex items-center justify-between">
                 <h2 className="text-xl font-bold dark:text-white">{t.projectsTitle}</h2>
                 <ProjectCSVImportExport onProjectsUpdated={onProjectsUpdated} lang={lang} />
               </div>
@@ -432,7 +446,7 @@ const ProjectSidebar = ({
         className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-t dark:border-gray-700 shadow-[0_-2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_-2px_8px_rgba(0,0,0,0.3)]"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="grid grid-cols-3 h-16">
+        <div className="grid grid-cols-4 h-16">
           <button
             type="button"
             onClick={() => {
@@ -480,6 +494,22 @@ const ProjectSidebar = ({
           >
             <Network className="h-5 w-5" />
             <span className="truncate max-w-full px-1">{t.bottomNav.crossProject}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsOpen(false);
+              router.push(`/${lang}/my-account`);
+            }}
+            className={`flex flex-col items-center justify-center gap-1 text-xs transition-colors ${
+              isMyAccountActive
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+            aria-label={t.bottomNav.myAccount}
+          >
+            <Wallet className="h-5 w-5" />
+            <span className="truncate max-w-full px-1">{t.bottomNav.myAccount}</span>
           </button>
         </div>
       </nav>

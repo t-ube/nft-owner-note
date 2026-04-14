@@ -1,4 +1,15 @@
 {
+  "menu": {
+    "connect": "接続",
+    "disconnect": "切断",
+    "login": "ログイン",
+    "logout": "ログアウト",
+    "settings": "設定"
+  },
+  "walletSelect": {
+    "title": "ウォレットを選択",
+    "description": "接続するウォレットを選択してください。"
+  },
   "project": {
     "title": "新規プロジェクト作成",
     "name": "プロジェクト名",
@@ -374,8 +385,29 @@
         "errorPrefix": "{row}行目: {errors}"
       }
     },
+    "myAccount": {
+      "title": "マイアカウント",
+      "wallet": "ウォレット",
+      "address": "アドレス",
+      "balance": "残高",
+      "walletType": "ウォレットタイプ",
+      "copyAddress": "アドレスをコピー",
+      "addressCopied": "アドレスをコピーしました",
+      "disconnect": "ウォレット切断",
+      "logout": "ログアウト",
+      "xrp": "XRP",
+      "revenue": "推定収益",
+      "last30Days": "過去30日間",
+      "commingSoon": "（近日対応予定）",
+      "settings": "設定",
+      "cloudBackup": "クラウドバックアップ",
+      "backupFeature": "バックアップ機能の有効化/無効化",
+      "revenueTracking": "収益管理",
+      "prepareRevenue": "収益管理機能の有効化/無効化（準備中）"
+    },
     "sidebar": {
       "title": "Owner Note",
+      "myAccount": "マイアカウント",
       "ownersList": "オーナーリスト",
       "integration": "プロジェクト連携",
       "projectsTitle": "プロジェクト",
@@ -398,6 +430,7 @@
         "projects": "プロジェクト",
         "owners": "オーナー",
         "crossProject": "連携",
+        "myAccount": "アカウント",
         "more": "メニュー"
       }
     },
