@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import { cookies } from 'next/headers';
 import type { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -14,12 +13,63 @@ export type SyncSession = {
   tokenHash: string;
 };
 
-export function generateToken(): string {
-  return crypto.randomBytes(32).toString('base64url');
+// ----- Web Crypto helpers (edge-runtime compatible) -----
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-export function hashToken(token: string): string {
-  return crypto.createHash('sha256').update(token).digest('hex');
+function bytesToHex(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0');
+  }
+  return hex;
+}
+
+function constantTimeEqualHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return bytesToHex(digest);
+}
+
+async function hmacSha256Hex(secret: string, data: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(data));
+  return bytesToHex(sig);
+}
+
+// ----- Token + cookie helpers -----
+
+export function generateToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return bytesToBase64Url(bytes);
+}
+
+export async function hashToken(token: string): Promise<string> {
+  return sha256Hex(token);
 }
 
 export function computeExpiresAt(days = SYNC_SESSION_DAYS): Date {
@@ -53,7 +103,7 @@ export async function getSession(): Promise<SyncSession | null> {
     return null;
   }
 
-  const tokenHash = hashToken(token);
+  const tokenHash = await hashToken(token);
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('sync_sessions')
@@ -115,12 +165,17 @@ function getNonceSecret(): string {
  * The data part can be re-derived and HMAC-verified by the server, so no
  * server-side storage is needed. TTL is enforced via the encoded expiry.
  */
-export function createSyncChallenge(): string {
+export async function createSyncChallenge(): Promise<string> {
   const secret = getNonceSecret();
   const expiresAt = Date.now() + SYNC_CHALLENGE_TTL_MS;
-  const random = crypto.randomBytes(16).toString('hex');
+  const randomBytes = new Uint8Array(16);
+  crypto.getRandomValues(randomBytes);
+  let random = '';
+  for (let i = 0; i < randomBytes.length; i++) {
+    random += randomBytes[i].toString(16).padStart(2, '0');
+  }
   const data = `${expiresAt}:${random}`;
-  const sig = crypto.createHmac('sha256', secret).update(data).digest('hex');
+  const sig = await hmacSha256Hex(secret, data);
   return `${data}.${sig}`;
 }
 
@@ -128,7 +183,7 @@ export function createSyncChallenge(): string {
  * Verify a challenge string previously issued by createSyncChallenge.
  * Returns true iff the HMAC matches and the encoded expiry is in the future.
  */
-export function verifySyncChallenge(challenge: string): boolean {
+export async function verifySyncChallenge(challenge: string): Promise<boolean> {
   if (typeof challenge !== 'string') return false;
   const idx = challenge.lastIndexOf('.');
   if (idx <= 0) return false;
@@ -143,18 +198,8 @@ export function verifySyncChallenge(challenge: string): boolean {
     return false;
   }
 
-  const expected = crypto.createHmac('sha256', secret).update(data).digest('hex');
-
-  let sigBuf: Buffer;
-  let expectedBuf: Buffer;
-  try {
-    sigBuf = Buffer.from(sig, 'hex');
-    expectedBuf = Buffer.from(expected, 'hex');
-  } catch {
-    return false;
-  }
-  if (sigBuf.length !== expectedBuf.length) return false;
-  if (!crypto.timingSafeEqual(sigBuf, expectedBuf)) return false;
+  const expected = await hmacSha256Hex(secret, data);
+  if (!constantTimeEqualHex(sig, expected)) return false;
 
   const [expiresAtStr] = data.split(':');
   const expiresAtMs = parseInt(expiresAtStr, 10);

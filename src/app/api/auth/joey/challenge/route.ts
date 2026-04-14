@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSyncChallenge } from '@/lib/auth/syncSession';
 import { REST_ENDPOINT } from '@/utils/xrpl';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 async function fetchCurrentLedger(): Promise<number | null> {
   try {
@@ -25,7 +25,7 @@ async function fetchCurrentLedger(): Promise<number | null> {
 
 export async function POST() {
   try {
-    const challenge = createSyncChallenge();
+    const challenge = await createSyncChallenge();
     const currentLedger = await fetchCurrentLedger();
     const lastLedgerSequence =
       typeof currentLedger === 'number' ? currentLedger + 2 : null;

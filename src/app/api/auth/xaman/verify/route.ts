@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { XummSdk } from 'xumm-sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   attachSessionCookie,
@@ -8,7 +7,7 @@ import {
   hashToken,
 } from '@/lib/auth/syncSession';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.XAMAN_SERVER_API_KEY;
@@ -34,23 +33,45 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const sdk = new XummSdk(apiKey, apiSecret);
-    const payload = await sdk.payload.get(uuid);
+    const res = await fetch(
+      `https://xumm.app/api/v1/platform/payload/${encodeURIComponent(uuid)}`,
+      {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          'X-API-Key': apiKey,
+          'X-API-Secret': apiSecret,
+        },
+      }
+    );
 
-    if (!payload) {
+    if (res.status === 404) {
+      return NextResponse.json({ error: 'Payload not found' }, { status: 404 });
+    }
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('Xaman payload get failed:', res.status, text);
+      return NextResponse.json({ error: 'Failed to fetch payload' }, { status: 500 });
+    }
+
+    const payload = (await res.json()) as {
+      meta?: { signed?: boolean };
+      response?: { account?: string };
+    };
+    if (!payload?.meta) {
       return NextResponse.json({ error: 'Payload not found' }, { status: 404 });
     }
     if (!payload.meta.signed) {
       return NextResponse.json({ error: 'Payload was not signed' }, { status: 400 });
     }
 
-    const address = payload.response.account;
+    const address = payload.response?.account;
     if (!address) {
       return NextResponse.json({ error: 'No account in payload response' }, { status: 400 });
     }
 
     const token = generateToken();
-    const tokenHash = hashToken(token);
+    const tokenHash = await hashToken(token);
     const expiresAt = computeExpiresAt();
 
     const supabase = createAdminClient();

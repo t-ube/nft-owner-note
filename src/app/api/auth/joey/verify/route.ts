@@ -9,7 +9,7 @@ import {
   hashToken,
 } from '@/lib/auth/syncSession';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 type IncomingTx = {
   Account?: string;
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
   // 3. All good — issue a session.
   const address = txJson.Account;
   const token = generateToken();
-  const tokenHash = hashToken(token);
+  const tokenHash = await hashToken(token);
   const expiresAt = computeExpiresAt();
 
   try {

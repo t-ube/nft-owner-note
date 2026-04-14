@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { XummSdk } from 'xumm-sdk';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.XAMAN_SERVER_API_KEY;
@@ -24,28 +23,49 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const sdk = new XummSdk(apiKey, apiSecret);
-    const payload = await sdk.payload.create({
+    const createBody: Record<string, unknown> = {
       txjson: { TransactionType: 'SignIn' },
-      options: returnUrl
-        ? {
-            return_url: {
-              web: returnUrl,
-              app: returnUrl,
-            },
-          }
-        : undefined,
+    };
+    if (returnUrl) {
+      createBody.options = {
+        return_url: {
+          web: returnUrl,
+          app: returnUrl,
+        },
+      };
+    }
+
+    const res = await fetch('https://xumm.app/api/v1/platform/payload', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-API-Key': apiKey,
+        'X-API-Secret': apiSecret,
+      },
+      body: JSON.stringify(createBody),
     });
 
-    if (!payload) {
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('Xaman payload create failed:', res.status, text);
+      return NextResponse.json({ error: 'Failed to create payload' }, { status: 500 });
+    }
+
+    const payload = (await res.json()) as {
+      uuid?: string;
+      next?: { always?: string };
+      refs?: { qr_png?: string; websocket_status?: string };
+    };
+    if (!payload?.uuid) {
       return NextResponse.json({ error: 'Failed to create payload' }, { status: 500 });
     }
 
     return NextResponse.json({
       uuid: payload.uuid,
-      qr: payload.refs.qr_png,
-      next: payload.next.always,
-      websocket: payload.refs.websocket_status,
+      qr: payload.refs?.qr_png,
+      next: payload.next?.always,
+      websocket: payload.refs?.websocket_status,
     });
   } catch (err) {
     console.error('Xaman challenge error:', err);
