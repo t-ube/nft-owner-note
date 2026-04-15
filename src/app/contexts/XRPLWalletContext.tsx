@@ -11,7 +11,6 @@ import {
 
 import { useProvider as useJoey } from '@/app/contexts/JoeyContext'
 import { useSyncSession } from '@/app/contexts/SyncSessionContext'
-import { setJoeyBackupKey } from '@/lib/sync/backupKey'
 
 type UnifiedCtx = {
   walletType: WalletType | null
@@ -129,13 +128,6 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
           const data = await sessionRes.json()
           if (data?.session?.address === address) {
             console.log('[authenticateJoeySync] existing sync session, skipping sign')
-            // Joey backup key is derived from a hardcoded constant, so we
-            // can re-prime the cache without re-signing.
-            try {
-              await setJoeyBackupKey(address)
-            } catch (cryptoErr) {
-              console.error('[authenticateJoeySync] backup key derivation failed', cryptoErr)
-            }
             await refreshSyncSession()
             return { ok: true }
           }
@@ -193,12 +185,6 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
           ? `${data.error || 'Verification failed'}: ${data.detail}`
           : data.error || 'Verification failed'
         throw new Error(msg)
-      }
-
-      try {
-        await setJoeyBackupKey(address)
-      } catch (cryptoErr) {
-        console.error('[authenticateJoeySync] backup key derivation failed', cryptoErr)
       }
 
       await refreshSyncSession()
@@ -260,11 +246,6 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
         return true
       }
       if (walletType === 'joey') {
-        // Joey also has a sync session (issued by /api/auth/joey/verify)
-        // and a cached backup key in localStorage. syncSignOut revokes
-        // the server-side session cookie and calls clearAllBackupKeys,
-        // which wipes both the AES key and the walletType mapping.
-        await syncSignOut()
         await joey.actions.disconnect()
         setWalletType(null)
         setAccount(null)
@@ -345,24 +326,6 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
       setAccount(null)
       setWalletType(null)
     }
-  }, [walletType, syncSession, isInitialized])
-
-  // Safety net for the PC Xaman flow: after the initial restore effect
-  // runs, if a fresh syncSession appears while walletType is still
-  // null, adopt it as an Xaman sign-in. The normal path is for connect()
-  // to await requestSignIn() and then setAccount/setWalletType itself,
-  // but the sync session update from handleVerified's refresh() can
-  // race ahead of connect()'s microtask continuation on desktop — and
-  // neither the initial restore effect (guarded by isInitialized) nor
-  // the sync effect above (guarded by walletType==='xaman') would pick
-  // it up on its own. Without this, account stays null and the user
-  // is stuck on the wallet-select view even though they are signed in.
-  useEffect(() => {
-    if (!isInitialized) return
-    if (walletType !== null) return
-    if (!syncSession) return
-    setWalletType('xaman')
-    setAccount(syncSession.address)
   }, [walletType, syncSession, isInitialized])
 
   // walletType が joey のとき、Joey 側の変化を反映

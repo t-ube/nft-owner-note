@@ -400,8 +400,8 @@
       "last30Days": "Last 30 Days",
       "commingSoon": "Coming Soon",
       "settings": "Settings",
-      "dataProvision": "Address Data Sharing",
-      "dataProvisionDescription": "Contribute your address data for aggregate statistics",
+      "cloudBackup": "Cloud Backup",
+      "backupFeature": "Enable/disable backup feature",
       "revenueTracking": "Revenue Tracking",
       "prepareRevenue": "Prepare revenue management (feature flag)",
       "cloudSync": {

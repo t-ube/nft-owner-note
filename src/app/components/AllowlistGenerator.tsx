@@ -28,7 +28,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressGroupDialog } from './AddressGroupDialog';
 import { Project, dbManager, AddressGroup, AllowlistEntry, AllowlistRule, NFToken, AddressInfo } from '@/utils/db';
-import { useSyncSession } from '@/app/contexts/SyncSessionContext';
 import Papa from 'papaparse';
 import { Download, Pencil, Trash2, Plus } from 'lucide-react';
 import _ from 'lodash';
@@ -73,7 +72,6 @@ const AllowlistGenerator: React.FC<AllowlistGeneratorProps> = ({
   const [initialAddresses, setInitialAddresses] = useState<string[]>([]);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [dict, setDict] = useState<Dictionary | null>(null);
-  const { syncCompleteCount } = useSyncSession();
 
   useEffect(() => {
     const loadDictionary = async () => {
@@ -123,7 +121,7 @@ const AllowlistGenerator: React.FC<AllowlistGeneratorProps> = ({
       }
     };
     loadData();
-  }, [selectedProjects, syncCompleteCount]);
+  }, [selectedProjects]);
 
   useEffect(() => {
     const loadEntries = async () => {

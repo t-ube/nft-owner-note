@@ -400,8 +400,8 @@
       "last30Days": "過去30日間",
       "commingSoon": "（近日対応予定）",
       "settings": "設定",
-      "dataProvision": "アドレスデータ提供",
-      "dataProvisionDescription": "保有アドレスの統計データ提供に協力します",
+      "cloudBackup": "クラウドバックアップ",
+      "backupFeature": "バックアップ機能の有効化/無効化",
       "revenueTracking": "収益管理",
       "prepareRevenue": "収益管理機能の有効化/無効化（準備中）",
       "cloudSync": {

@@ -14,14 +14,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { dbManager, Project } from '@/utils/db';
-import { useSyncSession } from '@/app/contexts/SyncSessionContext';
 
 export default function OwnerListPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
-  const { syncCompleteCount } = useSyncSession();
 
   const loadAllProjects = useCallback(async () => {
     try {
@@ -34,7 +32,7 @@ export default function OwnerListPage() {
 
   useEffect(() => {
     loadAllProjects();
-  }, [loadAllProjects, syncCompleteCount]);
+  }, [loadAllProjects]);
 
   const handleDeleteClick = (e: React.MouseEvent, project: Project) => {
     e.stopPropagation();

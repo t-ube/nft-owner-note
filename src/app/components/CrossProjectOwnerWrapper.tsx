@@ -14,7 +14,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { dbManager, Project } from '@/utils/db';
-import { useSyncSession } from '@/app/contexts/SyncSessionContext';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 
@@ -28,7 +27,6 @@ export default function CrossProjectOwnerWrapper({ lang }: CrossProjectOwnerPage
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
-  const { syncCompleteCount } = useSyncSession();
 
   const loadAllProjects = useCallback(async () => {
     try {
@@ -41,7 +39,7 @@ export default function CrossProjectOwnerWrapper({ lang }: CrossProjectOwnerPage
 
   useEffect(() => {
     loadAllProjects();
-  }, [loadAllProjects, syncCompleteCount]);
+  }, [loadAllProjects]);
 
   useEffect(() => {
     const loadDictionary = async () => {

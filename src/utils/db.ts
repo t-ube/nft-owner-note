@@ -122,229 +122,9 @@ interface PaginatedResult<T> {
   total: number;
 }
 
-export interface SyncMeta {
-  // Composite key: `${address}:${table}`
-  key: string;
-  lastSyncAt: number;
-}
-
-export type SyncTable = 'projects' | 'addressGroups' | 'addresses' | 'projectOwnerValues';
-
-function syncMetaKey(address: string, table: SyncTable): string {
-  return `${address}:${table}`;
-}
-
-const BASE_DB_NAME = 'OwnerNoteDB';
-const ACTIVE_ADDRESS_KEY = 'xon.active-db-address';
-
-// Sync-relevant stores copied from the guest DB into a fresh per-address
-// DB on the first sign-in, so pre-login data follows the user into the
-// wallet-bound backup.
-const CLAIMABLE_STORES = [
-  'projects',
-  'projectOwnerValues',
-  'nfts',
-  'addressGroups',
-  'addresses',
-  'allowlist',
-  'allowlistRules',
-] as const;
-
 class DatabaseManager {
-  private dbName: string = BASE_DB_NAME;
-  private version = 4;
-  private activeAddressLoaded = false;
-  private changeListeners: Set<() => void> = new Set();
-
-  onChange(listener: () => void): () => void {
-    this.changeListeners.add(listener);
-    return () => {
-      this.changeListeners.delete(listener);
-    };
-  }
-
-  /**
-   * On first use, check localStorage for the previously-active address
-   * and point dbName at that per-address DB so subsequent initDB() calls
-   * open the right store. Called lazily from initDB so SSR bundles that
-   * import this module but never actually call it do not crash on a
-   * missing `localStorage`.
-   */
-  private loadActiveAddressIfNeeded(): void {
-    if (this.activeAddressLoaded) return;
-    this.activeAddressLoaded = true;
-    if (typeof localStorage === 'undefined') return;
-    const stored = localStorage.getItem(ACTIVE_ADDRESS_KEY);
-    if (stored) {
-      this.dbName = `${BASE_DB_NAME}:${stored}`;
-    }
-  }
-
-  /**
-   * Switch the active IndexedDB database to the one bound to the given
-   * XRPL address (or back to the guest DB when address is null).
-   *
-   * Rules:
-   *  - Called from the sign-in flow. NOT called on logout — a logged
-   *    out user keeps writing to their last active DB, so switching
-   *    wallets is the only thing that moves data between DBs.
-   *  - If this is the first time switching from the guest DB into an
-   *    address DB, the guest DB's sync-relevant stores are copied into
-   *    the address DB so pre-login work is preserved (the "claim"
-   *    behavior).
-   *  - Same-address calls are a no-op.
-   *  - After a real switch, notifyChange fires so listeners
-   *    (sync debounce, UI re-fetch via syncCompleteCount) can react.
-   */
-  async setActiveAddress(address: string | null): Promise<void> {
-    this.loadActiveAddressIfNeeded();
-    const newDbName = address ? `${BASE_DB_NAME}:${address}` : BASE_DB_NAME;
-    if (newDbName === this.dbName) return;
-
-    const wasGuest = this.dbName === BASE_DB_NAME;
-
-    if (wasGuest && address) {
-      try {
-        await this.claimGuestDataFor(address);
-      } catch (err) {
-        console.error('[db] claim from guest failed', err);
-      }
-    }
-
-    this.dbName = newDbName;
-    if (typeof localStorage !== 'undefined') {
-      if (address) {
-        localStorage.setItem(ACTIVE_ADDRESS_KEY, address);
-      } else {
-        localStorage.removeItem(ACTIVE_ADDRESS_KEY);
-      }
-    }
-    this.notifyChange();
-  }
-
-  getActiveAddress(): string | null {
-    this.loadActiveAddressIfNeeded();
-    if (this.dbName === BASE_DB_NAME) return null;
-    return this.dbName.slice(BASE_DB_NAME.length + 1);
-  }
-
-  /**
-   * Copy sync-relevant stores from the guest DB into a fresh address
-   * DB. No-op if the address DB already has data (so repeat sign-ins
-   * with the same address never overwrite). No-op if the guest DB has
-   * nothing worth copying.
-   */
-  private async claimGuestDataFor(address: string): Promise<void> {
-    const addressDbName = `${BASE_DB_NAME}:${address}`;
-    let guestDb: IDBDatabase | null = null;
-    let targetDb: IDBDatabase | null = null;
-    try {
-      guestDb = await this.openDb(BASE_DB_NAME);
-      targetDb = await this.openDb(addressDbName);
-
-      if (await this.anyStoreHasRows(targetDb)) return;
-      if (!(await this.anyStoreHasRows(guestDb))) return;
-
-      for (const storeName of CLAIMABLE_STORES) {
-        if (!guestDb.objectStoreNames.contains(storeName)) continue;
-        if (!targetDb.objectStoreNames.contains(storeName)) continue;
-        const items = await this.readAll(guestDb, storeName);
-        if (items.length === 0) continue;
-        await this.writeAll(targetDb, storeName, items);
-      }
-    } finally {
-      if (guestDb) guestDb.close();
-      if (targetDb) targetDb.close();
-    }
-  }
-
-  private anyStoreHasRows(db: IDBDatabase): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      const names = CLAIMABLE_STORES.filter((s) => db.objectStoreNames.contains(s));
-      if (names.length === 0) {
-        resolve(false);
-        return;
-      }
-      const tx = db.transaction(names, 'readonly');
-      let found = false;
-      let pending = names.length;
-      for (const name of names) {
-        const req = tx.objectStore(name).count();
-        req.onsuccess = () => {
-          if (req.result > 0) found = true;
-          if (--pending === 0) resolve(found);
-        };
-        req.onerror = () => reject(req.error);
-      }
-    });
-  }
-
-  private readAll<T = unknown>(db: IDBDatabase, storeName: string): Promise<T[]> {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(storeName, 'readonly');
-      const req = tx.objectStore(storeName).getAll();
-      req.onsuccess = () => resolve(req.result as T[]);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  private writeAll(db: IDBDatabase, storeName: string, items: unknown[]): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(storeName, 'readwrite');
-      const store = tx.objectStore(storeName);
-      for (const item of items) store.put(item);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error);
-    });
-  }
-
-  /**
-   * Wipe every store that participates in cloud sync, plus the local
-   * caches that are derived from them (NFTs are cached per project).
-   * Called when the signed-in XRPL address changes so the previous
-   * user's data does not bleed into the new user's cloud account.
-   *
-   * Allowlist tables are NOT cleared (they are computed from the
-   * project NFT cache and would just be regenerated). syncMeta IS
-   * cleared so the next sync sees lastSyncAt=0 and pulls everything
-   * for the new address.
-   *
-   * Notifies listeners so any UI that holds a snapshot can refresh.
-   */
-  async clearAllUserData(): Promise<void> {
-    const db = await this.initDB();
-    const stores = [
-      'addressGroups',
-      'addresses',
-      'projects',
-      'projectOwnerValues',
-      'nfts',
-      'syncMeta',
-    ];
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(stores, 'readwrite');
-      for (const name of stores) {
-        if (db.objectStoreNames.contains(name)) {
-          tx.objectStore(name).clear();
-        }
-      }
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error);
-    });
-    this.notifyChange();
-  }
-
-  private notifyChange(): void {
-    this.changeListeners.forEach((cb) => {
-      try {
-        cb();
-      } catch (err) {
-        console.error('[db.onChange] listener threw', err);
-      }
-    });
-  }
+  private dbName = 'OwnerNoteDB';
+  private version = 2;
 
   // ProjectIDを生成するヘルパーメソッド
   private async generateProjectId(project: { name: string; issuer: string; taxon: string }): Promise<string> {
@@ -364,13 +144,8 @@ class DatabaseManager {
   }
 
   async initDB(): Promise<IDBDatabase> {
-    this.loadActiveAddressIfNeeded();
-    return this.openDb(this.dbName);
-  }
-
-  private openDb(name: string): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(name, this.version);
+      const request = indexedDB.open(this.dbName, this.version);
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);
@@ -444,22 +219,6 @@ class DatabaseManager {
           this.migrateStore(transaction, 'addresses');
           this.migrateStore(transaction, 'projectOwnerValues');
         }
-
-        if (oldVersion < 3) {
-          if (!db.objectStoreNames.contains('syncMeta')) {
-            db.createObjectStore('syncMeta', { keyPath: 'key' });
-          }
-        }
-
-        if (oldVersion < 4) {
-          // syncMeta keyPath changed from 'table' to 'key' (composite
-          // `${address}:${table}`) so last-sync watermarks become per-address.
-          // Drop and recreate; there is no data worth migrating.
-          if (db.objectStoreNames.contains('syncMeta')) {
-            db.deleteObjectStore('syncMeta');
-          }
-          db.createObjectStore('syncMeta', { keyPath: 'key' });
-        }
       };
     });
   }
@@ -504,10 +263,7 @@ class DatabaseManager {
       const request = store.add(completeProject);
 
       request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        this.notifyChange();
-        resolve(completeProject);
-      };
+      request.onsuccess = () => resolve(completeProject);
     });
   }
 
@@ -541,13 +297,10 @@ class DatabaseManager {
         };
         
         const putRequest = store.put(updatedValues);
-        putRequest.onsuccess = () => {
-          this.notifyChange();
-          resolve(updatedValues);
-        };
+        putRequest.onsuccess = () => resolve(updatedValues);
         putRequest.onerror = () => reject(putRequest.error);
       };
-
+      
       getRequest.onerror = () => reject(getRequest.error);
     });
   }
@@ -560,10 +313,7 @@ class DatabaseManager {
       const index = store.index('projectId');
       const request = index.getAll(projectId);
 
-      request.onsuccess = () => {
-        const values = request.result as ProjectOwnerValue[];
-        resolve(values.filter(v => !v.isDeleted));
-      };
+      request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
   }
@@ -576,10 +326,7 @@ class DatabaseManager {
       const id = `${projectId}-${owner}`;
       const request = store.get(id);
 
-      request.onsuccess = () => {
-        const result = request.result as ProjectOwnerValue | undefined;
-        resolve(result && !result.isDeleted ? result : undefined);
-      };
+      request.onsuccess = () => resolve(request.result || undefined);
       request.onerror = () => reject(request.error);
     });
   }
@@ -591,25 +338,20 @@ class DatabaseManager {
       const store = transaction.objectStore('projectOwnerValues');
       const index = store.index('projectId');
       const request = index.openCursor(projectId);
-      const now = Date.now();
 
       request.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        const cursor = (event.target as IDBRequest).result;
         if (cursor) {
-          const value = cursor.value as ProjectOwnerValue;
-          cursor.update({ ...value, isDeleted: true, updatedAt: now });
+          cursor.delete();
           cursor.continue();
         }
       };
 
-      transaction.oncomplete = () => {
-        this.notifyChange();
-        resolve();
-      };
+      transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
     });
   }
-
+  
   async getProjectByProjectId(projectId: string): Promise<Project | undefined> {
     const db = await this.initDB();
     return new Promise((resolve, reject) => {
@@ -619,10 +361,7 @@ class DatabaseManager {
       const request = index.get(projectId);
 
       request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        const result = request.result as Project | undefined;
-        resolve(result && !result.isDeleted ? result : undefined);
-      };
+      request.onsuccess = () => resolve(request.result || undefined);
     });
   }
 
@@ -632,61 +371,13 @@ class DatabaseManager {
       const transaction = db.transaction('projects', 'readonly');
       const store = transaction.objectStore('projects');
       const request = store.getAll();
-
+  
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
-        const projects = (request.result as Project[]).filter(p => !p.isDeleted);
+        const projects = request.result;
         projects.sort((a, b) => a.name.localeCompare(b.name));
         resolve(projects);
       };
-    });
-  }
-
-  async getAllProjectsIncludingDeleted(): Promise<Project[]> {
-    const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('projects', 'readonly');
-      const store = transaction.objectStore('projects');
-      const request = store.getAll();
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result as Project[]);
-    });
-  }
-
-  async upsertProject(project: Project): Promise<Project> {
-    const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('projects', 'readwrite');
-      const store = transaction.objectStore('projects');
-      const request = store.put(project);
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(project);
-    });
-  }
-
-  async upsertProjectOwnerValue(value: ProjectOwnerValue): Promise<ProjectOwnerValue> {
-    const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('projectOwnerValues', 'readwrite');
-      const store = transaction.objectStore('projectOwnerValues');
-      const request = store.put(value);
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(value);
-    });
-  }
-
-  async getAllProjectOwnerValuesIncludingDeleted(): Promise<ProjectOwnerValue[]> {
-    const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('projectOwnerValues', 'readonly');
-      const store = transaction.objectStore('projectOwnerValues');
-      const request = store.getAll();
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result as ProjectOwnerValue[]);
     });
   }
 
@@ -695,45 +386,40 @@ class DatabaseManager {
     const project = await this.getProjectByProjectId(id);
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['projects', 'nfts', 'projectOwnerValues'], 'readwrite');
-      const now = Date.now();
-
-      // Soft delete the project (so sync picks up the deletion)
+      
+      // Delete the project
       const projectStore = transaction.objectStore('projects');
       if (project) {
-        projectStore.put({ ...project, isDeleted: true, updatedAt: now });
+        projectStore.delete(project.id);
       }
 
-      // NFTs are local-only cache, hard delete
+      // Delete all associated NFTs
       const nftStore = transaction.objectStore('nfts');
       const nftIndex = nftStore.index('projectId');
       const nftRequest = nftIndex.openCursor(id);
 
       nftRequest.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        const cursor = (event.target as IDBRequest).result;
         if (cursor) {
           cursor.delete();
           cursor.continue();
         }
       };
 
-      // Soft delete all associated owner values
+      // Delete all associated owner values
       const ownerValueStore = transaction.objectStore('projectOwnerValues');
       const ownerValueIndex = ownerValueStore.index('projectId');
       const ownerValueRequest = ownerValueIndex.openCursor(id);
 
       ownerValueRequest.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        const cursor = (event.target as IDBRequest).result;
         if (cursor) {
-          const value = cursor.value as ProjectOwnerValue;
-          cursor.update({ ...value, isDeleted: true, updatedAt: now });
+          cursor.delete();
           cursor.continue();
         }
       };
 
-      transaction.oncomplete = () => {
-        this.notifyChange();
-        resolve();
-      };
+      transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
     });
   }
@@ -878,10 +564,7 @@ class DatabaseManager {
         });
 
         Promise.all(addressUpdates)
-          .then(() => {
-            this.notifyChange();
-            resolve(completeGroup);
-          })
+          .then(() => resolve(completeGroup))
           .catch(reject);
       };
 
@@ -907,32 +590,34 @@ class DatabaseManager {
     
       getGroupRequest.onsuccess = () => {
         const oldGroup = getGroupRequest.result as AddressGroup;
-
+        
         // 他の全グループを取得
         const getAllGroupsRequest = groupStore.getAll();
-
+        
         getAllGroupsRequest.onsuccess = () => {
           const allGroups = getAllGroupsRequest.result as AddressGroup[];
-          const otherGroups = allGroups.filter(g => g.id !== group.id && !g.isDeleted);
-
+          const otherGroups = allGroups.filter(g => g.id !== group.id);
+          
           const oldAddresses = new Set(oldGroup.addresses);
           const newAddresses = new Set(group.addresses);
-
+    
           // 2. 削除されたアドレスを処理
           const removedAddresses = Array.from(oldAddresses)
             .filter(addr => !newAddresses.has(addr));
-
+          
           // 3. 新しく追加されたアドレスを処理
           const addedAddresses = Array.from(newAddresses)
             .filter(addr => !oldAddresses.has(addr));
-
-          // 4. 削除されたアドレスの処理（同期対象なのでソフト削除）
+    
+          // 4. 削除されたアドレスの処理
           const removePromises = removedAddresses.map(address => {
-            const otherGroupWithAddress = otherGroups.find(g =>
+            // このアドレスを含む他のグループを探す
+            const otherGroupWithAddress = otherGroups.find(g => 
               g.addresses.includes(address)
             );
-
+  
             if (otherGroupWithAddress) {
+              // 他のグループで使用されている場合、そのグループIDを設定
               return addressStore.put({
                 address,
                 groupId: otherGroupWithAddress.id,
@@ -940,12 +625,8 @@ class DatabaseManager {
                 updatedAt: now
               });
             } else {
-              return addressStore.put({
-                address,
-                groupId: null,
-                isDeleted: true,
-                updatedAt: now
-              });
+              // 他のグループで使用されていない場合は削除
+              return addressStore.delete(address);
             }
           });
     
@@ -965,10 +646,7 @@ class DatabaseManager {
           // 7. 全ての処理の完了を待つ
           Promise.all([...removePromises, ...addPromises])
             .then(() => {
-              updateGroupRequest.onsuccess = () => {
-                this.notifyChange();
-                resolve(updatedGroup);
-              };
+              updateGroupRequest.onsuccess = () => resolve(updatedGroup);
               updateGroupRequest.onerror = () => reject(updateGroupRequest.error);
             })
             .catch(error => reject(error));
@@ -988,15 +666,15 @@ class DatabaseManager {
       const transaction = db.transaction('addressGroups', 'readonly');
       const store = transaction.objectStore('addressGroups');
       const request = store.getAll();
-
+  
       request.onsuccess = () => {
         const groups = request.result as AddressGroup[];
-        const belongingGroups = groups.filter(group =>
-          !group.isDeleted && group.addresses.includes(address)
+        const belongingGroups = groups.filter(group => 
+          group.addresses.includes(address)
         );
         resolve(belongingGroups);
       };
-
+  
       request.onerror = () => reject(request.error);
     });
   }
@@ -1009,10 +687,7 @@ class DatabaseManager {
       const request = store.get(id);
 
       request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        const result = request.result as AddressGroup | undefined;
-        resolve(result && !result.isDeleted ? result : undefined);
-      };
+      request.onsuccess = () => resolve(request.result || undefined);
     });
   }
 
@@ -1024,34 +699,7 @@ class DatabaseManager {
       const request = store.getAll();
 
       request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        const groups = (request.result as AddressGroup[]).filter(g => !g.isDeleted);
-        resolve(groups);
-      };
-    });
-  }
-
-  async getAllAddressGroupsIncludingDeleted(): Promise<AddressGroup[]> {
-    const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('addressGroups', 'readonly');
-      const store = transaction.objectStore('addressGroups');
-      const request = store.getAll();
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result as AddressGroup[]);
-    });
-  }
-
-  async upsertAddressGroup(group: AddressGroup): Promise<AddressGroup> {
-    const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('addressGroups', 'readwrite');
-      const store = transaction.objectStore('addressGroups');
-      const request = store.put(group);
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(group);
+      request.onsuccess = () => resolve(request.result);
     });
   }
 
@@ -1063,10 +711,7 @@ class DatabaseManager {
       const request = store.get(address);
 
       request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        const result = request.result as AddressInfo | undefined;
-        resolve(result && !result.isDeleted ? result : undefined);
-      };
+      request.onsuccess = () => resolve(request.result || undefined);
     });
   }
 
@@ -1078,61 +723,7 @@ class DatabaseManager {
       const request = store.getAll();
 
       request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        const infos = (request.result as AddressInfo[]).filter(a => !a.isDeleted);
-        resolve(infos);
-      };
-    });
-  }
-
-  async getAllAddressInfosIncludingDeleted(): Promise<AddressInfo[]> {
-    const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('addresses', 'readonly');
-      const store = transaction.objectStore('addresses');
-      const request = store.getAll();
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result as AddressInfo[]);
-    });
-  }
-
-  async upsertAddressInfo(info: AddressInfo): Promise<AddressInfo> {
-    const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('addresses', 'readwrite');
-      const store = transaction.objectStore('addresses');
-      const request = store.put(info);
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(info);
-    });
-  }
-
-  async getLastSyncAt(address: string, table: SyncTable): Promise<number> {
-    const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('syncMeta', 'readonly');
-      const store = transaction.objectStore('syncMeta');
-      const request = store.get(syncMetaKey(address, table));
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        const result = request.result as SyncMeta | undefined;
-        resolve(result?.lastSyncAt ?? 0);
-      };
-    });
-  }
-
-  async setLastSyncAt(address: string, table: SyncTable, lastSyncAt: number): Promise<void> {
-    const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('syncMeta', 'readwrite');
-      const store = transaction.objectStore('syncMeta');
-      const request = store.put({ key: syncMetaKey(address, table), lastSyncAt });
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
+      request.onsuccess = () => resolve(request.result);
     });
   }
 
@@ -1142,71 +733,58 @@ class DatabaseManager {
       const transaction = db.transaction(['addressGroups', 'addresses'], 'readwrite');
       const groupStore = transaction.objectStore('addressGroups');
       const addressStore = transaction.objectStore('addresses');
-      const now = Date.now();
-
+  
       // 1. まず削除対象のグループ情報を取得
       const getGroupRequest = groupStore.get(id);
-
-      getGroupRequest.onsuccess = () => {
-        const groupToDelete = getGroupRequest.result as AddressGroup | undefined;
-        if (!groupToDelete || groupToDelete.isDeleted) {
+  
+      getGroupRequest.onsuccess = async () => {
+        const groupToDelete = getGroupRequest.result as AddressGroup;
+        if (!groupToDelete) {
           resolve();
           return;
         }
-
+  
         // 2. 他の全てのグループを取得して、アドレスの参照を確認
         const getAllGroupsRequest = groupStore.getAll();
-
+        
         getAllGroupsRequest.onsuccess = () => {
           const allGroups = getAllGroupsRequest.result as AddressGroup[];
-          const otherGroups = allGroups.filter(g => g.id !== id && !g.isDeleted);
-
+          const otherGroups = allGroups.filter(g => g.id !== id);
+  
           // 3. 各アドレスについて、他のグループでの使用状況を確認
           const addressUpdates = groupToDelete.addresses.map(address => {
-            const otherGroupWithAddress = otherGroups.find(g =>
+            // このアドレスを含む他のグループを探す
+            const otherGroupWithAddress = otherGroups.find(g => 
               g.addresses.includes(address)
             );
-
+  
             if (otherGroupWithAddress) {
-              // 他のグループで使用されている場合、そのグループIDに付け替え
+              // 他のグループで使用されている場合、そのグループIDを設定
               return addressStore.put({
                 address,
                 groupId: otherGroupWithAddress.id,
                 isDeleted: false,
-                updatedAt: now
+                updatedAt: Date.now()
               });
             } else {
-              // 他のグループで使用されていない場合はソフト削除
-              return addressStore.put({
-                address,
-                groupId: null,
-                isDeleted: true,
-                updatedAt: now
-              });
+              // 他のグループで使用されていない場合は削除
+              return addressStore.delete(address);
             }
           });
-
-          // 4. グループをソフト削除
-          const softDeleted: AddressGroup = {
-            ...groupToDelete,
-            isDeleted: true,
-            updatedAt: now,
-          };
-          const deleteGroupRequest = groupStore.put(softDeleted);
+  
+          // 4. グループを削除
+          const deleteGroupRequest = groupStore.delete(id);
           deleteGroupRequest.onerror = () => reject(deleteGroupRequest.error);
-
+  
           // 5. すべての更新が完了するのを待つ
           Promise.all(addressUpdates)
-            .then(() => {
-              this.notifyChange();
-              resolve();
-            })
+            .then(() => resolve())
             .catch(error => reject(error));
         };
-
+  
         getAllGroupsRequest.onerror = () => reject(getAllGroupsRequest.error);
       };
-
+  
       getGroupRequest.onerror = () => reject(getGroupRequest.error);
       transaction.onerror = () => reject(transaction.error);
     });
@@ -1223,19 +801,21 @@ class DatabaseManager {
       const groupRequest = groupStore.getAll();
       
       groupRequest.onsuccess = () => {
-        const groups = (groupRequest.result as AddressGroup[]).filter(g => !g.isDeleted);
+        const groups = groupRequest.result as AddressGroup[];
         const addressRequest = addressStore.getAll();
-
+        
         addressRequest.onsuccess = () => {
-          const addresses = (addressRequest.result as AddressInfo[]).filter(a => !a.isDeleted);
-
+          const addresses = addressRequest.result as AddressInfo[];
+          
           // 2. 各アドレスについて、正しいグループ参照を確認・修正
           addresses.forEach(addressInfo => {
-            const correctGroup = groups.find(group =>
+            // このアドレスを含む最初のグループを見つける
+            const correctGroup = groups.find(group => 
               group.addresses.includes(addressInfo.address)
             );
-
+  
             if (correctGroup) {
+              // グループが見つかった場合、groupIdを更新
               if (addressInfo.groupId !== correctGroup.id) {
                 addressStore.put({
                   ...addressInfo,
@@ -1245,25 +825,17 @@ class DatabaseManager {
                 });
               }
             } else {
-              // どのグループにも属していない場合はソフト削除
-              addressStore.put({
-                ...addressInfo,
-                groupId: null,
-                isDeleted: true,
-                updatedAt: Date.now()
-              });
+              // どのグループにも属していない場合は削除
+              addressStore.delete(addressInfo.address);
             }
           });
         };
   
         addressRequest.onerror = () => reject(addressRequest.error);
       };
-
+  
       groupRequest.onerror = () => reject(groupRequest.error);
-      transaction.oncomplete = () => {
-        this.notifyChange();
-        resolve();
-      };
+      transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
     });
   }
@@ -1279,7 +851,7 @@ class DatabaseManager {
       request.onsuccess = () => {
         const projects = request.result as Project[];
         const matchingProject = projects.find(
-          p => p.issuer === issuer && p.taxon === taxon && !p.isDeleted
+          p => p.issuer === issuer && p.taxon === taxon
         );
         resolve(matchingProject);
       };

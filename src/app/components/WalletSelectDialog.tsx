@@ -15,7 +15,6 @@ import { Wallets } from '@/types/Wallet'
 import { getDictionary } from '@/i18n/get-dictionary'
 import type { Dictionary } from '@/i18n/dictionaries/index'
 import { useXRPLWallet } from '@/app/contexts/XRPLWalletContext'
-import { useSyncSession } from '@/app/contexts/SyncSessionContext'
 
 interface WalletSelectDialogProps {
   children: React.ReactNode
@@ -31,26 +30,12 @@ export function WalletSelectDialog({
   const [open, setOpen] = useState(false)
   const [dict, setDict] = useState<Dictionary | null>(null)
 
-  const { connect, account, error, clearError } = useXRPLWallet()
-  const { session: syncSession } = useSyncSession()
+  const { connect, error, clearError } = useXRPLWallet()
 
   useEffect(() => {
     const d = getDictionary(lang as 'en' | 'ja') as unknown as Dictionary
     setDict(d)
   }, [lang])
-
-  // Defensive auto-close: if the wallet becomes connected while this
-  // dialog is open — either because account propagated through the
-  // connect() promise chain, or because SyncSessionContext picked up a
-  // new session independently (the Xaman SignIn flow resolves in
-  // SyncSessionContext and on desktop the refresh() race can land
-  // before the connect() continuation) — snap the dialog shut so the
-  // user sees the logged-in view.
-  useEffect(() => {
-    if (open && (account || syncSession?.address)) {
-      setOpen(false)
-    }
-  }, [open, account, syncSession?.address])
 
   const handleSelect = async (walletType: WalletType) => {
     clearError()

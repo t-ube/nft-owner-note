@@ -24,7 +24,6 @@ import { Download, Pencil } from 'lucide-react';
 import { AddressGroupDialog } from './AddressGroupDialog';
 import { BatchUpdateComponent, UpdateProgress } from '@/app/components/BatchUpdateComponent';
 import { dbManager, Project, NFToken, AddressGroup, AddressInfo } from '@/utils/db';
-import { useSyncSession } from '@/app/contexts/SyncSessionContext';
 import _ from 'lodash';
 import Papa from 'papaparse';
 import { getDictionary } from '@/i18n/get-dictionary';
@@ -84,7 +83,6 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
   const [initialAddresses, setInitialAddresses] = useState<string[]>([]);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [dict, setDict] = useState<Dictionary | null>(null);
-  const { syncCompleteCount } = useSyncSession();
 
   useEffect(() => {
     const loadDictionary = async () => {
@@ -121,7 +119,7 @@ const CrossProjectOwnerList: React.FC<CrossProjectOwnerListProps> = ({
     };
 
     loadNFTData();
-  }, [selectedProjects, syncCompleteCount]);
+  }, [selectedProjects]);
 
   // NFTの合計数を計算
   const totalNftCount = useMemo(() => 

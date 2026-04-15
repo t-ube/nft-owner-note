@@ -37,60 +37,23 @@ export default function MyAccountPage({ lang }: Props) {
   const router = useRouter();
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
-  const [dataProvisionEnabled, setDataProvisionEnabled] = useState<boolean>(false);
-  const [dataProvisionSaving, setDataProvisionSaving] = useState<boolean>(false);
+  const [backupEnabled, setBackupEnabled] = useState<boolean>(true);
   const [revenueTrackingEnabled, setRevenueTrackingEnabled] = useState<boolean>(false);
 
   useEffect(() => {
     try {
+      const b = localStorage.getItem("settings.backupEnabled");
       const r = localStorage.getItem("settings.revenueTrackingEnabled");
+      if (b !== null) setBackupEnabled(b === "true");
       if (r !== null) setRevenueTrackingEnabled(r === "true");
     } catch {}
   }, []);
 
   useEffect(() => {
-    if (!syncSession) {
-      setDataProvisionEnabled(false);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/settings", { credentials: "include" });
-        if (!res.ok) return;
-        const json = (await res.json()) as { dataProvisionEnabled?: boolean };
-        if (!cancelled) {
-          setDataProvisionEnabled(Boolean(json.dataProvisionEnabled));
-        }
-      } catch (err) {
-        console.error("Failed to load settings:", err);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [syncSession]);
-
-  const handleDataProvisionChange = async (next: boolean) => {
-    if (!syncSession) return;
-    const prev = dataProvisionEnabled;
-    setDataProvisionEnabled(next);
-    setDataProvisionSaving(true);
     try {
-      const res = await fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ dataProvisionEnabled: next }),
-      });
-      if (!res.ok) throw new Error(`status ${res.status}`);
-    } catch (err) {
-      console.error("Failed to save settings:", err);
-      setDataProvisionEnabled(prev);
-    } finally {
-      setDataProvisionSaving(false);
-    }
-  };
+      localStorage.setItem("settings.backupEnabled", String(backupEnabled));
+    } catch {}
+  }, [backupEnabled]);
 
   useEffect(() => {
     try {
@@ -285,14 +248,13 @@ export default function MyAccountPage({ lang }: Props) {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <div className="font-medium">{t.dataProvision}</div>
-                <div className="text-sm text-muted-foreground">{t.dataProvisionDescription}</div>
+                <div className="font-medium">{t.cloudBackup}</div>
+                <div className="text-sm text-muted-foreground">{t.backupFeature}</div>
               </div>
               <Switch
-                checked={syncSession ? dataProvisionEnabled : false}
-                onCheckedChange={handleDataProvisionChange}
-                disabled={!syncSession || dataProvisionSaving}
-                aria-label="Enable address data sharing"
+                checked={backupEnabled}
+                onCheckedChange={setBackupEnabled}
+                aria-label="Enable backup"
               />
             </div>
 

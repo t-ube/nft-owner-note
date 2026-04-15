@@ -23,7 +23,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AddressGroupDialog } from './AddressGroupDialog';
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
-import { useSyncSession } from '@/app/contexts/SyncSessionContext';
 import NFTSiteWalletIcons from '@/app/components/NFTSiteWalletIcons';
 import Papa from 'papaparse';
 import { Download, Pencil, Loader2 } from "lucide-react";
@@ -102,7 +101,6 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
   const [selectedOwner, setSelectedOwner] = useState<AddressGroup | null>(null);
   const [initialAddresses, setInitialAddresses] = useState<string[]>([]);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const { syncCompleteCount } = useSyncSession();
 
   // データ読み込み関数
   const loadData = useCallback(async (): Promise<void> => {
@@ -124,7 +122,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
 
   useEffect(() => {
     void loadData();
-  }, [loadData, syncCompleteCount]);
+  }, [loadData]);
 
   useEffect(() => {
     const loadDictionary = async () => {
