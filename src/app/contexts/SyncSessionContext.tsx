@@ -5,14 +5,8 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useMemo,
-  useRef,
   useState,
 } from 'react'
-import { usePathname } from 'next/navigation'
-import { SyncSignInDialog } from '@/app/components/SyncSignInDialog'
-import { getDictionary } from '@/i18n/get-dictionary'
-import type { Dictionary } from '@/i18n/dictionaries/index'
 import { getXumm } from '@/lib/xumm/client'
 
 export type SyncSession = {
@@ -35,18 +29,6 @@ const Ctx = createContext<SyncSessionCtx | null>(null)
 export function SyncSessionProvider({ children }: React.PropsWithChildren) {
   const [session, setSession] = useState<SyncSession | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const resolverRef = useRef<((result: SignInResult) => void) | null>(null)
-
-  const pathname = usePathname()
-  const lang: 'en' | 'ja' = useMemo(() => {
-    const seg = pathname?.split('/')[1]
-    return seg === 'ja' ? 'ja' : 'en'
-  }, [pathname])
-  const dict = useMemo(
-    () => getDictionary(lang) as unknown as Dictionary,
-    [lang]
-  )
 
   const refresh = useCallback(async () => {
     try {
@@ -66,8 +48,8 @@ export function SyncSessionProvider({ children }: React.PropsWithChildren) {
   }, [])
 
   // Mobile PKCE flow redirects away from the app and comes back — on return
-  // the page reloads with a fresh dialog state. This picks up a resolved
-  // Xumm PKCE flow (if any) and exchanges the JWT for a sync session cookie.
+  // the page reloads. This picks up a resolved Xumm PKCE flow (if any) and
+  // exchanges the JWT for a sync session cookie so refresh() picks it up.
   const resumePkce = useCallback(async () => {
     if (typeof window === 'undefined') return
     try {
@@ -78,7 +60,7 @@ export function SyncSessionProvider({ children }: React.PropsWithChildren) {
       const jwt = await xumm.environment.bearer
       if (!jwt) return
 
-      const res = await fetch('/api/auth/xaman/verify', {
+      await fetch('/api/auth/xaman/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -87,13 +69,6 @@ export function SyncSessionProvider({ children }: React.PropsWithChildren) {
             typeof navigator !== 'undefined' ? navigator.userAgent : null,
         }),
       })
-      if (!res.ok) return
-      const data = await res.json().catch(() => null)
-      if (data?.address && resolverRef.current) {
-        resolverRef.current({ address: data.address })
-        resolverRef.current = null
-        setDialogOpen(false)
-      }
     } catch (err) {
       console.error('PKCE resume failed:', err)
     }
@@ -108,38 +83,39 @@ export function SyncSessionProvider({ children }: React.PropsWithChildren) {
     setSession(null)
   }, [])
 
-  const requestSignIn = useCallback(() => {
-    return new Promise<SignInResult>((resolve) => {
-      // If a previous request is still pending, resolve it as null first
-      if (resolverRef.current) {
-        resolverRef.current(null)
-      }
-      resolverRef.current = resolve
-      setDialogOpen(true)
-    })
-  }, [])
-
-  const handleVerified = useCallback(
-    async (address: string) => {
-      // Clear the resolver synchronously *before* awaiting refresh so that
-      // a subsequent onOpenChange(false) does not see a pending resolver and
-      // mistakenly treat the success as a cancellation.
-      if (resolverRef.current) {
-        resolverRef.current({ address })
-        resolverRef.current = null
-      }
-      await refresh()
-    },
-    [refresh]
-  )
-
-  const handleDialogChange = useCallback((open: boolean) => {
-    if (!open && resolverRef.current) {
-      resolverRef.current(null)
-      resolverRef.current = null
+  const requestSignIn = useCallback(async (): Promise<SignInResult> => {
+    const xumm = getXumm()
+    const result = await xumm.authorize()
+    if (result instanceof Error) {
+      throw result
     }
-    setDialogOpen(open)
-  }, [])
+    if (!result?.jwt) {
+      return null
+    }
+
+    const res = await fetch('/api/auth/xaman/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jwt: result.jwt,
+        deviceLabel:
+          typeof navigator !== 'undefined' ? navigator.userAgent : null,
+      }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      const msg = data.detail
+        ? `${data.error || 'Verification failed'}: ${data.detail}`
+        : data.error || 'Verification failed'
+      throw new Error(msg)
+    }
+    const data = await res.json().catch(() => ({}))
+    if (data?.address) {
+      await refresh()
+      return { address: data.address as string }
+    }
+    return null
+  }, [refresh])
 
   useEffect(() => {
     void (async () => {
@@ -159,24 +135,11 @@ export function SyncSessionProvider({ children }: React.PropsWithChildren) {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [refresh])
 
-  const cs = dict.project.myAccount.cloudSync
-
   return (
     <Ctx.Provider
       value={{ session, isLoading, refresh, signOut, requestSignIn }}
     >
       {children}
-      <SyncSignInDialog
-        open={dialogOpen}
-        onOpenChange={handleDialogChange}
-        onVerified={handleVerified}
-        deviceLabel={typeof navigator !== 'undefined' ? navigator.userAgent : undefined}
-        title={cs.dialogTitle}
-        description={cs.dialogDescription}
-        openInXamanLabel={cs.openInXaman}
-        cancelLabel={cs.cancel}
-        errorLabel={cs.signError}
-      />
     </Ctx.Provider>
   )
 }
