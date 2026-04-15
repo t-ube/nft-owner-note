@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
-import { v4 as uuidv4 } from 'uuid'
 import { NextResponse } from 'next/server'
 
 export const runtime = 'edge'
@@ -20,7 +19,7 @@ export async function POST(req: NextRequest) {
     const isNewUser = !userId
 
     if (!userId) {
-      userId = uuidv4()
+      userId = crypto.randomUUID()
     }
 
     const body = await req.json().catch(() => null)
