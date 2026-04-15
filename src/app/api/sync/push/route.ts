@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { getSession } from '@/lib/auth/syncSession';
-import { createAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'edge';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 type RemoteTable = 'address_groups' | 'addresses' | 'projects' | 'project_owner_values';
 
@@ -54,7 +59,6 @@ export async function POST(req: NextRequest) {
     [config.addressColumn]: session.address,
   }));
 
-  const supabase = createAdminClient();
   const { error } = await supabase
     .from(body.table)
     .upsert(rows, { onConflict: config.conflict });

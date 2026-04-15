@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { getSession } from '@/lib/auth/syncSession';
-import { createAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'edge';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 type SettingsRow = {
   address: string;
@@ -16,7 +21,6 @@ export async function GET() {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('user_settings')
     .select('data_provision_enabled')
@@ -56,7 +60,6 @@ export async function POST(req: NextRequest) {
     updated_at: Date.now(),
   };
 
-  const supabase = createAdminClient();
   const { error } = await supabase
     .from('user_settings')
     .upsert(row, { onConflict: 'address' });

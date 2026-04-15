@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySignature } from 'xrpl/dist/npm/Wallet/signer';
 import { deriveAddress } from 'ripple-keypairs';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@supabase/supabase-js';
 import {
   attachSessionCookie,
   computeExpiresAt,
@@ -10,6 +10,11 @@ import {
 } from '@/lib/auth/syncSession';
 
 export const runtime = 'edge';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 type IncomingTx = {
   Account?: string;
@@ -90,7 +95,6 @@ export async function POST(req: NextRequest) {
   const expiresAt = computeExpiresAt();
 
   try {
-    const supabase = createAdminClient();
     const { error: insertError } = await supabase.from('sync_sessions').insert({
       token_hash: tokenHash,
       address,
