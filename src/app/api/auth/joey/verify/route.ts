@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySignature } from 'xrpl/dist/npm/Wallet/signer';
 import { deriveAddress } from 'ripple-keypairs';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { supabaseAdmin } from '@/lib/supabase/admin'; // シングルトン化されたインスタンスを読み込む
 import {
   attachSessionCookie,
   computeExpiresAt,
@@ -90,8 +90,7 @@ export async function POST(req: NextRequest) {
   const expiresAt = computeExpiresAt();
 
   try {
-    const supabase = createAdminClient();
-    const { error: insertError } = await supabase.from('sync_sessions').insert({
+    const { error: insertError } = await supabaseAdmin.from('sync_sessions').insert({
       token_hash: tokenHash,
       address,
       device_label: deviceLabel,
