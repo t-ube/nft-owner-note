@@ -32,7 +32,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'uuid is required' }, { status: 400 });
   }
 
+  type Stage =
+    | 'fetch_payload'
+    | 'parse_payload'
+    | 'validate_payload'
+    | 'generate_token'
+    | 'insert_session'
+    | 'attach_cookie';
+  let stage: Stage = 'fetch_payload';
+
   try {
+    stage = 'fetch_payload';
     const res = await fetch(
       `https://xumm.app/api/v1/platform/payload/${encodeURIComponent(uuid)}`,
       {
@@ -46,34 +56,53 @@ export async function POST(req: NextRequest) {
     );
 
     if (res.status === 404) {
-      return NextResponse.json({ error: 'Payload not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Payload not found', stage },
+        { status: 404 }
+      );
     }
     if (!res.ok) {
       const text = await res.text();
-      console.error('Xaman payload get failed:', res.status, text);
-      return NextResponse.json({ error: 'Failed to fetch payload' }, { status: 500 });
+      console.error('[xaman/verify] fetch_payload failed:', res.status, text);
+      return NextResponse.json(
+        { error: 'Failed to fetch payload', stage, detail: text, status: res.status },
+        { status: 502 }
+      );
     }
 
+    stage = 'parse_payload';
     const payload = (await res.json()) as {
       meta?: { signed?: boolean };
       response?: { account?: string };
     };
+
+    stage = 'validate_payload';
     if (!payload?.meta) {
-      return NextResponse.json({ error: 'Payload not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Payload not found', stage },
+        { status: 404 }
+      );
     }
     if (!payload.meta.signed) {
-      return NextResponse.json({ error: 'Payload was not signed' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Payload was not signed', stage },
+        { status: 400 }
+      );
     }
-
     const address = payload.response?.account;
     if (!address) {
-      return NextResponse.json({ error: 'No account in payload response' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'No account in payload response', stage },
+        { status: 400 }
+      );
     }
 
+    stage = 'generate_token';
     const token = generateToken();
     const tokenHash = await hashToken(token);
     const expiresAt = computeExpiresAt();
 
+    stage = 'insert_session';
     const supabase = createAdminClient();
     const { error: insertError } = await supabase.from('sync_sessions').insert({
       token_hash: tokenHash,
@@ -84,10 +113,11 @@ export async function POST(req: NextRequest) {
     });
 
     if (insertError) {
-      console.error('Failed to insert sync_sessions row:', insertError);
+      console.error('[xaman/verify] insert_session failed:', insertError);
       return NextResponse.json(
         {
           error: 'Failed to create session',
+          stage,
           detail: insertError.message,
           code: insertError.code,
           hint: insertError.hint,
@@ -96,6 +126,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    stage = 'attach_cookie';
     const response = NextResponse.json({
       address,
       expiresAt: expiresAt.toISOString(),
@@ -103,11 +134,13 @@ export async function POST(req: NextRequest) {
     attachSessionCookie(response, token, expiresAt);
     return response;
   } catch (err) {
-    console.error('Xaman verify error:', err);
+    console.error(`[xaman/verify] ${stage} threw:`, err);
     return NextResponse.json(
       {
         error: 'Internal server error',
+        stage,
         detail: err instanceof Error ? err.message : String(err),
+        name: err instanceof Error ? err.name : undefined,
       },
       { status: 500 }
     );
