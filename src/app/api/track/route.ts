@@ -6,18 +6,14 @@ import { NextResponse } from 'next/server'
 
 export const runtime = 'edge'
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
 export async function POST(req: NextRequest) {
 
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: { persistSession: false, autoRefreshToken: false },
-        global: { fetch: (...args) => fetch(...args) },
-      }
-    )
-
     const cookieStore = cookies()
     
     let userId = cookieStore.get('user_id')?.value
@@ -35,9 +31,9 @@ export async function POST(req: NextRequest) {
     const taxon = typeof body.taxon === 'number' ? body.taxon : null
     
     const ip =
-      req.headers.get('cf-connecting-ip') ||
       req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-      null
+      req.ip ||
+      ''
 
     const { data, error } = await supabase
         .from('visits')
@@ -57,15 +53,7 @@ export async function POST(req: NextRequest) {
       
       if (error) {
         console.error('Supabase error during insert:', error)
-        return NextResponse.json(
-          {
-            error: 'Database error during registration',
-            detail: error.message,
-            code: error.code,
-            hint: error.hint,
-          },
-          { status: 500 }
-        )
+        return NextResponse.json({ error: 'Database error during registration' }, { status: 500 })
       }
     
     const res = NextResponse.json({ ok: true, visit: data });
@@ -84,12 +72,6 @@ export async function POST(req: NextRequest) {
     
   } catch (e) {
     console.error('API error:', e)
-    return NextResponse.json(
-      {
-        error: 'Internal Server Error',
-        detail: e instanceof Error ? e.message : String(e),
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
