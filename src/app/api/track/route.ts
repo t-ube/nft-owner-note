@@ -1,3 +1,12 @@
+if (!('XMLHttpRequest' in globalThis)) {
+  Object.defineProperty(globalThis, 'XMLHttpRequest', {
+    value: class {},
+    writable: true,
+    enumerable: false,
+    configurable: true
+  });
+}
+
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
