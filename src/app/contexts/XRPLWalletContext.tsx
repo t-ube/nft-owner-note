@@ -8,6 +8,7 @@ import {
   useSignAndSubmitTransaction as useXamanSign,
   useXamanError,
 } from '@/app/contexts/XamanContext'
+import { getXumm } from '@/lib/xumm/client'
 
 import { useProvider as useJoey } from '@/app/contexts/JoeyContext'
 import { useSyncSession } from '@/app/contexts/SyncSessionContext'
@@ -241,6 +242,7 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
     try {
       if (walletType === 'xaman') {
         await syncSignOut()
+        try { getXumm().logout() } catch { /* ignore */ }
         setWalletType(null)
         setAccount(null)
         return true
