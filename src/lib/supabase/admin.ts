@@ -8,6 +8,7 @@ export function createAdminClient() {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
+        detectSessionInUrl: false,
       },
       global: {
         fetch: (...args) => fetch(...args),
