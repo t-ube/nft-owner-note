@@ -268,6 +268,8 @@ const ProjectSidebar = ({
                 {t.integration}
               </Button>
 
+              {/* My Account ボタンは一旦非表示にする */}
+              {/*
               <Button
                 variant="outline"
                 className="w-full justify-start dark:border-gray-600 dark:text-gray-200"
@@ -279,6 +281,7 @@ const ProjectSidebar = ({
                 <Wallet className="h-4 w-4 mr-2" />
                 {t.myAccount}
               </Button>
+              */}
 
               <div className="mt-4 mb-2 flex items-center justify-between">
                 <h2 className="text-xl font-bold dark:text-white">{t.projectsTitle}</h2>
@@ -495,6 +498,8 @@ const ProjectSidebar = ({
             <Network className="h-5 w-5" />
             <span className="truncate max-w-full px-1">{t.bottomNav.crossProject}</span>
           </button>
+          
+          {/* My Account ボタンは一旦無効にする */}
           <button
             type="button"
             onClick={() => {
@@ -507,6 +512,7 @@ const ProjectSidebar = ({
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
             }`}
             aria-label={t.bottomNav.myAccount}
+            disabled={true}
           >
             <Wallet className="h-5 w-5" />
             <span className="truncate max-w-full px-1">{t.bottomNav.myAccount}</span>
