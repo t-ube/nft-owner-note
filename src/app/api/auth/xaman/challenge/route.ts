@@ -22,6 +22,9 @@ export async function POST(req: NextRequest) {
     // body is optional
   }
 
+  type Stage = 'create_payload' | 'parse_payload' | 'validate_payload';
+  let stage: Stage = 'create_payload';
+
   try {
     const createBody: Record<string, unknown> = {
       txjson: { TransactionType: 'SignIn' },
@@ -35,6 +38,7 @@ export async function POST(req: NextRequest) {
       };
     }
 
+    stage = 'create_payload';
     const res = await fetch('https://xumm.app/api/v1/platform/payload', {
       method: 'POST',
       headers: {
@@ -48,17 +52,26 @@ export async function POST(req: NextRequest) {
 
     if (!res.ok) {
       const text = await res.text();
-      console.error('Xaman payload create failed:', res.status, text);
-      return NextResponse.json({ error: 'Failed to create payload' }, { status: 500 });
+      console.error('[xaman/challenge] create_payload failed:', res.status, text);
+      return NextResponse.json(
+        { error: 'Failed to create payload', stage, detail: text, status: res.status },
+        { status: 502 }
+      );
     }
 
+    stage = 'parse_payload';
     const payload = (await res.json()) as {
       uuid?: string;
       next?: { always?: string };
       refs?: { qr_png?: string; websocket_status?: string };
     };
+
+    stage = 'validate_payload';
     if (!payload?.uuid) {
-      return NextResponse.json({ error: 'Failed to create payload' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Failed to create payload', stage, detail: 'missing uuid' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
@@ -68,7 +81,15 @@ export async function POST(req: NextRequest) {
       websocket: payload.refs?.websocket_status,
     });
   } catch (err) {
-    console.error('Xaman challenge error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error(`[xaman/challenge] ${stage} threw:`, err);
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        stage,
+        detail: err instanceof Error ? err.message : String(err),
+        name: err instanceof Error ? err.name : undefined,
+      },
+      { status: 500 }
+    );
   }
 }

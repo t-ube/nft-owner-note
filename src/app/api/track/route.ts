@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       
       if (error) {
         console.error('Supabase error during insert:', error)
-        return NextResponse.json({ error: 'Database error during registration' }, { status: 500 })
+        return NextResponse.json({ error: 'Database error during registration', detail: error.message }, { status: 500 })
       }
     
     const res = NextResponse.json({ ok: true, visit: data });
