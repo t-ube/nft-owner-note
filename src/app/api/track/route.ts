@@ -5,23 +5,23 @@ import { NextResponse } from 'next/server'
 
 export const runtime = 'edge'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-    // Cloudflare Workersのネイティブ fetch を明示的に使用
-    global: {
-      fetch: (...args) => fetch(...args),
-    },
-  }
-)
-
 export async function POST(req: NextRequest) {
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+      global: {
+        // globalThis.fetch を明示的に使う
+        fetch: globalThis.fetch.bind(globalThis),
+      },
+    }
+  );
 
   try {
     const cookieStore = cookies()
