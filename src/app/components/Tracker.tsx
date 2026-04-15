@@ -61,7 +61,7 @@ export function Tracker() {
       const row = {
         user_id: getOrCreateUserId(),
         path: window.location.href,
-        ip: '',
+        ip: null,
         user_agent: navigator.userAgent,
         owner_list_count: ownerListCount,
         issuer: project?.issuer ?? null,
