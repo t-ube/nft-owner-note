@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySignature } from 'xrpl/dist/npm/Wallet/signer';
 import { deriveAddress } from 'ripple-keypairs';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 import {
   attachSessionCookie,
   computeExpiresAt,
@@ -10,11 +10,6 @@ import {
 } from '@/lib/auth/syncSession';
 
 export const runtime = 'edge';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 type IncomingTx = {
   Account?: string;
