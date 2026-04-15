@@ -2,29 +2,21 @@
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { Project, AddressInfo, dbManager } from '@/utils/db'
-/*
-export function Tracker() {
-  useEffect(() => {
-    fetch('/api/track', { 
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        path: window.location.pathname,
-        full_url: window.location.href,
-      })
-    })
-  }, [])
+import { supabaseBrowser } from '@/lib/supabase/client'
 
-  return null
-}
-*/
+const USER_ID_STORAGE_KEY = 'user_id'
 
-interface TrackPayload {
-  path: string
-  project_id?: string
-  issuer?: string
-  taxon?: number | null
-  owner_list_count?: number
+function getOrCreateUserId(): string {
+  try {
+    let id = localStorage.getItem(USER_ID_STORAGE_KEY)
+    if (!id) {
+      id = crypto.randomUUID()
+      localStorage.setItem(USER_ID_STORAGE_KEY, id)
+    }
+    return id
+  } catch {
+    return crypto.randomUUID()
+  }
 }
 
 const extractProjectId = (pathname: string): string | null => {
@@ -42,54 +34,44 @@ export function Tracker() {
   useEffect(() => {
     const projectId = extractProjectId(pathname)
 
-    let project: Project | undefined
-    let ownerListCount: number | undefined
     let cancelled = false
 
     const run = async () => {
-      // IndexedDB から「登録オーナー数」を取得
-
+      let project: Project | undefined
       if (projectId) {
-        // プロジェクト情報を逆引き
         project = await dbManager.getProjectByProjectId(projectId)
       }
 
-      console.log(project);
-
       const infos: AddressInfo[] = await dbManager.getAllAddressInfos()
-      ownerListCount = infos.length
+      const ownerListCount = infos.length
 
       if (cancelled) return
 
-      const payload: TrackPayload = {
-        path: pathname,
-      }
-
+      let taxon: number | null = null
       if (project) {
-        const rawTaxon = project?.taxon ?? null
-        let taxon: number | null = null
+        const rawTaxon = project.taxon ?? null
         if (typeof rawTaxon === 'string') {
           const parsed = Number(rawTaxon)
           taxon = Number.isFinite(parsed) ? parsed : null
         } else if (typeof rawTaxon === 'number') {
           taxon = rawTaxon
         }
-
-        payload.project_id = project.projectId
-        payload.issuer = project.issuer
-        payload.taxon = taxon
       }
 
-      if (typeof ownerListCount === 'number') {
-        payload.owner_list_count = ownerListCount
+      const row = {
+        user_id: getOrCreateUserId(),
+        path: window.location.href,
+        ip: '',
+        user_agent: navigator.userAgent,
+        owner_list_count: ownerListCount,
+        issuer: project?.issuer ?? null,
+        taxon,
       }
 
-      // API に送信
-      await fetch('/api/track', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
+      const { error } = await supabaseBrowser.from('visits').insert([row])
+      if (error) {
+        console.error('Tracker insert error:', error)
+      }
     }
 
     run()
