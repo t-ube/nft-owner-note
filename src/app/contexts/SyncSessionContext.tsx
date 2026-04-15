@@ -13,6 +13,7 @@ import { usePathname } from 'next/navigation'
 import { SyncSignInDialog } from '@/app/components/SyncSignInDialog'
 import { getDictionary } from '@/i18n/get-dictionary'
 import type { Dictionary } from '@/i18n/dictionaries/index'
+import { getXumm } from '@/lib/xumm/client'
 
 export type SyncSession = {
   address: string
@@ -30,10 +31,6 @@ type SyncSessionCtx = {
 }
 
 const Ctx = createContext<SyncSessionCtx | null>(null)
-
-const PENDING_UUID_KEY = 'pendingXamanUuid'
-const PENDING_AT_KEY = 'pendingXamanAt'
-const PENDING_TTL_MS = 10 * 60 * 1000
 
 export function SyncSessionProvider({ children }: React.PropsWithChildren) {
   const [session, setSession] = useState<SyncSession | null>(null)
@@ -68,38 +65,37 @@ export function SyncSessionProvider({ children }: React.PropsWithChildren) {
     }
   }, [])
 
-  const checkPending = useCallback(async () => {
+  // Mobile PKCE flow redirects away from the app and comes back — on return
+  // the page reloads with a fresh dialog state. This picks up a resolved
+  // Xumm PKCE flow (if any) and exchanges the JWT for a sync session cookie.
+  const resumePkce = useCallback(async () => {
     if (typeof window === 'undefined') return
-    const pendingUuid = sessionStorage.getItem(PENDING_UUID_KEY)
-    const pendingAtRaw = sessionStorage.getItem(PENDING_AT_KEY)
-    if (!pendingUuid || !pendingAtRaw) return
-
-    const pendingAt = parseInt(pendingAtRaw, 10)
-    if (Number.isNaN(pendingAt) || Date.now() - pendingAt > PENDING_TTL_MS) {
-      sessionStorage.removeItem(PENDING_UUID_KEY)
-      sessionStorage.removeItem(PENDING_AT_KEY)
-      return
-    }
-
     try {
+      const xumm = getXumm()
+      await xumm.environment.ready
+      const account = await xumm.user.account
+      if (!account) return
+      const jwt = await xumm.environment.bearer
+      if (!jwt) return
+
       const res = await fetch('/api/auth/xaman/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uuid: pendingUuid }),
+        body: JSON.stringify({
+          jwt,
+          deviceLabel:
+            typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        }),
       })
-      if (res.ok) {
-        sessionStorage.removeItem(PENDING_UUID_KEY)
-        sessionStorage.removeItem(PENDING_AT_KEY)
-        const data = await res.json().catch(() => null)
-        // Resolve any pending signIn promise from a previous tab/visit
-        if (data?.address && resolverRef.current) {
-          resolverRef.current({ address: data.address })
-          resolverRef.current = null
-          setDialogOpen(false)
-        }
+      if (!res.ok) return
+      const data = await res.json().catch(() => null)
+      if (data?.address && resolverRef.current) {
+        resolverRef.current({ address: data.address })
+        resolverRef.current = null
+        setDialogOpen(false)
       }
     } catch (err) {
-      console.error('Pending Xaman verify failed:', err)
+      console.error('PKCE resume failed:', err)
     }
   }, [])
 
@@ -147,24 +143,21 @@ export function SyncSessionProvider({ children }: React.PropsWithChildren) {
 
   useEffect(() => {
     void (async () => {
-      await checkPending()
+      await resumePkce()
       await refresh()
     })()
-  }, [checkPending, refresh])
+  }, [resumePkce, refresh])
 
   useEffect(() => {
     if (typeof document === 'undefined') return
     const onVisibility = () => {
       if (document.visibilityState === 'visible') {
-        void (async () => {
-          await checkPending()
-          await refresh()
-        })()
+        void refresh()
       }
     }
     document.addEventListener('visibilitychange', onVisibility)
     return () => document.removeEventListener('visibilitychange', onVisibility)
-  }, [checkPending, refresh])
+  }, [refresh])
 
   const cs = dict.project.myAccount.cloudSync
 

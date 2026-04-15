@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/admin'; // シングルトン化されたインスタンスを読み込む
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import {
   attachSessionCookie,
   computeExpiresAt,
@@ -9,100 +9,102 @@ import {
 
 export const runtime = 'edge';
 
-export async function POST(req: NextRequest) {
-  const apiKey = process.env.XAMAN_SERVER_API_KEY;
-  const apiSecret = process.env.XAMAN_SERVER_API_SECRET;
-  if (!apiKey || !apiSecret) {
-    return NextResponse.json(
-      { error: 'Xaman server credentials are not configured' },
-      { status: 500 }
-    );
-  }
+type JwtClaims = {
+  sub?: string;
+  aud?: string;
+  exp?: number;
+  app_uuidv4?: string;
+};
 
-  let body: { uuid?: unknown; deviceLabel?: unknown };
+function decodeJwtPayload(jwt: string): JwtClaims | null {
+  const parts = jwt.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    b64 += '='.repeat((4 - (b64.length % 4)) % 4);
+    return JSON.parse(atob(b64)) as JwtClaims;
+  } catch {
+    return null;
+  }
+}
+
+export async function POST(req: NextRequest) {
+  let body: { jwt?: unknown; deviceLabel?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const uuid = typeof body.uuid === 'string' ? body.uuid : null;
+  const jwt = typeof body.jwt === 'string' ? body.jwt : null;
   const deviceLabel = typeof body.deviceLabel === 'string' ? body.deviceLabel : null;
-  if (!uuid) {
-    return NextResponse.json({ error: 'uuid is required' }, { status: 400 });
+  if (!jwt) {
+    return NextResponse.json({ error: 'jwt is required' }, { status: 400 });
   }
 
   type Stage =
-    | 'fetch_payload'
-    | 'parse_payload'
-    | 'validate_payload'
-    | 'generate_token'
+    | 'parse_jwt'
+    | 'validate_claims'
+    | 'verify_with_xumm'
     | 'insert_session'
     | 'attach_cookie';
-  let stage: Stage = 'fetch_payload';
+  let stage: Stage = 'parse_jwt';
 
   try {
-    stage = 'fetch_payload';
-    const res = await fetch(
-      `https://xumm.app/api/v1/platform/payload/${encodeURIComponent(uuid)}`,
-      {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          'X-API-Key': apiKey,
-          'X-API-Secret': apiSecret,
-        },
-      }
-    );
-
-    if (res.status === 404) {
+    stage = 'parse_jwt';
+    const claims = decodeJwtPayload(jwt);
+    if (!claims) {
       return NextResponse.json(
-        { error: 'Payload not found', stage },
-        { status: 404 }
-      );
-    }
-    if (!res.ok) {
-      const text = await res.text();
-      console.error('[xaman/verify] fetch_payload failed:', res.status, text);
-      return NextResponse.json(
-        { error: 'Failed to fetch payload', stage, detail: text, status: res.status },
-        { status: 502 }
-      );
-    }
-
-    stage = 'parse_payload';
-    const payload = (await res.json()) as {
-      meta?: { signed?: boolean };
-      response?: { account?: string };
-    };
-
-    stage = 'validate_payload';
-    if (!payload?.meta) {
-      return NextResponse.json(
-        { error: 'Payload not found', stage },
-        { status: 404 }
-      );
-    }
-    if (!payload.meta.signed) {
-      return NextResponse.json(
-        { error: 'Payload was not signed', stage },
+        { error: 'Invalid JWT format', stage },
         { status: 400 }
       );
     }
-    const address = payload.response?.account;
+
+    stage = 'validate_claims';
+    const expectedAppId = process.env.NEXT_PUBLIC_XAMAN_API_KEY;
+    if (expectedAppId && claims.app_uuidv4 && claims.app_uuidv4 !== expectedAppId) {
+      return NextResponse.json(
+        { error: 'JWT is for a different app', stage },
+        { status: 403 }
+      );
+    }
+    if (claims.exp && Date.now() / 1000 > claims.exp) {
+      return NextResponse.json(
+        { error: 'JWT expired', stage },
+        { status: 401 }
+      );
+    }
+    const address = claims.sub;
     if (!address) {
       return NextResponse.json(
-        { error: 'No account in payload response', stage },
+        { error: 'JWT has no sub', stage },
         { status: 400 }
       );
     }
 
-    stage = 'generate_token';
+    stage = 'verify_with_xumm';
+    const pingRes = await fetch('https://xumm.app/api/v1/jwt/ping', {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${jwt}`,
+      },
+    });
+    if (!pingRes.ok) {
+      const text = await pingRes.text();
+      console.error(
+        `[xaman/verify] ping rejected: ${pingRes.status} ${text}`
+      );
+      return NextResponse.json(
+        { error: 'JWT rejected by Xumm', stage, status: pingRes.status },
+        { status: 401 }
+      );
+    }
+
+    stage = 'insert_session';
     const token = generateToken();
     const tokenHash = await hashToken(token);
     const expiresAt = computeExpiresAt();
 
-    stage = 'insert_session';
     const { error: insertError } = await supabaseAdmin.from('sync_sessions').insert({
       token_hash: tokenHash,
       address,
@@ -110,7 +112,6 @@ export async function POST(req: NextRequest) {
       expires_at: expiresAt.toISOString(),
       last_seen_at: new Date().toISOString(),
     });
-
     if (insertError) {
       console.error('[xaman/verify] insert_session failed:', insertError);
       return NextResponse.json(
@@ -148,7 +149,6 @@ export async function POST(req: NextRequest) {
           ? String(e.cause)
           : '';
     const stackFirst = e?.stack?.split('\n').slice(0, 3).join(' | ') ?? '';
-    // Single-line log so Cloudflare Workers log viewer does not truncate the Error object.
     console.error(
       `[xaman/verify] ${stage} threw: ${name}: ${message}` +
         (causeStr ? ` | cause=${causeStr}` : '') +
