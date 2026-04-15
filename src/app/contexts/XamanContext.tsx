@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
-import { Xumm } from "xumm"
+import type { Xumm as XummType } from "xumm"
 import type { XummTypes } from 'xumm-sdk'
 import type { UnifiedTx } from '@/types/Wallet'
 import type { XummJsonTransaction } from '@/types/Xaman'
@@ -141,14 +141,16 @@ export const XamanProvider = ({ children }: XamanWalletProviderProps) => {
   const [error, setError] = useState<string | null>(null)
   const [currentSignRequest, setCurrentSignRequest] = useState<SignRequest | null>(null)
   const [balanceXrp, setBalanceXrp] = useState<number | null>(null);
-  const [xaman, setXaman] = useState<Xumm | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const sdk = new Xumm(process.env.NEXT_PUBLIC_XAMAN_API_KEY as string);
-      setXaman(sdk);
+      import('xumm').then(({ Xumm }) => {
+        const sdk = new Xumm(process.env.NEXT_PUBLIC_XAMAN_API_KEY as string);
+        setXaman(sdk);
+      });
     }
   }, []);
+  const [xaman, setXaman] = useState<XummType | null>(null);
 
   const checkConnectionStatus = useCallback(async () => {
     if (!xaman) return;
