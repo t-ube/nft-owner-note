@@ -81,13 +81,34 @@ export async function POST(req: NextRequest) {
       websocket: payload.refs?.websocket_status,
     });
   } catch (err) {
-    console.error(`[xaman/challenge] ${stage} threw:`, err);
+    const e = err as {
+      name?: string;
+      message?: string;
+      cause?: unknown;
+      stack?: string;
+    } | null;
+    const name = e?.name ?? 'UnknownError';
+    const message = e?.message ?? String(err);
+    const causeStr =
+      e?.cause instanceof Error
+        ? `${e.cause.name}: ${e.cause.message}`
+        : e?.cause !== undefined
+          ? String(e.cause)
+          : '';
+    const stackFirst = e?.stack?.split('\n').slice(0, 3).join(' | ') ?? '';
+    console.error(
+      `[xaman/challenge] ${stage} threw: ${name}: ${message}` +
+        (causeStr ? ` | cause=${causeStr}` : '') +
+        (stackFirst ? ` | stack=${stackFirst}` : '')
+    );
     return NextResponse.json(
       {
         error: 'Internal server error',
         stage,
-        detail: err instanceof Error ? err.message : String(err),
-        name: err instanceof Error ? err.name : undefined,
+        name,
+        detail: message,
+        cause: causeStr || undefined,
+        stack: stackFirst || undefined,
       },
       { status: 500 }
     );
