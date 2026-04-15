@@ -1,6 +1,11 @@
 import { cookies } from 'next/headers';
 import type { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export const SYNC_COOKIE_NAME = 'sync_token';
 export const SYNC_COOKIE_PATH = '/';
@@ -104,7 +109,6 @@ export async function getSession(): Promise<SyncSession | null> {
   }
 
   const tokenHash = await hashToken(token);
-  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('sync_sessions')
     .select('address, expires_at, revoked_at')
@@ -142,7 +146,6 @@ export async function getSession(): Promise<SyncSession | null> {
 }
 
 export async function revokeSessionByHash(tokenHash: string): Promise<void> {
-  const supabase = createAdminClient();
   await supabase
     .from('sync_sessions')
     .update({ revoked_at: new Date().toISOString() })
