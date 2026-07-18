@@ -4,14 +4,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { XRPCAFE_ENDPOINT } from '@/utils/xrpcafe'
 
 export async function POST(request: NextRequest) {
-  const body = await request.json()
-  const { address } = body
-
-  if (!address) {
-    return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 })
-  }
-
   try {
+    const body = await request.json()
+    const { address } = body
+
+    if (!address) {
+      return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 })
+    }
+
     const url = `${XRPCAFE_ENDPOINT}user/profile?xrpAddress=${address}`
     const response = await fetch(url, {
       method: 'GET',
@@ -60,7 +60,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ address: xrp_address, username, twitter })
   } catch (error) {
-    console.error('Unexpected XRPL proxy error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const message = error instanceof Error ? error.message : String(error)
+    const name = error instanceof Error ? error.name : typeof error
+    console.error('xrpcafe/user/profile error:', name, message, error)
+    return NextResponse.json(
+      { error: 'Internal server error', name, message },
+      { status: 500 }
+    )
   }
 }
