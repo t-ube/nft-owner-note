@@ -187,6 +187,7 @@
           "totalNFTs": "総NFT数：{count}"
         },
         "actions": {
+          "getProfileFromXrpCafe": "自動でプロフィール取得",
           "exportRank": "オーナーランクを出力",
           "edit": "編集",
           "showGrouped": "同じオーナーをまとめる"

@@ -187,6 +187,7 @@
           "totalNFTs": "Total NFTs: {count}"
         },
         "actions": {
+          "getProfileFromXrpCafe": "Auto Profile",
           "exportRank": "Export Owner Rank",
           "edit": "Edit",
           "showGrouped": "Group by owners"

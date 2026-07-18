@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import Image from 'next/image';
 import { useNFTContext } from '@/app/contexts/NFTContext';
 import _ from 'lodash';
 import {
@@ -101,6 +102,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
   const [selectedOwner, setSelectedOwner] = useState<AddressGroup | null>(null);
   const [initialAddresses, setInitialAddresses] = useState<string[]>([]);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isFetchingProfile, setIsFetchingProfile] = useState(false);
 
   // データ読み込み関数
   const loadData = useCallback(async (): Promise<void> => {
@@ -292,6 +294,80 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
     URL.revokeObjectURL(link.href);
   };
 
+  // 自動プロフィール取得処理
+  const handleFetchAutoProfile = async () => {
+    if (!projectId) return;
+    if (!ownerStats.length) return;
+    if (isFetchingProfile) return;
+
+    setIsFetchingProfile(true);
+    try {
+    for (const stat of ownerStats) {
+      
+      if (!stat.address) {
+        console.log('Skipping empty address.');
+        continue;
+      }
+
+      if (stat.group && stat.group.xAccount?.length) {
+        console.log(`Skipping ${stat.address} as it belongs to a group.`);
+        continue;
+      }
+
+      try {
+        const response = await fetch('/api/xrpcafe/user/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: stat.address })
+        });
+
+        if (!response.ok) {
+          console.error(`Failed to fetch profile for ${stat.address}: ${response.statusText}`);
+          continue;
+        }
+
+        const data = await response.json();
+        //console.log(`Fetched profile for ${stat.address}:`, data);
+
+        const userName = data.username ? data.username : (data.twitter ? `${data.twitter}` : null);
+        if (!userName) {
+          console.log(`No username or twitter found for ${stat.address}. Skipping.`);
+          continue;
+        }
+        
+        await dbManager.getAddressGroups(stat.address).then(async (existingGroups) => {
+          if (existingGroups.length > 0) {
+            const existingGroup = existingGroups[0];
+            const addressGroup : AddressGroup = {
+              ...existingGroup,
+              xAccount: existingGroup.xAccount ? existingGroup.xAccount : (data.twitter ? `${data.twitter}` : null),
+            };
+            addressGroup.id = existingGroup.id;
+            await dbManager.updateAddressGroup(addressGroup as AddressGroup);
+            console.log(`Updating group for ${stat.address}:`, addressGroup);
+          } else {
+            const addressGroup : Partial<AddressGroup> = {
+              name: userName,
+              xAccount: data.twitter ? `${data.twitter}` : null,
+              addresses: data.address ? [data.address] : [],
+              memo: ``,
+            };
+            await dbManager.createAddressGroup(addressGroup as Omit<AddressGroup, 'id' | 'updatedAt'>);
+            console.log(`Creating group for ${stat.address}:`, addressGroup);
+          }
+        });
+
+      } catch (error) {
+        console.error(`Error fetching profile for ${stat.address}:`, error);
+      }
+    };
+
+    await loadData();
+    } finally {
+      setIsFetchingProfile(false);
+    }
+  }
+
   // メインのエクスポート関数
   const handleExportCSV = () => {
     if (showGrouped) {
@@ -428,15 +504,37 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
             )}
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExportCSV}
-          className="flex items-center gap-2"
-        >
-          <Download className="h-4 w-4" />
-          {ownerList.actions.exportRank}
-        </Button>
+        <div className='flex items-center space-x-2'>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleFetchAutoProfile}
+            disabled={isFetchingProfile}
+            className="gap-2"
+          >
+            {isFetchingProfile ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Image
+                src="/images/xrpcafe.jpg"
+                alt="xrp.cafe"
+                width={16}
+                height={16}
+                className="object-contain rounded-full"
+              />
+            )}
+            {ownerList.actions.getProfileFromXrpCafe}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCSV}
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            {ownerList.actions.exportRank}
+          </Button>
+        </div>
       </div>
 
       <div className="border rounded-md overflow-x-auto">

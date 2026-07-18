@@ -194,6 +194,7 @@ export interface Dictionary {
           totalNFTs: string;
         };
         actions: {
+          getProfileFromXrpCafe: string;
           exportRank: string;
           edit: string;
           showGrouped: string;
