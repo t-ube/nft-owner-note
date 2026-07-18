@@ -31,6 +31,7 @@ import OwnerValueEditor from '@/app/components/OwnerValueEditor';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import { OwnerDetailSheet } from '@/app/components/OwnerDetailSheet';
+import { XRPCAFE_ENDPOINT } from '@/utils/xrpcafe';
 
 interface OwnerStats {
   address: string;
@@ -301,6 +302,8 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
     if (isFetchingProfile) return;
 
     setIsFetchingProfile(true);
+    const REFRESH_EVERY = 5; // 5行更新するごとに画面へ反映
+    let updatedSinceRefresh = 0;
     try {
     for (const stat of ownerStats) {
       
@@ -315,19 +318,31 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
       }
 
       try {
-        const response = await fetch('/api/xrpcafe/user/profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address: stat.address })
-        });
+        // xrp.cafe は CORS 許可 (ACAO: *) なのでブラウザから直接呼ぶ。
+        // Cloudflare の edge プロキシを経由しないため XMLHttpRequest 問題を回避し、
+        // レート制限も各ユーザーのIP単位になる。
+        const response = await fetch(
+          `${XRPCAFE_ENDPOINT}user/profile?xrpAddress=${encodeURIComponent(stat.address)}`
+        );
 
         if (!response.ok) {
           console.error(`Failed to fetch profile for ${stat.address}: ${response.statusText}`);
           continue;
         }
 
-        const data = await response.json();
-        //console.log(`Fetched profile for ${stat.address}:`, data);
+        const json = await response.json();
+        //console.log(`Fetched profile for ${stat.address}:`, json);
+
+        if (json.success === false) {
+          console.log(`No xrp.cafe profile for ${stat.address}. Skipping.`);
+          continue;
+        }
+
+        const data = {
+          address: json.data?.xrp_address ?? '',
+          username: json.data?.username ?? '',
+          twitter: json.data?.twitter ?? '',
+        };
 
         const userName = data.username ? data.username : (data.twitter ? `${data.twitter}` : null);
         if (!userName) {
@@ -357,12 +372,22 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
           }
         });
 
+        // 5行更新するごとに画面へ反映(IndexedDBローカル読みなので低コスト)
+        updatedSinceRefresh++;
+        if (updatedSinceRefresh >= REFRESH_EVERY) {
+          updatedSinceRefresh = 0;
+          await loadData();
+        }
+
       } catch (error) {
         console.error(`Error fetching profile for ${stat.address}:`, error);
       }
     };
 
-    await loadData();
+    // ループ終了後、5行に満たない残り分を反映
+    if (updatedSinceRefresh > 0) {
+      await loadData();
+    }
     } finally {
       setIsFetchingProfile(false);
     }
