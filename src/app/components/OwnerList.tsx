@@ -318,9 +318,6 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
       }
 
       try {
-        // xrp.cafe は CORS 許可 (ACAO: *) なのでブラウザから直接呼ぶ。
-        // Cloudflare の edge プロキシを経由しないため XMLHttpRequest 問題を回避し、
-        // レート制限も各ユーザーのIP単位になる。
         const response = await fetch(
           `${XRPCAFE_ENDPOINT}user/profile?xrpAddress=${encodeURIComponent(stat.address)}`
         );
