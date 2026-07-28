@@ -81,7 +81,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
   const [hasMore, setHasMore] = useState(true);
   const [marker, setMarker] = useState<unknown | undefined>();
 
-  const MAX_NFTS = 10000;
+  const MAX_NFTS = 20000;
   const BATCH_SIZE = 100;
   const HISTORY_BATCH_SIZE = 5;
   const CONCURRENT_CONNECTIONS = 4;
@@ -235,7 +235,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
           nft_taxon: parseInt(taxon, 10)
         });
       });
-  
+
       const transformedNFTs = response.result.nfts.map(nft => ({
         id: `${projectId}-${nft.nft_id}`,
         projectId,
