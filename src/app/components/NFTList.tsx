@@ -37,6 +37,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { dbManager, AddressGroup, AddressInfo, NFToken } from '@/utils/db';
 import { AddressGroupDialog } from '@/app/components/AddressGroupDialog';
 import NFTSiteIcons from '@/app/components/NFTSiteIcons';
+import NFTThumbnail, { NFTName } from '@/app/components/NFTThumbnail';
 import { NFTFilters, FilterState } from '@/app/components/NFTFilters';
 import { OwnerDetailSheet } from '@/app/components/OwnerDetailSheet';
 import _ from 'lodash';
@@ -218,6 +219,18 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
     setIsDetailOpen(true);
   };
 
+  const handleNameResolved = async (nft: NFToken, name: string) => {
+    if (!name || nft.name) return;
+    try {
+      await dbManager.updateNFTDetails({ ...nft, name });
+      setNfts(prev =>
+        prev.map(n => (n.nft_id === nft.nft_id ? { ...n, name } : n))
+      );
+    } catch (error) {
+      console.error('Failed to persist NFT name:', error);
+    }
+  };
+
   const handleColorChange = async (nftId: string, newColor: ColorType) => {
     const nft = nfts.find(n => n.nft_id === nftId);
     if (!nft) return;
@@ -371,6 +384,7 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
           <TableHeader>
             <TableRow>
               <SortableHeader field="nft_serial">{nftListPage.table.serial}</SortableHeader>
+              <TableHead className="w-14" />
               <TableHead>{nftListPage.table.links}</TableHead>
               <SortableHeader field="owner">{nftListPage.table.owner}</SortableHeader>
               <SortableHeader field="name">{nftListPage.table.nftName}</SortableHeader>
@@ -398,6 +412,9 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
                 >
                   <TableCell className="font-mono text-xs">
                     {nft.nft_serial}
+                  </TableCell>
+                  <TableCell>
+                    <NFTThumbnail uri={nft.uri} alt={nft.name ?? nft.nft_id} />
                   </TableCell>
                   <TableCell className="font-mono text-xs">
                     <NFTSiteIcons tokenId={nft.nft_id} />
@@ -434,7 +451,11 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
                     )}
                   </TableCell>
                   <TableCell>
-                    {nft.name}
+                    <NFTName
+                      uri={nft.uri}
+                      fallback={nft.name}
+                      onResolved={(name) => handleNameResolved(nft, name)}
+                    />
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     {formatAmount(nft.lastSaleAmount)}
