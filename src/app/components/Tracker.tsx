@@ -68,7 +68,7 @@ export function Tracker() {
         taxon,
       }
 
-      const { error } = await supabaseBrowser.from('visits').insert([row])
+      const { error } = await supabaseBrowser.schema('owner_note').from('visits').insert([row])
       if (error) {
         console.error('Tracker insert error:', error)
       }
