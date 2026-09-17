@@ -12,11 +12,13 @@ import {
   Users,
   BarChart3,
   List,
-  AlertCircle
+  AlertCircle,
+  LayoutGrid
 } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import NFTList from '@/app/components/NFTList';
 import OwnerList from '@/app/components/OwnerList';
+import OwnerNFTGroupList from '@/app/components/OwnerNFTGroupList';
 import Statistics from '@/app/components/Statistics';
 import { NFTContextProvider } from '@/app/contexts/NFTContext';
 import { getDictionary } from '@/i18n/get-dictionary';
@@ -122,10 +124,14 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjec
             <ProjectInfo lang={lang} project={project} onProjectUpdate={handleProjectUpdate} />
 
             <Tabs defaultValue="owners" className="space-y-4">
-              <TabsList>
+              <TabsList className="grid h-auto w-full grid-cols-2 sm:inline-flex sm:h-9 sm:w-auto">
                 <TabsTrigger value="owners">
                   <Users className="h-4 w-4 mr-2" />
                   {dict?.project.detail.ownerRank}
+                </TabsTrigger>
+                <TabsTrigger value="ownerNfts">
+                  <LayoutGrid className="h-4 w-4 mr-2" />
+                  {dict?.project.detail.ownerCollection.title}
                 </TabsTrigger>
                 <TabsTrigger value="nfts">
                   <List className="h-4 w-4 mr-2" />
@@ -148,6 +154,17 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjec
                       issuer={project.issuer} 
                       taxon={project.taxon}
                     />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="ownerNfts" className="space-y-4">
+                <Card className="mx-[-0.75rem] sm:mx-0 rounded-none sm:rounded-lg border-x-0 sm:border-x">
+                  <CardHeader className="px-3 sm:px-6">
+                    <CardTitle>{dict?.project.detail.ownerCollection.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-2 sm:px-6">
+                    <OwnerNFTGroupList lang={lang} projectId={projectId} />
                   </CardContent>
                 </Card>
               </TabsContent>

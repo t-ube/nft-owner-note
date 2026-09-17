@@ -209,6 +209,41 @@
           "noXAccount": "-"
         }
       },
+      "ownerCollection": {
+        "title": "NFTs by Owner",
+        "description": "Shows each owner's NFTs grouped by name. Select multiple NFT names to show only owners who hold all of them (owners who completed the series).",
+        "unnamed": "(No name)",
+        "showMore": "+{count} more",
+        "showLess": "Show less",
+        "filter": {
+          "label": "Filter by NFT names (holds all)",
+          "placeholder": "Select NFT names...",
+          "selectedCount": "{count} selected",
+          "searchPlaceholder": "Search NFT names...",
+          "noResults": "No matching NFT names",
+          "holders": "{count} holders",
+          "clear": "Clear"
+        },
+        "status": {
+          "owners": "{count} owners",
+          "matched": "{matched} of {total} owners hold all {count} selected names",
+          "unnamed": "{count} NFTs have no name yet. Fetch names to filter by them.",
+          "noData": "No NFT data yet. Please wait until NFTs have been fetched."
+        },
+        "actions": {
+          "fetchNames": "Fetch names",
+          "fetchingNames": "Fetching names... ({done}/{total})"
+        },
+        "table": {
+          "owner": "Owner",
+          "nftCount": "NFTs",
+          "kinds": "Names",
+          "nfts": "Holdings"
+        },
+        "errors": {
+          "loadFailed": "Failed to load NFT data"
+        }
+      },
       "nftListPage": {
         "status": {
           "showing": "Showing {start} to {end} of {total} NFTs",

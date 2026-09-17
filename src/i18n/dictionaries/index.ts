@@ -216,6 +216,41 @@ export interface Dictionary {
           noXAccount: string;
         };
       };
+      ownerCollection: {
+        title: string;
+        description: string;
+        unnamed: string;
+        showMore: string;
+        showLess: string;
+        filter: {
+          label: string;
+          placeholder: string;
+          selectedCount: string;
+          searchPlaceholder: string;
+          noResults: string;
+          holders: string;
+          clear: string;
+        };
+        status: {
+          owners: string;
+          matched: string;
+          unnamed: string;
+          noData: string;
+        };
+        actions: {
+          fetchNames: string;
+          fetchingNames: string;
+        };
+        table: {
+          owner: string;
+          nftCount: string;
+          kinds: string;
+          nfts: string;
+        };
+        errors: {
+          loadFailed: string;
+        };
+      };
       nftListPage: {
         status: {
           showing: string;

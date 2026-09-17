@@ -84,6 +84,19 @@ async function fetchCache(uri: string): Promise<CacheResponse | null> {
   return (await res.json()) as CacheResponse;
 }
 
+/**
+ * uri の NFT 名をキャッシュ API から1回だけ取得する（ポーリングしない）。
+ * 未登録ならキャッシュ生成を依頼して null を返すので、時間をおいて再取得する。
+ */
+export async function fetchNftName(uri: string): Promise<string | null> {
+  const data = await fetchCache(uri);
+  if (!data) {
+    await requestNftCache(uri);
+    return null;
+  }
+  return data.metadata?.name ?? null;
+}
+
 // レスポンスを状態へ反映。終端状態（完了/失敗）なら true を返す。
 function applyData(uri: string, data: CacheResponse): boolean {
   const status = data.status;

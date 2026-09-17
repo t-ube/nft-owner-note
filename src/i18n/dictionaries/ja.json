@@ -209,6 +209,41 @@
           "noXAccount": "-"
         }
       },
+      "ownerCollection": {
+        "title": "オーナー別保有NFT",
+        "description": "オーナーごとに保有NFTを名前でまとめて表示します。NFT名を複数選ぶと、そのすべてを保有しているオーナー（シリーズをコンプリートしたオーナー）だけに絞り込みます。",
+        "unnamed": "(名前未取得)",
+        "showMore": "他 {count} 件",
+        "showLess": "閉じる",
+        "filter": {
+          "label": "保有NFT名で絞り込み（すべて保有）",
+          "placeholder": "NFT名を選択...",
+          "selectedCount": "{count} 件選択中",
+          "searchPlaceholder": "NFT名を検索...",
+          "noResults": "該当するNFT名がありません",
+          "holders": "{count} 人",
+          "clear": "クリア"
+        },
+        "status": {
+          "owners": "{count} オーナー",
+          "matched": "{total} オーナー中 {matched} オーナーが選択した {count} 種類をすべて保有",
+          "unnamed": "名前未取得のNFTが {count} 件あります。名前で絞り込むには名前を取得してください。",
+          "noData": "NFTデータがありません。NFTの取得が終わるまでお待ちください。"
+        },
+        "actions": {
+          "fetchNames": "名前を取得",
+          "fetchingNames": "名前を取得中... ({done}/{total})"
+        },
+        "table": {
+          "owner": "オーナー",
+          "nftCount": "保有数",
+          "kinds": "種類数",
+          "nfts": "保有NFT"
+        },
+        "errors": {
+          "loadFailed": "NFTデータの読み込みに失敗しました"
+        }
+      },
       "nftListPage": {
         "status": {
           "showing": "{total}個中{start}から{end}個目のNFTを表示中",
