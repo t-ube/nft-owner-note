@@ -3,7 +3,6 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from "next-themes";
 import Image from 'next/image';
 import {
-  Folder,
   Search,
   Trash2,
   Users,
@@ -22,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Project, dbManager } from '@/utils/db';
 import ProjectCSVImportExport from '@/app/components/ProjectCSVImportExport';
+import CollectionFace from '@/app/components/CollectionFace';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import { CONTRIBUTORS } from '@/constants/contributors';
@@ -322,7 +322,12 @@ const ProjectSidebar = ({
                     onClick={() => handleProjectClick(project.projectId)}
                   >
                     <div className="flex items-center min-w-0 flex-1">
-                      <Folder className="h-4 w-4 mr-2 flex-shrink-0" />
+                      <CollectionFace
+                        issuer={project.issuer}
+                        taxon={project.taxon}
+                        alt={project.name}
+                        className="h-12 w-12 mr-2"
+                      />
                       <div className="flex flex-col min-w-0 flex-1">
                         {editingProject?.id === project.id ? (
                           <form 

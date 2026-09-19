@@ -19,6 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import NFTList from '@/app/components/NFTList';
 import OwnerList from '@/app/components/OwnerList';
 import OwnerNFTGroupList from '@/app/components/OwnerNFTGroupList';
+import CollectionFace from '@/app/components/CollectionFace';
 import Statistics from '@/app/components/Statistics';
 import { NFTContextProvider } from '@/app/contexts/NFTContext';
 import { getDictionary } from '@/i18n/get-dictionary';
@@ -116,8 +117,14 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjec
         <div className="flex-1 overflow-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
           <div className="p-3 sm:p-6">
             <div className="flex justify-between items-center mb-4 sm:mb-6">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold">{project.name}</h1>
+              <div className="flex items-center gap-3 min-w-0">
+                <CollectionFace
+                  issuer={project.issuer}
+                  taxon={project.taxon}
+                  alt={project.name}
+                  className="h-10 w-10 sm:h-12 sm:w-12"
+                />
+                <h1 className="text-xl sm:text-2xl font-bold truncate">{project.name}</h1>
               </div>
             </div>
 

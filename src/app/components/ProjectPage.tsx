@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, HelpCircle, Folder, Search, Trash2 } from 'lucide-react';
+import { Plus, HelpCircle, Search, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { dbManager, Project } from '@/utils/db';
 import ProjectSidebar from '@/app/components/ProjectSidebar';
+import CollectionFace from '@/app/components/CollectionFace';
 import BulkProjectCreation from '@/app/components/BulkProjectCreation';
 import ProjectCSVImportExport from '@/app/components/ProjectCSVImportExport';
 import { 
@@ -374,7 +375,12 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
                       }
                     }}
                   >
-                    <Folder className="h-5 w-5 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+                    <CollectionFace
+                      issuer={project.issuer}
+                      taxon={project.taxon}
+                      alt={project.name}
+                      className="h-10 w-10"
+                    />
                     <span className="flex-1 truncate font-medium dark:text-gray-200">
                       {project.name}
                     </span>

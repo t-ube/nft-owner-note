@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 // XRPL NFT のメタデータ／画像をキャッシュする外部 API。
 // `uri`（デコード済み ipfs://… など）または `hex_uri`（XRPL 生 hex）を受け付ける。
-const CACHE_API_BASE = 'https://xrpl-nft-ipfs-cache-api.shirome.workers.dev';
+export const CACHE_API_BASE = 'https://xrpl-nft-ipfs-cache-api.shirome.workers.dev';
 
 // 生成完了までのポーリング設定。生成には十数秒〜かかることがあるため長めに待つ。
 const POLL_INTERVAL_MS = 6000;
