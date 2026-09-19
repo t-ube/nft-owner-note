@@ -126,6 +126,20 @@ interface PaginatedResult<T> {
   total: number;
 }
 
+/** 容量不足で書き込めなかったときのエラー。 */
+export class DatabaseQuotaError extends Error {
+  constructor() {
+    super('IndexedDB quota exceeded');
+    this.name = 'DatabaseQuotaError';
+  }
+}
+
+/** トランザクションのエラーを、扱いやすい Error に変換する。 */
+function toDatabaseError(error: DOMException | null): Error {
+  if (error?.name === 'QuotaExceededError') return new DatabaseQuotaError();
+  return error ?? new Error('IndexedDB transaction failed');
+}
+
 class DatabaseManager {
   private dbName = 'OwnerNoteDB';
   private version = 2;
@@ -147,12 +161,54 @@ class DatabaseManager {
     return hashHex.slice(0, 12);
   }
 
+  /** 接続は1つだけ作って使い回す（開きっぱなしの接続がたまるとバージョンアップが止まるため）。 */
+  private dbPromise: Promise<IDBDatabase> | null = null;
+  private blockedListeners = new Set<() => void>();
+
+  /**
+   * 別のタブが古いバージョンで開いたままで、バージョンアップできないときに呼ばれる。
+   * 戻り値を呼ぶと解除できる。
+   */
+  addBlockedListener(listener: () => void): () => void {
+    this.blockedListeners.add(listener);
+    return () => {
+      this.blockedListeners.delete(listener);
+    };
+  }
+
   async initDB(): Promise<IDBDatabase> {
+    if (!this.dbPromise) {
+      this.dbPromise = this.openDB().catch(error => {
+        this.dbPromise = null; // 次の呼び出しでやり直せるようにする
+        throw error;
+      });
+    }
+    return this.dbPromise;
+  }
+
+  private openDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.dbName, this.version);
 
       request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result);
+
+      request.onblocked = () => {
+        console.warn('[db] 別のタブが開いているためバージョンアップできません');
+        this.blockedListeners.forEach(listener => listener());
+      };
+
+      request.onsuccess = () => {
+        const db = request.result;
+        // 別のタブがバージョンアップしようとしたら、こちらは閉じて道を譲る
+        db.onversionchange = () => {
+          db.close();
+          this.dbPromise = null;
+        };
+        db.onclose = () => {
+          this.dbPromise = null;
+        };
+        resolve(db);
+      };
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
@@ -227,6 +283,41 @@ class DatabaseManager {
     });
   }
 
+  /** IDBRequest を待つ（同じトランザクション内で続けて使える）。 */
+  private request<T>(req: IDBRequest<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  /** トランザクションの確定を待つ。中止（容量不足など）も失敗として扱う。 */
+  private done(transaction: IDBTransaction): Promise<void> {
+    return new Promise((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(toDatabaseError(transaction.error));
+      transaction.onabort = () => reject(toDatabaseError(transaction.error));
+    });
+  }
+
+  /** 保存領域の使用量（バイト）。取得できない環境では null。 */
+  async estimateStorage(): Promise<{ usage: number; quota: number } | null> {
+    if (typeof navigator === 'undefined' || !navigator.storage?.estimate) return null;
+    const { usage, quota } = await navigator.storage.estimate();
+    if (typeof usage !== 'number' || typeof quota !== 'number') return null;
+    return { usage, quota };
+  }
+
+  /** ブラウザによる自動削除を避けるため、永続化を要求する（対応環境のみ）。 */
+  async requestPersistentStorage(): Promise<boolean> {
+    if (typeof navigator === 'undefined' || !navigator.storage?.persist) return false;
+    try {
+      return await navigator.storage.persist();
+    } catch {
+      return false;
+    }
+  }
+
   private migrateStore(transaction: IDBTransaction, storeName: string): void {
     if (!transaction.objectStoreNames.contains(storeName)) return;
     const store = transaction.objectStore(storeName);
@@ -249,26 +340,21 @@ class DatabaseManager {
   async addProject(project: Omit<Project, 'id' | 'projectId' | 'isDeleted' | 'createdAt' | 'updatedAt'>): Promise<Project> {
     const db = await this.initDB();
     const projectId = await this.generateProjectId(project);
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('projects', 'readwrite');
-      const store = transaction.objectStore('projects');
+    const transaction = db.transaction('projects', 'readwrite');
+    const now = Date.now();
 
-      const now = Date.now();
+    const completeProject: Project = {
+      id: crypto.randomUUID(),
+      projectId,
+      isDeleted: false,
+      createdAt: now,
+      updatedAt: now,
+      ...project
+    };
 
-      const completeProject: Project = {
-        id: crypto.randomUUID(),
-        projectId,
-        isDeleted: false,
-        createdAt: now,
-        updatedAt: now,
-        ...project
-      };
-
-      const request = store.add(completeProject);
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(completeProject);
-    });
+    transaction.objectStore('projects').add(completeProject);
+    await this.done(transaction);
+    return completeProject;
   }
 
   // ProjectOwnerValue Methods
@@ -278,35 +364,26 @@ class DatabaseManager {
     values: { userValue1?: number | null; userValue2?: number | null }
   ): Promise<ProjectOwnerValue> {
     const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('projectOwnerValues', 'readwrite');
-      const store = transaction.objectStore('projectOwnerValues');
-      const id = `${projectId}-${owner}`;
-      
-      // まず既存のデータを取得
-      const getRequest = store.get(id);
-      
-      getRequest.onsuccess = () => {
-        const existingData = getRequest.result as ProjectOwnerValue | undefined;
-        const now = Date.now();
-        
-        const updatedValues: ProjectOwnerValue = {
-          id,
-          projectId,
-          owner,
-          userValue1: values.userValue1 ?? existingData?.userValue1 ?? null,
-          userValue2: values.userValue2 ?? existingData?.userValue2 ?? null,
-          isDeleted: false,
-          updatedAt: now,
-        };
-        
-        const putRequest = store.put(updatedValues);
-        putRequest.onsuccess = () => resolve(updatedValues);
-        putRequest.onerror = () => reject(putRequest.error);
-      };
-      
-      getRequest.onerror = () => reject(getRequest.error);
-    });
+    const transaction = db.transaction('projectOwnerValues', 'readwrite');
+    const store = transaction.objectStore('projectOwnerValues');
+    const id = `${projectId}-${owner}`;
+
+    const existingData = await this.request(store.get(id)) as ProjectOwnerValue | undefined;
+    const now = Date.now();
+
+    const updatedValues: ProjectOwnerValue = {
+      id,
+      projectId,
+      owner,
+      userValue1: values.userValue1 ?? existingData?.userValue1 ?? null,
+      userValue2: values.userValue2 ?? existingData?.userValue2 ?? null,
+      isDeleted: false,
+      updatedAt: now,
+    };
+
+    store.put(updatedValues);
+    await this.done(transaction);
+    return updatedValues;
   }
 
   async getProjectOwnerValues(projectId: string): Promise<ProjectOwnerValue[]> {
@@ -337,23 +414,19 @@ class DatabaseManager {
 
   async deleteProjectOwnerValues(projectId: string): Promise<void> {
     const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('projectOwnerValues', 'readwrite');
-      const store = transaction.objectStore('projectOwnerValues');
-      const index = store.index('projectId');
-      const request = index.openCursor(projectId);
+    const transaction = db.transaction('projectOwnerValues', 'readwrite');
+    const index = transaction.objectStore('projectOwnerValues').index('projectId');
+    const request = index.openCursor(projectId);
 
-      request.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest).result;
-        if (cursor) {
-          cursor.delete();
-          cursor.continue();
-        }
-      };
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (cursor) {
+        cursor.delete();
+        cursor.continue();
+      }
+    };
 
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
+    await this.done(transaction);
   }
   
   async getProjectByProjectId(projectId: string): Promise<Project | undefined> {
@@ -385,107 +458,85 @@ class DatabaseManager {
     });
   }
 
+  /** プロジェクトを保存する（更新日時は自動で更新）。 */
+  async updateProject(project: Project): Promise<Project> {
+    const db = await this.initDB();
+    const transaction = db.transaction('projects', 'readwrite');
+    const updatedProject: Project = { ...project, updatedAt: Date.now() };
+    transaction.objectStore('projects').put(updatedProject);
+    await this.done(transaction);
+    return updatedProject;
+  }
+
   async deleteProject(id: string): Promise<void> {
     const db = await this.initDB();
     const project = await this.getProjectByProjectId(id);
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['projects', 'nfts', 'projectOwnerValues'], 'readwrite');
-      
-      // Delete the project
-      const projectStore = transaction.objectStore('projects');
-      if (project) {
-        projectStore.delete(project.id);
+    const transaction = db.transaction(['projects', 'nfts', 'projectOwnerValues'], 'readwrite');
+
+    if (project) {
+      transaction.objectStore('projects').delete(project.id);
+    }
+
+    // 関連する NFT とオーナー値も同じトランザクションで消す
+    const nftRequest = transaction.objectStore('nfts').index('projectId').openCursor(id);
+    nftRequest.onsuccess = () => {
+      const cursor = nftRequest.result;
+      if (cursor) {
+        cursor.delete();
+        cursor.continue();
       }
+    };
 
-      // Delete all associated NFTs
-      const nftStore = transaction.objectStore('nfts');
-      const nftIndex = nftStore.index('projectId');
-      const nftRequest = nftIndex.openCursor(id);
+    const ownerValueRequest = transaction
+      .objectStore('projectOwnerValues')
+      .index('projectId')
+      .openCursor(id);
+    ownerValueRequest.onsuccess = () => {
+      const cursor = ownerValueRequest.result;
+      if (cursor) {
+        cursor.delete();
+        cursor.continue();
+      }
+    };
 
-      nftRequest.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest).result;
-        if (cursor) {
-          cursor.delete();
-          cursor.continue();
-        }
-      };
-
-      // Delete all associated owner values
-      const ownerValueStore = transaction.objectStore('projectOwnerValues');
-      const ownerValueIndex = ownerValueStore.index('projectId');
-      const ownerValueRequest = ownerValueIndex.openCursor(id);
-
-      ownerValueRequest.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest).result;
-        if (cursor) {
-          cursor.delete();
-          cursor.continue();
-        }
-      };
-
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
+    await this.done(transaction);
   }
 
   // NFT Methods
   async updateNFTs(projectId: string, nfts: Omit<NFTokenBase, 'id' | 'projectId' | 'updatedAt'>[]): Promise<NFToken[]> {
     const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('nfts', 'readwrite');
-      const store = transaction.objectStore('nfts');
-      const now = Date.now();
-  
-      // Get existing NFTs first
-      const index = store.index('projectId');
-      const request = index.getAll(projectId);
-  
-      request.onsuccess = () => {
-        const existingNFTs = request.result as NFToken[];
-        const existingNFTsMap = new Map(existingNFTs.map(nft => [nft.nft_id, nft]));
-        const updatedNFTs: NFToken[] = [];
-  
-        // Process each NFT
-        const updatePromises = nfts.map(nft => {
-          const existing = existingNFTsMap.get(nft.nft_id);
-  
-          const completeNFT: NFToken = {
-            id: `${projectId}-${nft.nft_id}`,
-            projectId,
-            updatedAt: now,
-            name: null,
-            lastSaleAmount: null,
-            lastSaleAt: null,
-            isOrderMade: false,
-            userValue1: null,
-            userValue2: null,
-            color: null,
-            memo: null,
-            ...existing, // 既存の拡張情報を適用
-            ...nft,      // 新しい基本情報を適用
-          };
-          
-          updatedNFTs.push(completeNFT);
-  
-          return new Promise<void>((resolveUpdate, rejectUpdate) => {
-            const putRequest = store.put(completeNFT);
-            putRequest.onsuccess = () => resolveUpdate();
-            putRequest.onerror = () => rejectUpdate(putRequest.error);
-          });
-        });
-  
-        // すべてのアップデートが完了してから更新されたNFTsを返す
-        Promise.all(updatePromises)
-          .then(() => resolve(updatedNFTs))
-          .catch(error => {
-            console.error('Error updating NFTs:', error);
-            reject(error);
-          });
+    const transaction = db.transaction('nfts', 'readwrite');
+    const store = transaction.objectStore('nfts');
+    const now = Date.now();
+
+    const existingNFTs = await this.request(store.index('projectId').getAll(projectId)) as NFToken[];
+    const existingNFTsMap = new Map(existingNFTs.map(nft => [nft.nft_id, nft]));
+
+    const updatedNFTs = nfts.map(nft => {
+      const existing = existingNFTsMap.get(nft.nft_id);
+
+      const completeNFT: NFToken = {
+        id: `${projectId}-${nft.nft_id}`,
+        projectId,
+        updatedAt: now,
+        name: null,
+        lastSaleAmount: null,
+        lastSaleAt: null,
+        isOrderMade: false,
+        userValue1: null,
+        userValue2: null,
+        color: null,
+        memo: null,
+        ...existing, // 既存の拡張情報を適用
+        ...nft,      // 新しい基本情報を適用
       };
-  
-      request.onerror = () => reject(request.error);
-      transaction.onerror = () => reject(transaction.error);
+
+      store.put(completeNFT);
+      return completeNFT;
     });
+
+    await this.done(transaction);
+    return updatedNFTs;
   }
 
   async getNFTsByProjectId(projectId: string): Promise<NFToken[]> {
@@ -503,17 +554,12 @@ class DatabaseManager {
 
   async updateNFTDetails(nft: NFToken): Promise<void> {
     const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('nfts', 'readwrite');
-      const store = transaction.objectStore('nfts');
-      const request = store.put({
-        ...nft,
-        updatedAt: Date.now()
-      });
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
+    const transaction = db.transaction('nfts', 'readwrite');
+    transaction.objectStore('nfts').put({
+      ...nft,
+      updatedAt: Date.now()
     });
+    await this.done(transaction);
   }
 
   /**
@@ -522,179 +568,119 @@ class DatabaseManager {
    */
   async setNFTsUsed(ids: string[], used: boolean, owner?: string | null): Promise<NFToken[]> {
     const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('nfts', 'readwrite');
-      const store = transaction.objectStore('nfts');
-      const updated: NFToken[] = [];
-      const now = Date.now();
+    const transaction = db.transaction('nfts', 'readwrite');
+    const store = transaction.objectStore('nfts');
+    const now = Date.now();
+    const updated: NFToken[] = [];
 
-      for (const id of ids) {
-        const getRequest = store.get(id);
-        getRequest.onsuccess = () => {
-          const nft = getRequest.result as NFToken | undefined;
-          if (!nft) return;
-          const next: NFToken = {
-            ...nft,
-            usedAt: used ? now : null,
-            usedOwner: used ? (owner ?? nft.owner) : null,
-            updatedAt: now,
-          };
-          store.put(next);
-          updated.push(next);
-        };
-      }
+    for (const id of ids) {
+      const nft = await this.request(store.get(id)) as NFToken | undefined;
+      if (!nft) continue;
+      const next: NFToken = {
+        ...nft,
+        usedAt: used ? now : null,
+        usedOwner: used ? (owner ?? nft.owner) : null,
+        updatedAt: now,
+      };
+      store.put(next);
+      updated.push(next);
+    }
 
-      transaction.oncomplete = () => resolve(updated);
-      transaction.onerror = () => reject(transaction.error);
-    });
+    await this.done(transaction);
+    return updated;
   }
 
   async clearProjectNFTs(projectId: string): Promise<void> {
     const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('nfts', 'readwrite');
-      const store = transaction.objectStore('nfts');
-      const index = store.index('projectId');
-      const request = index.openCursor(projectId);
+    const transaction = db.transaction('nfts', 'readwrite');
+    const request = transaction.objectStore('nfts').index('projectId').openCursor(projectId);
 
-      request.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest).result;
-        if (cursor) {
-          cursor.delete();
-          cursor.continue();
-        }
-      };
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (cursor) {
+        cursor.delete();
+        cursor.continue();
+      }
+    };
 
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
+    await this.done(transaction);
   }
 
   // アドレスグループの操作メソッド
   async createAddressGroup(group: Omit<AddressGroup, 'id' | 'isDeleted' | 'updatedAt'>): Promise<AddressGroup> {
     const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['addressGroups', 'addresses'], 'readwrite');
-      const groupStore = transaction.objectStore('addressGroups');
-      const addressStore = transaction.objectStore('addresses');
+    const transaction = db.transaction(['addressGroups', 'addresses'], 'readwrite');
+    const groupStore = transaction.objectStore('addressGroups');
+    const addressStore = transaction.objectStore('addresses');
 
-      const now = Date.now();
-      const completeGroup: AddressGroup = {
-        id: crypto.randomUUID(),
+    const now = Date.now();
+    const completeGroup: AddressGroup = {
+      id: crypto.randomUUID(),
+      isDeleted: false,
+      updatedAt: now,
+      ...group
+    };
+
+    groupStore.add(completeGroup);
+    for (const address of group.addresses) {
+      addressStore.put({
+        address,
+        groupId: completeGroup.id,
         isDeleted: false,
-        updatedAt: now,
-        ...group
-      };
+        updatedAt: now
+      });
+    }
 
-      // グループの保存
-      const groupRequest = groupStore.add(completeGroup);
-
-      groupRequest.onsuccess = () => {
-        // 所属アドレスの更新
-        const addressUpdates = group.addresses.map(address => {
-          return addressStore.put({
-            address,
-            groupId: completeGroup.id,
-            isDeleted: false,
-            updatedAt: now
-          });
-        });
-
-        Promise.all(addressUpdates)
-          .then(() => resolve(completeGroup))
-          .catch(reject);
-      };
-
-      groupRequest.onerror = () => reject(groupRequest.error);
-    });
+    await this.done(transaction);
+    return completeGroup;
   }
 
   async updateAddressGroup(group: AddressGroup): Promise<AddressGroup> {
     const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['addressGroups', 'addresses'], 'readwrite');
-      const groupStore = transaction.objectStore('addressGroups');
-      const addressStore = transaction.objectStore('addresses');
-    
-      const now = Date.now();
-      const updatedGroup = {
-        ...group,
+    const transaction = db.transaction(['addressGroups', 'addresses'], 'readwrite');
+    const groupStore = transaction.objectStore('addressGroups');
+    const addressStore = transaction.objectStore('addresses');
+
+    const now = Date.now();
+    const updatedGroup: AddressGroup = { ...group, updatedAt: now };
+
+    const oldGroup = await this.request(groupStore.get(group.id)) as AddressGroup | undefined;
+    const allGroups = await this.request(groupStore.getAll()) as AddressGroup[];
+    const otherGroups = allGroups.filter(g => g.id !== group.id);
+
+    const oldAddresses = new Set(oldGroup?.addresses ?? []);
+    const newAddresses = new Set(group.addresses);
+
+    // 外されたアドレスは、他のグループにあればそちらへ付け替え、なければ削除
+    for (const address of Array.from(oldAddresses)) {
+      if (newAddresses.has(address)) continue;
+      const otherGroupWithAddress = otherGroups.find(g => g.addresses.includes(address));
+      if (otherGroupWithAddress) {
+        addressStore.put({
+          address,
+          groupId: otherGroupWithAddress.id,
+          isDeleted: false,
+          updatedAt: now
+        });
+      } else {
+        addressStore.delete(address);
+      }
+    }
+
+    // 追加されたアドレスはこのグループへ
+    for (const address of Array.from(newAddresses)) {
+      if (oldAddresses.has(address)) continue;
+      addressStore.put({
+        address,
+        groupId: group.id,
+        isDeleted: false,
         updatedAt: now
-      };
-    
-      // 1. まず既存のグループ情報と全てのグループを取得
-      const getGroupRequest = groupStore.get(group.id);
-    
-      getGroupRequest.onsuccess = () => {
-        const oldGroup = getGroupRequest.result as AddressGroup;
-        
-        // 他の全グループを取得
-        const getAllGroupsRequest = groupStore.getAll();
-        
-        getAllGroupsRequest.onsuccess = () => {
-          const allGroups = getAllGroupsRequest.result as AddressGroup[];
-          const otherGroups = allGroups.filter(g => g.id !== group.id);
-          
-          const oldAddresses = new Set(oldGroup.addresses);
-          const newAddresses = new Set(group.addresses);
-    
-          // 2. 削除されたアドレスを処理
-          const removedAddresses = Array.from(oldAddresses)
-            .filter(addr => !newAddresses.has(addr));
-          
-          // 3. 新しく追加されたアドレスを処理
-          const addedAddresses = Array.from(newAddresses)
-            .filter(addr => !oldAddresses.has(addr));
-    
-          // 4. 削除されたアドレスの処理
-          const removePromises = removedAddresses.map(address => {
-            // このアドレスを含む他のグループを探す
-            const otherGroupWithAddress = otherGroups.find(g => 
-              g.addresses.includes(address)
-            );
-  
-            if (otherGroupWithAddress) {
-              // 他のグループで使用されている場合、そのグループIDを設定
-              return addressStore.put({
-                address,
-                groupId: otherGroupWithAddress.id,
-                isDeleted: false,
-                updatedAt: now
-              });
-            } else {
-              // 他のグループで使用されていない場合は削除
-              return addressStore.delete(address);
-            }
-          });
-    
-          // 5. 追加されたアドレスの処理
-          const addPromises = addedAddresses.map(address => {
-            return addressStore.put({
-              address,
-              groupId: group.id,
-              isDeleted: false,
-              updatedAt: now
-            });
-          });
-    
-          // 6. グループ情報を更新
-          const updateGroupRequest = groupStore.put(updatedGroup);
-          
-          // 7. 全ての処理の完了を待つ
-          Promise.all([...removePromises, ...addPromises])
-            .then(() => {
-              updateGroupRequest.onsuccess = () => resolve(updatedGroup);
-              updateGroupRequest.onerror = () => reject(updateGroupRequest.error);
-            })
-            .catch(error => reject(error));
-        };
-        
-        getAllGroupsRequest.onerror = () => reject(getAllGroupsRequest.error);
-      };
-    
-      getGroupRequest.onerror = () => reject(getGroupRequest.error);
-      transaction.onerror = () => reject(transaction.error);
-    });
+      });
+    }
+
+    groupStore.put(updatedGroup);
+    await this.done(transaction);
+    return updatedGroup;
   }
 
   async getAddressGroups(address: string): Promise<AddressGroup[]> {
@@ -766,115 +752,67 @@ class DatabaseManager {
 
   async deleteAddressGroup(id: string): Promise<void> {
     const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['addressGroups', 'addresses'], 'readwrite');
-      const groupStore = transaction.objectStore('addressGroups');
-      const addressStore = transaction.objectStore('addresses');
-  
-      // 1. まず削除対象のグループ情報を取得
-      const getGroupRequest = groupStore.get(id);
-  
-      getGroupRequest.onsuccess = async () => {
-        const groupToDelete = getGroupRequest.result as AddressGroup;
-        if (!groupToDelete) {
-          resolve();
-          return;
-        }
-  
-        // 2. 他の全てのグループを取得して、アドレスの参照を確認
-        const getAllGroupsRequest = groupStore.getAll();
-        
-        getAllGroupsRequest.onsuccess = () => {
-          const allGroups = getAllGroupsRequest.result as AddressGroup[];
-          const otherGroups = allGroups.filter(g => g.id !== id);
-  
-          // 3. 各アドレスについて、他のグループでの使用状況を確認
-          const addressUpdates = groupToDelete.addresses.map(address => {
-            // このアドレスを含む他のグループを探す
-            const otherGroupWithAddress = otherGroups.find(g => 
-              g.addresses.includes(address)
-            );
-  
-            if (otherGroupWithAddress) {
-              // 他のグループで使用されている場合、そのグループIDを設定
-              return addressStore.put({
-                address,
-                groupId: otherGroupWithAddress.id,
-                isDeleted: false,
-                updatedAt: Date.now()
-              });
-            } else {
-              // 他のグループで使用されていない場合は削除
-              return addressStore.delete(address);
-            }
-          });
-  
-          // 4. グループを削除
-          const deleteGroupRequest = groupStore.delete(id);
-          deleteGroupRequest.onerror = () => reject(deleteGroupRequest.error);
-  
-          // 5. すべての更新が完了するのを待つ
-          Promise.all(addressUpdates)
-            .then(() => resolve())
-            .catch(error => reject(error));
-        };
-  
-        getAllGroupsRequest.onerror = () => reject(getAllGroupsRequest.error);
-      };
-  
-      getGroupRequest.onerror = () => reject(getGroupRequest.error);
-      transaction.onerror = () => reject(transaction.error);
-    });
+    const transaction = db.transaction(['addressGroups', 'addresses'], 'readwrite');
+    const groupStore = transaction.objectStore('addressGroups');
+    const addressStore = transaction.objectStore('addresses');
+
+    const groupToDelete = await this.request(groupStore.get(id)) as AddressGroup | undefined;
+    if (!groupToDelete) {
+      await this.done(transaction);
+      return;
+    }
+
+    const allGroups = await this.request(groupStore.getAll()) as AddressGroup[];
+    const otherGroups = allGroups.filter(g => g.id !== id);
+    const now = Date.now();
+
+    // 所属アドレスは、他のグループにあれば付け替え、なければ削除
+    for (const address of groupToDelete.addresses) {
+      const otherGroupWithAddress = otherGroups.find(g => g.addresses.includes(address));
+      if (otherGroupWithAddress) {
+        addressStore.put({
+          address,
+          groupId: otherGroupWithAddress.id,
+          isDeleted: false,
+          updatedAt: now
+        });
+      } else {
+        addressStore.delete(address);
+      }
+    }
+
+    groupStore.delete(id);
+    await this.done(transaction);
   }
 
   async repairAddressReferences(): Promise<void> {
     const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['addressGroups', 'addresses'], 'readwrite');
-      const groupStore = transaction.objectStore('addressGroups');
-      const addressStore = transaction.objectStore('addresses');
-  
-      // 1. すべてのグループとアドレス情報を取得
-      const groupRequest = groupStore.getAll();
-      
-      groupRequest.onsuccess = () => {
-        const groups = groupRequest.result as AddressGroup[];
-        const addressRequest = addressStore.getAll();
-        
-        addressRequest.onsuccess = () => {
-          const addresses = addressRequest.result as AddressInfo[];
-          
-          // 2. 各アドレスについて、正しいグループ参照を確認・修正
-          addresses.forEach(addressInfo => {
-            // このアドレスを含む最初のグループを見つける
-            const correctGroup = groups.find(group => 
-              group.addresses.includes(addressInfo.address)
-            );
-  
-            if (correctGroup) {
-              // グループが見つかった場合、groupIdを更新
-              if (addressInfo.groupId !== correctGroup.id) {
-                addressStore.put({
-                  ...addressInfo,
-                  groupId: correctGroup.id,
-                  isDeleted: false,
-                  updatedAt: Date.now()
-                });
-              }
-            } else {
-              // どのグループにも属していない場合は削除
-              addressStore.delete(addressInfo.address);
-            }
-          });
-        };
-  
-        addressRequest.onerror = () => reject(addressRequest.error);
-      };
-  
-      groupRequest.onerror = () => reject(groupRequest.error);
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
+    const transaction = db.transaction(['addressGroups', 'addresses'], 'readwrite');
+    const groupStore = transaction.objectStore('addressGroups');
+    const addressStore = transaction.objectStore('addresses');
+
+    const groups = await this.request(groupStore.getAll()) as AddressGroup[];
+    const addresses = await this.request(addressStore.getAll()) as AddressInfo[];
+    const now = Date.now();
+
+    for (const addressInfo of addresses) {
+      const correctGroup = groups.find(group => group.addresses.includes(addressInfo.address));
+      if (!correctGroup) {
+        // どのグループにも属していないアドレスは削除
+        addressStore.delete(addressInfo.address);
+        continue;
+      }
+      if (addressInfo.groupId !== correctGroup.id) {
+        addressStore.put({
+          ...addressInfo,
+          groupId: correctGroup.id,
+          isDeleted: false,
+          updatedAt: now
+        });
+      }
+    }
+
+    await this.done(transaction);
   }
 
   async getProjectByIssuerAndTaxon(issuer: string, taxon: string): Promise<Project | undefined> {
@@ -1034,21 +972,18 @@ class DatabaseManager {
     isManual: boolean = false
   ): Promise<AllowlistEntry> {
     const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('allowlist', 'readwrite');
-      const store = transaction.objectStore('allowlist');
-      const entry: AllowlistEntry = {
-        id: address,
-        address,
-        mints,
-        isManual,
-        updatedAt: Date.now()
-      };
-  
-      const request = store.put(entry);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(entry);
-    });
+    const transaction = db.transaction('allowlist', 'readwrite');
+    const entry: AllowlistEntry = {
+      id: address,
+      address,
+      mints,
+      isManual,
+      updatedAt: Date.now()
+    };
+
+    transaction.objectStore('allowlist').put(entry);
+    await this.done(transaction);
+    return entry;
   }
 
   async getAllowlistEntries(): Promise<AllowlistEntry[]> {
@@ -1065,14 +1000,9 @@ class DatabaseManager {
 
   async clearAllowlist(): Promise<void> {
     const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('allowlist', 'readwrite');
-      const store = transaction.objectStore('allowlist');
-      const request = store.clear();
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
-    });
+    const transaction = db.transaction('allowlist', 'readwrite');
+    transaction.objectStore('allowlist').clear();
+    await this.done(transaction);
   }
 
   // Allowlist Rules Methods
@@ -1095,37 +1025,27 @@ class DatabaseManager {
 
   async saveAllowlistRules(rules: Omit<AllowlistRule, 'id' | 'updatedAt'>[]): Promise<AllowlistRule[]> {
     const db = await this.initDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('allowlistRules', 'readwrite');
-      const store = transaction.objectStore('allowlistRules');
+    const transaction = db.transaction('allowlistRules', 'readwrite');
+    const store = transaction.objectStore('allowlistRules');
 
-      // まず既存のルールを全て削除
-      store.clear();
+    // まず既存のルールを全て削除
+    store.clear();
 
-      const now = Date.now();
-      const savedRules: AllowlistRule[] = [];
-
-      // 新しいルールを保存
-      rules.forEach((rule) => {
-        const completeRule: AllowlistRule = {
-          id: crypto.randomUUID(),
-          updatedAt: now,
-          ...rule
-        };
-
-        const request = store.add(completeRule);
-        request.onsuccess = () => {
-          savedRules.push(completeRule);
-        };
-      });
-
-      transaction.oncomplete = () => {
-        // minNFTs の降順でソート
-        savedRules.sort((a, b) => b.minNFTs - a.minNFTs);
-        resolve(savedRules);
+    const now = Date.now();
+    const savedRules = rules.map(rule => {
+      const completeRule: AllowlistRule = {
+        id: crypto.randomUUID(),
+        updatedAt: now,
+        ...rule
       };
-      transaction.onerror = () => reject(transaction.error);
+      store.add(completeRule);
+      return completeRule;
     });
+
+    await this.done(transaction);
+    // minNFTs の降順でソート
+    savedRules.sort((a, b) => b.minNFTs - a.minNFTs);
+    return savedRules;
   }
 }
 

@@ -67,10 +67,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ lang, project, onProjectUpdat
         updatedAt: Date.now()
       };
 
-      const transaction = await (await dbManager.initDB())
-        .transaction('projects', 'readwrite');
-      const store = transaction.objectStore('projects');
-      await store.put(updatedProject);
+      await dbManager.updateProject(updatedProject);
 
       onProjectUpdate(updatedProject);
       setIsEditing(false);

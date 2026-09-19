@@ -67,10 +67,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
   // プロジェクト更新処理を一元化
   const handleProjectUpdate = useCallback(async (updatedProject: Project) => {
     try {
-      const db = await dbManager.initDB();
-      const transaction = db.transaction('projects', 'readwrite');
-      const store = transaction.objectStore('projects');
-      await store.put(updatedProject);
+      await dbManager.updateProject(updatedProject);
       
       // 現在のプロジェクトを更新
       if (updatedProject.projectId === projectId) {

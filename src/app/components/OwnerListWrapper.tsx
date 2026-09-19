@@ -57,10 +57,7 @@ export default function OwnerListWrapper({ lang }: OwnerListPageProps) {
 
   const handleProjectUpdate = useCallback(async (updatedProject: Project) => {
     try {
-      const db = await dbManager.initDB();
-      const transaction = db.transaction('projects', 'readwrite');
-      const store = transaction.objectStore('projects');
-      await store.put(updatedProject);
+      await dbManager.updateProject(updatedProject);
       await loadAllProjects();
     } catch (error) {
       console.error('Failed to update project:', error);

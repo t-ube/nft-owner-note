@@ -93,10 +93,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
 
   const handleProjectUpdate = useCallback(async (updatedProject: Project) => {
     try {
-      const db = await dbManager.initDB();
-      const transaction = db.transaction('projects', 'readwrite');
-      const store = transaction.objectStore('projects');
-      await store.put(updatedProject);
+      await dbManager.updateProject(updatedProject);
       await loadProjects(); // プロジェクトリストを更新
     } catch (error) {
       console.error('Failed to update project:', error);

@@ -334,15 +334,10 @@ const ProjectSidebar = ({
                                 return;
                               }
                               try {
-                                const db = await dbManager.initDB();
-                                const transaction = db.transaction('projects', 'readwrite');
-                                const store = transaction.objectStore('projects');
-                                const updatedProject = { 
-                                  ...project, 
-                                  name: editingProject.name.trim(), 
-                                  updatedAt: Date.now() 
-                                };
-                                await store.put(updatedProject);
+                                const updatedProject = await dbManager.updateProject({
+                                  ...project,
+                                  name: editingProject.name.trim(),
+                                });
                                 onProjectsUpdated();
                                 
                                 if (project.projectId === currentProjectId) {
