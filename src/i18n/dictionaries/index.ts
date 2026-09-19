@@ -241,6 +241,18 @@ export interface Dictionary {
           fetchNames: string;
           fetchingNames: string;
         };
+        used: {
+          modeLabel: string;
+          mark: string;
+          unmark: string;
+          badgeUsed: string;
+          badgePartial: string;
+          hideUsed: string;
+          usedAtLabel: string;
+          usedByLabel: string;
+          transferredNote: string;
+          badgeTransferred: string;
+        };
         table: {
           owner: string;
           nftCount: string;

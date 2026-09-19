@@ -7,6 +7,12 @@ export interface OwnerNFTNameGroup {
   name: string | null;
   /** グループ化前の NFTokenID（uris と同じ順序） */
   nftIds: string[];
+  /** nfts ストアのキー（`${projectId}-${nft_id}`、nftIds と同じ順序） */
+  ids: string[];
+  /** 使用済み日時（未使用は null、nftIds と同じ順序） */
+  usedAt: (number | null)[];
+  /** 使用済みにした時点の保有アドレス（nftIds と同じ順序） */
+  usedOwners: (string | null)[];
   /** グループ化前の URI（nftIds と同じ順序） */
   uris: string[];
   /** グループ化前のシリアル（nftIds と同じ順序、昇順） */
@@ -54,10 +60,13 @@ export function groupNFTsByOwner(nfts: NFToken[]): OwnerNFTGroup[] {
     const name = normalizeName(nft.name);
     let group = byName.get(name);
     if (!group) {
-      group = { name, nftIds: [], uris: [], serials: [] };
+      group = { name, nftIds: [], ids: [], usedAt: [], usedOwners: [], uris: [], serials: [] };
       byName.set(name, group);
     }
     group.nftIds.push(nft.nft_id);
+    group.ids.push(nft.id);
+    group.usedAt.push(nft.usedAt ?? null);
+    group.usedOwners.push(nft.usedOwner ?? null);
     group.uris.push(nft.uri);
     group.serials.push(nft.nft_serial);
   }
@@ -106,4 +115,21 @@ export function filterOwnersByNames(groups: OwnerNFTGroup[], names: string[]): O
     const held = new Set(group.nameGroups.map(g => g.name));
     return names.every(name => held.has(name));
   });
+}
+
+/** 未使用の NFT のうち、最もシリアルが小さいものの位置。すべて使用済みなら -1。 */
+export function findNextUnusedIndex(group: OwnerNFTNameGroup): number {
+  return group.usedAt.findIndex(usedAt => usedAt === null);
+}
+
+/** 使用済みの枚数。 */
+export function countUsed(group: OwnerNFTNameGroup): number {
+  return group.usedAt.filter(usedAt => usedAt !== null).length;
+}
+
+/** 使用済みにした後で別のオーナーへ移動した NFT があるか（使い回しの検出）。 */
+export function hasTransferredAfterUse(group: OwnerNFTNameGroup, owner: string): boolean {
+  return group.usedAt.some(
+    (usedAt, i) => usedAt !== null && !!group.usedOwners[i] && group.usedOwners[i] !== owner
+  );
 }

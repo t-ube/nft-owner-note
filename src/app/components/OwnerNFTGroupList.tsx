@@ -11,7 +11,10 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, HelpCircle, RefreshCcw } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Check, HelpCircle, RefreshCcw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import _ from 'lodash';
 import { dbManager, AddressGroup, AddressInfo, NFToken } from '@/utils/db';
@@ -19,6 +22,10 @@ import {
   groupNFTsByOwner,
   buildNameOptions,
   filterOwnersByNames,
+  findNextUnusedIndex,
+  countUsed,
+  hasTransferredAfterUse,
+  OwnerNFTGroup,
   OwnerNFTNameGroup,
 } from '@/utils/ownerNftGroups';
 import { fetchNftName } from '@/app/components/useNftCache';
@@ -32,6 +39,7 @@ import { cn } from '@/lib/utils';
 const ITEMS_PER_PAGE = 50;
 const COLLAPSED_TILES = 12;
 const SELECTED_NAMES_STORAGE_KEY = 'ownerNote.ownerCollection.selectedNames';
+const REWARD_MODE_STORAGE_KEY = 'ownerNote.ownerCollection.rewardMode';
 const NAME_FETCH_CONCURRENCY = 4;
 
 // 絞り込みで選んだ NFT 名はプロジェクトごとにブラウザへ保存する
@@ -41,6 +49,28 @@ const loadSelectedNames = (projectId: string): string[] => {
     return Array.isArray(stored) ? stored.filter((name): name is string => typeof name === 'string') : [];
   } catch {
     return [];
+  }
+};
+
+// 特典管理モード（使用済みの付け外し）のオンオフもプロジェクトごとに保存する
+const loadRewardMode = (projectId: string): boolean => {
+  try {
+    return localStorage.getItem(`${REWARD_MODE_STORAGE_KEY}.${projectId}`) === '1';
+  } catch {
+    return false;
+  }
+};
+
+const saveRewardMode = (projectId: string, enabled: boolean) => {
+  try {
+    const key = `${REWARD_MODE_STORAGE_KEY}.${projectId}`;
+    if (enabled) {
+      localStorage.setItem(key, '1');
+    } else {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    /* ストレージが使えない環境では保存しない */
   }
 };
 
@@ -73,6 +103,8 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedOwners, setExpandedOwners] = useState<Set<string>>(new Set());
   const [nameFetchProgress, setNameFetchProgress] = useState<{ done: number; total: number } | null>(null);
+  const [hideUsedOwners, setHideUsedOwners] = useState(false);
+  const [rewardMode, setRewardMode] = useState<boolean>(() => loadRewardMode(projectId));
   const { isLoading: isSyncingNFTs, updatingNFTs } = useNFTContext();
 
   useEffect(() => {
@@ -158,6 +190,49 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
     }
   };
 
+  // 特典の受け渡しに使った NFT を使用済みにする（使い回し防止のため NFT 側に記録する）
+  const setUsed = async (ids: string[], used: boolean, owner: string) => {
+    if (ids.length === 0) return;
+    try {
+      await dbManager.setNFTsUsed(ids, used, owner);
+      await loadData();
+    } catch (err) {
+      console.error('Failed to update used state:', err);
+    }
+  };
+
+  // 名前ごとに未使用の1枚（シリアルが小さいもの）を使用済みにする
+  const markGroupUsed = (owner: string, groups: OwnerNFTNameGroup[]) => {
+    const ids = groups
+      .map(group => {
+        const index = findNextUnusedIndex(group);
+        return index === -1 ? null : group.ids[index];
+      })
+      .filter((id): id is string => id !== null);
+    return setUsed(ids, true, owner);
+  };
+
+  // 名前ごとに最後に使用済みにした1枚を未使用へ戻す
+  const unmarkGroupUsed = (owner: string, groups: OwnerNFTNameGroup[]) => {
+    const ids = groups
+      .map(group => {
+        let latest = -1;
+        group.usedAt.forEach((usedAt, i) => {
+          if (usedAt === null) return;
+          if (latest === -1 || usedAt > (group.usedAt[latest] ?? 0)) latest = i;
+        });
+        return latest === -1 ? null : group.ids[latest];
+      })
+      .filter((id): id is string => id !== null);
+    return setUsed(ids, false, owner);
+  };
+
+  const handleRewardModeChange = (enabled: boolean) => {
+    setRewardMode(enabled);
+    saveRewardMode(projectId, enabled);
+    if (!enabled) setHideUsedOwners(false);
+  };
+
   const toggleExpanded = (owner: string) => {
     setExpandedOwners(prev => {
       const next = new Set(prev);
@@ -217,7 +292,28 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
       ? nameGroups
       : _.sortBy(nameGroups, g => (g.name !== null && selectedNameSet.has(g.name) ? 0 : 1));
 
-  const rows = pageOwners.map((ownerGroup, index) => {
+  // 絞り込み対象の名前グループと、その使用済み状況
+  const describeRow = (ownerGroup: OwnerNFTGroup) => {
+    const targetGroups = ownerGroup.nameGroups.filter(
+      g => g.name !== null && selectedNameSet.has(g.name)
+    );
+    const usedNames = targetGroups.filter(g => countUsed(g) > 0).length;
+    return {
+      targetGroups,
+      usedNames,
+      // 使用済みにした後で別のオーナーへ渡った NFT を含むか
+      hasTransferred: targetGroups.some(g => hasTransferredAfterUse(g, ownerGroup.owner)),
+      // 対象のどれかに未使用の1枚が残っていれば、まだ特典を渡せる
+      canMark: targetGroups.length > 0 && targetGroups.some(g => findNextUnusedIndex(g) !== -1),
+      isFullyUsed: targetGroups.length > 0 && usedNames === targetGroups.length,
+    };
+  };
+
+  const visibleOwners = rewardMode && hideUsedOwners
+    ? pageOwners.filter(ownerGroup => !describeRow(ownerGroup).isFullyUsed)
+    : pageOwners;
+
+  const rows = visibleOwners.map((ownerGroup, index) => {
     const addressInfo = addressInfos[ownerGroup.owner];
     const group = addressInfo?.groupId ? addressGroups[addressInfo.groupId] : null;
     return {
@@ -227,27 +323,90 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
       nftCount: ownerGroup.nftCount,
       namedKinds: ownerGroup.nameGroups.filter(g => g.name !== null).length,
       nameGroups: orderNameGroups(ownerGroup.nameGroups),
+      ...describeRow(ownerGroup),
     };
   });
 
+  const formatUsedAt = (usedAt: number) =>
+    new Date(usedAt).toLocaleDateString(lang === 'ja' ? 'ja-JP' : 'en-US');
+
+  // 対象の使用済み状況を示すバッジと、まとめて付け外しするボタン
+  const renderUsedControls = (row: (typeof rows)[number]) => {
+    if (!rewardMode || row.targetGroups.length === 0) return null;
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        {row.hasTransferred && (
+          <Badge variant="destructive" className="gap-1 whitespace-nowrap">
+            <AlertTriangle className="h-3 w-3" />
+            {page.used.badgeTransferred}
+          </Badge>
+        )}
+        {row.usedNames > 0 && (
+          <Badge variant={row.isFullyUsed ? 'default' : 'secondary'} className="whitespace-nowrap">
+            {row.isFullyUsed
+              ? page.used.badgeUsed
+              : page.used.badgePartial
+                  .replace('{used}', row.usedNames.toLocaleString())
+                  .replace('{total}', row.targetGroups.length.toLocaleString())}
+          </Badge>
+        )}
+        {row.canMark ? (
+          <Button size="sm" variant="outline" onClick={() => markGroupUsed(row.owner, row.targetGroups)}>
+            {page.used.mark}
+          </Button>
+        ) : (
+          <Button size="sm" variant="ghost" onClick={() => unmarkGroupUsed(row.owner, row.targetGroups)}>
+            {page.used.unmark}
+          </Button>
+        )}
+      </div>
+    );
+  };
+
   // 保有 NFT を画像タイルで表示する。名前ごとに1枚（×枚数）、名前未取得の NFT は1件ずつ。
+  // タイルを押すと、その名前の未使用1枚を使用済みにする（すべて使用済みなら最後の1枚を戻す）。
   const renderNameGroups = (owner: string, nameGroups: OwnerNFTNameGroup[], className?: string) => {
+    const usedLabel = (usedAt: number | null, usedOwner: string | null) => {
+      if (!rewardMode || usedAt === null) return '';
+      let label = `\n${page.used.usedAtLabel.replace('{date}', formatUsedAt(usedAt))}`;
+      if (usedOwner) {
+        label += `\n${page.used.usedByLabel.replace('{address}', usedOwner)}`;
+        if (usedOwner !== owner) label += `\n${page.used.transferredNote}`;
+      }
+      return label;
+    };
+
     const tiles = nameGroups.flatMap(nameGroup => {
       if (nameGroup.name === null) {
         return nameGroup.nftIds.map((nftId, i) => ({
           key: nftId,
           uri: nameGroup.uris[i],
-          title: `${page.unnamed}\n#${nameGroup.serials[i]}`,
+          title:
+            `${page.unnamed}\n#${nameGroup.serials[i]}` +
+            usedLabel(nameGroup.usedAt[i], nameGroup.usedOwners[i]),
           count: 1,
+          usedCount: nameGroup.usedAt[i] === null ? 0 : 1,
+          isTransferred: hasTransferredAfterUse(nameGroup, owner),
           isSelected: false,
+          onToggle: () => setUsed([nameGroup.ids[i]], nameGroup.usedAt[i] === null, owner),
         }));
       }
+      const usedIndex = nameGroup.usedAt.findIndex(usedAt => usedAt !== null);
       return [{
         key: `name:${nameGroup.name}`,
         uri: nameGroup.uris[0],
-        title: `${nameGroup.name}\n${nameGroup.serials.map(serial => `#${serial}`).join(', ')}`,
+        title:
+          `${nameGroup.name}\n${nameGroup.serials.map(serial => `#${serial}`).join(', ')}` +
+          usedLabel(usedIndex === -1 ? null : nameGroup.usedAt[usedIndex], nameGroup.usedOwners[usedIndex] ?? null),
         count: nameGroup.nftIds.length,
+        usedCount: countUsed(nameGroup),
+        isTransferred: hasTransferredAfterUse(nameGroup, owner),
         isSelected: selectedNameSet.has(nameGroup.name),
+        // 押すたびに未使用を1枚ずつ消費し、すべて使用済みになったら次の1押しで全部戻す
+        onToggle: () =>
+          findNextUnusedIndex(nameGroup) === -1
+            ? setUsed(nameGroup.ids, false, owner)
+            : markGroupUsed(owner, [nameGroup]),
       }];
     });
     const isExpanded = expandedOwners.has(owner);
@@ -257,21 +416,42 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
     return (
       <div className={cn('flex flex-wrap items-center gap-2', className)}>
         {visibleTiles.map(tile => (
-          <div
+          <button
             key={tile.key}
+            type="button"
             title={tile.title}
+            aria-label={tile.title}
+            onClick={rewardMode ? tile.onToggle : undefined}
+            disabled={!rewardMode}
             className={cn(
-              'relative shrink-0 rounded-md',
+              'relative shrink-0 rounded-md transition-opacity',
+              rewardMode && 'hover:opacity-80',
               selectedNameSet.size > 0 && !tile.isSelected && 'opacity-40'
             )}
           >
-            <NFTThumbnail uri={tile.uri} alt={tile.title} className="h-14 w-14" />
-            {tile.count > 1 && (
-              <span className="absolute bottom-0.5 right-0.5 rounded bg-background/90 px-1 text-[10px] font-medium leading-4">
-                ×{tile.count}
+            <NFTThumbnail
+              uri={tile.uri}
+              alt={tile.title}
+              className={cn('h-14 w-14', rewardMode && tile.usedCount > 0 && 'grayscale')}
+            />
+            {rewardMode && tile.usedCount > 0 && (
+              <span
+                className={cn(
+                  'absolute -left-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full',
+                  tile.isTransferred
+                    ? 'bg-destructive text-destructive-foreground'
+                    : 'bg-primary text-primary-foreground'
+                )}
+              >
+                {tile.isTransferred ? <AlertTriangle className="h-3 w-3" /> : <Check className="h-3 w-3" />}
               </span>
             )}
-          </div>
+            {tile.count > 1 && (
+              <span className="absolute bottom-0.5 right-0.5 rounded bg-background/90 px-1 text-[10px] font-medium leading-4">
+                {rewardMode && tile.usedCount > 0 ? `${tile.usedCount}/${tile.count}` : `×${tile.count}`}
+              </span>
+            )}
+          </button>
         ))}
         {tiles.length > COLLAPSED_TILES && (
           <Button
@@ -339,13 +519,25 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
         />
       </div>
 
-      <div className="text-sm text-muted-foreground">
-        {selectedNames.length > 0
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+        <span>{selectedNames.length > 0
           ? page.status.matched
               .replace('{matched}', filteredOwners.length.toLocaleString())
               .replace('{total}', ownerGroups.length.toLocaleString())
               .replace('{count}', selectedNames.length.toLocaleString())
-          : page.status.owners.replace('{count}', ownerGroups.length.toLocaleString())}
+          : page.status.owners.replace('{count}', ownerGroups.length.toLocaleString())}</span>
+        <div className="flex flex-wrap items-center gap-4">
+          {rewardMode && selectedNames.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Switch id="hide-used" checked={hideUsedOwners} onCheckedChange={setHideUsedOwners} />
+              <Label htmlFor="hide-used" className="font-normal">{page.used.hideUsed}</Label>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Switch id="reward-mode" checked={rewardMode} onCheckedChange={handleRewardModeChange} />
+            <Label htmlFor="reward-mode" className="font-normal">{page.used.modeLabel}</Label>
+          </div>
+        </div>
       </div>
 
       {/* PC: テーブル表示 */}
@@ -372,7 +564,12 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
                 </TableCell>
                 <TableCell className="text-right">{row.nftCount.toLocaleString()}</TableCell>
                 <TableCell className="text-right">{row.namedKinds.toLocaleString()}</TableCell>
-                <TableCell>{renderNameGroups(row.owner, row.nameGroups, 'min-w-[16rem]')}</TableCell>
+                <TableCell>
+                  <div className="space-y-2">
+                    {renderUsedControls(row)}
+                    {renderNameGroups(row.owner, row.nameGroups, 'min-w-[16rem]')}
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -394,6 +591,7 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
                 <div>{page.table.kinds}: <span className="text-foreground font-medium">{row.namedKinds.toLocaleString()}</span></div>
               </div>
             </div>
+            {renderUsedControls(row)}
             {renderNameGroups(row.owner, row.nameGroups)}
           </div>
         ))}

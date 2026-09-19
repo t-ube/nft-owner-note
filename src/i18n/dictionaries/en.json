@@ -234,6 +234,18 @@
           "fetchNames": "Fetch names",
           "fetchingNames": "Fetching names... ({done}/{total})"
         },
+        "used": {
+          "modeLabel": "Reward mode",
+          "mark": "Mark as used",
+          "unmark": "Undo used",
+          "badgeUsed": "Used",
+          "badgePartial": "Partly used ({used}/{total})",
+          "hideUsed": "Hide used owners",
+          "usedAtLabel": "Used on {date}",
+          "usedByLabel": "Held by {address} when used",
+          "transferredNote": "Transferred to another owner after use",
+          "badgeTransferred": "Transferred after use"
+        },
         "table": {
           "owner": "Owner",
           "nftCount": "NFTs",

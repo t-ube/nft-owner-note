@@ -39,6 +39,10 @@ export interface NFToken extends NFTokenBase {
   userValue2?: number | null;
   color?: string | null;
   memo?: string | null;
+  /** 特典を渡した日時。値があれば使用済み（受け渡しによる使い回しを防ぐため NFT 側に持たせる）。 */
+  usedAt?: number | null;
+  /** 使用済みにした時点の保有アドレス。 */
+  usedOwner?: string | null;
 }
 
 export interface ProjectOwnerValue {
@@ -509,6 +513,39 @@ class DatabaseManager {
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve();
+    });
+  }
+
+  /**
+   * 指定した NFT の使用済み状態をまとめて更新する。
+   * `ids` は nfts ストアのキー（`${projectId}-${nft_id}`）。
+   */
+  async setNFTsUsed(ids: string[], used: boolean, owner?: string | null): Promise<NFToken[]> {
+    const db = await this.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('nfts', 'readwrite');
+      const store = transaction.objectStore('nfts');
+      const updated: NFToken[] = [];
+      const now = Date.now();
+
+      for (const id of ids) {
+        const getRequest = store.get(id);
+        getRequest.onsuccess = () => {
+          const nft = getRequest.result as NFToken | undefined;
+          if (!nft) return;
+          const next: NFToken = {
+            ...nft,
+            usedAt: used ? now : null,
+            usedOwner: used ? (owner ?? nft.owner) : null,
+            updatedAt: now,
+          };
+          store.put(next);
+          updated.push(next);
+        };
+      }
+
+      transaction.oncomplete = () => resolve(updated);
+      transaction.onerror = () => reject(transaction.error);
     });
   }
 

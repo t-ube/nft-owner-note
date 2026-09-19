@@ -234,6 +234,18 @@
           "fetchNames": "名前を取得",
           "fetchingNames": "名前を取得中... ({done}/{total})"
         },
+        "used": {
+          "modeLabel": "特典管理モード",
+          "mark": "使用済みにする",
+          "unmark": "使用済みを取り消す",
+          "badgeUsed": "使用済み",
+          "badgePartial": "一部使用済み（{used}/{total}）",
+          "hideUsed": "使用済みのオーナーを隠す",
+          "usedAtLabel": "{date} に使用済み",
+          "usedByLabel": "使用時の保有者: {address}",
+          "transferredNote": "使用後に別のオーナーへ移動しています",
+          "badgeTransferred": "使用後に移動"
+        },
         "table": {
           "owner": "オーナー",
           "nftCount": "保有数",
