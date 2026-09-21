@@ -16,7 +16,7 @@ interface CollectionFaceProps {
 }
 
 /** face_uri は XRPL の生 hex なので hex_uri で画像を取る。 */
-const faceImageUrl = (hexUri: string) =>
+export const faceImageUrl = (hexUri: string) =>
   `${CACHE_API_BASE}/api/image?hex_uri=${encodeURIComponent(hexUri)}`;
 
 // 未キャッシュだった hex は一度だけ生成を依頼する

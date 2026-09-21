@@ -298,6 +298,53 @@
           "loadFailed": "活動実績の読み込みに失敗しました"
         }
       },
+      "ownerPlant": {
+        "title": "オーナー活性図",
+        "description": "コレクションを植物に見立てて、オーナーが元気かどうかを表した図です。",
+        "status": {
+          "loading": "活性図を読み込み中...",
+          "showing": "{shown} / {total} ウォレット",
+          "noData": "活性図のデータがありません"
+        },
+        "actions": {
+          "limit": "表示数（購入額の上位）",
+          "all": "すべて"
+        },
+        "hub": {
+          "fallback": "taxon {taxon}"
+        },
+        "legend": {
+          "toggle": "この図の見方",
+          "branchLabel": "枝",
+          "branch": "コレクション。表示中のものは枠が太くなります。",
+          "nodeLabel": "丸",
+          "node": "オーナー。",
+          "lineLabel": "線",
+          "line": "そのコレクションを買った・もらったことを表します。",
+          "sizeLabel": "大きさ",
+          "size": "マーケットで有償購入した合計額（XRP）。取引額を確定できた購入のみを合算しています。ローンチパッド経由のミントは含みません。",
+          "sizeShort": "大きさ = 購入額",
+          "colorLabel": "最終活動",
+          "color": "最後に取得した時期。緑は最近、茶色になるほど前です。",
+          "days": "日前",
+          "sproutLabel": "新芽",
+          "sprout": "30日以内に加わった新しいオーナー。",
+          "leavesLabel": "葉",
+          "leaves": "取得した数。",
+          "leavesShort": "葉 = 取得件数",
+          "note": "手放したウォレットも含みます。"
+        },
+        "tooltip": {
+          "lastActive": "最終活動",
+          "acquired": "取得件数",
+          "spend": "購入額",
+          "collections": "コレクション",
+          "wallets": "ウォレット数"
+        },
+        "errors": {
+          "loadFailed": "活性図の読み込みに失敗しました"
+        }
+      },
       "nftListPage": {
         "status": {
           "showing": "{total}個中{start}から{end}個目のNFTを表示中",

@@ -298,6 +298,53 @@
           "loadFailed": "Failed to load activity data"
         }
       },
+      "ownerPlant": {
+        "title": "Owner Plant",
+        "description": "Your collections drawn as a plant, showing how lively your owners are.",
+        "status": {
+          "loading": "Loading plant...",
+          "showing": "{shown} / {total} wallets",
+          "noData": "No plant data"
+        },
+        "actions": {
+          "limit": "Show (top spenders)",
+          "all": "All"
+        },
+        "hub": {
+          "fallback": "taxon {taxon}"
+        },
+        "legend": {
+          "toggle": "How to read this chart",
+          "branchLabel": "Branch",
+          "branch": "A collection. The one you are viewing has a thicker ring.",
+          "nodeLabel": "Circle",
+          "node": "An owner.",
+          "lineLabel": "Line",
+          "line": "The owner bought or received from that collection.",
+          "sizeLabel": "Size",
+          "size": "Total paid for marketplace purchases, in XRP. Only purchases with a confirmed price are included. Launchpad mints are not included.",
+          "sizeShort": "Size = spent",
+          "colorLabel": "Last active",
+          "color": "When they last acquired. Green is recent; the browner, the longer ago.",
+          "days": "days ago",
+          "sproutLabel": "Sprout",
+          "sprout": "A new owner who joined within 30 days.",
+          "leavesLabel": "Leaves",
+          "leaves": "How many they acquired.",
+          "leavesShort": "Leaves = acquisitions",
+          "note": "Includes wallets that no longer hold any."
+        },
+        "tooltip": {
+          "lastActive": "Last active",
+          "acquired": "Acquisitions",
+          "spend": "Spent",
+          "collections": "Collections",
+          "wallets": "Wallets"
+        },
+        "errors": {
+          "loadFailed": "Failed to load plant data"
+        }
+      },
       "nftListPage": {
         "status": {
           "showing": "Showing {start} to {end} of {total} NFTs",

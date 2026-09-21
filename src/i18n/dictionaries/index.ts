@@ -305,6 +305,53 @@ export interface Dictionary {
           loadFailed: string;
         };
       };
+      ownerPlant: {
+        title: string;
+        description: string;
+        status: {
+          loading: string;
+          showing: string;
+          noData: string;
+        };
+        actions: {
+          limit: string;
+          all: string;
+        };
+        hub: {
+          fallback: string;
+        };
+        legend: {
+          toggle: string;
+          branchLabel: string;
+          branch: string;
+          nodeLabel: string;
+          node: string;
+          lineLabel: string;
+          line: string;
+          sizeLabel: string;
+          size: string;
+          sizeShort: string;
+          colorLabel: string;
+          color: string;
+          days: string;
+          sproutLabel: string;
+          sprout: string;
+          leavesLabel: string;
+          leaves: string;
+          leavesShort: string;
+          note: string;
+        };
+        tooltip: {
+          lastActive: string;
+          acquired: string;
+          spend: string;
+          collections: string;
+          wallets: string;
+        };
+        errors: {
+          loadFailed: string;
+        };
+      };
       nftListPage: {
         status: {
           showing: string;
