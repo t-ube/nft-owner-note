@@ -11,20 +11,22 @@ import {
 interface NFTSiteWalletIconsProps {
   wallet: string;
   issuer: string;
-  taxon: string;
+  taxon?: string;
 }
 
 const NFTSiteWalletIcons: React.FC<NFTSiteWalletIconsProps> = ({ wallet, issuer, taxon }) => {
+  const bithompURL = taxon === undefined ? `https://xrplexplorer.com/en/nft-explorer?issuer=${issuer}&owner=${wallet}&includeWithoutMediaData=true` : `https://xrplexplorer.com/en/nft-explorer?issuer=${issuer}&owner=${wallet}&taxon=${taxon}&includeWithoutMediaData=true`;
+  const xrpcafeURL = taxon === undefined ? `https://xrp.cafe/profile/${wallet}` : `https://xrp.cafe/usercollection/${wallet}/${issuer}/${taxon}`;
   const sites = [
     {
       name: 'Bithomp',
-      url: `https://xrplexplorer.com/en/nft-explorer?issuer=${issuer}&owner=${wallet}&taxon=${taxon}&includeWithoutMediaData=true`,
+      url: bithompURL,
       icon: 'images/bithomp.png',
       description: 'View on Bithomp'
     },
     {
       name: 'XRPCAFE',
-      url: `https://xrp.cafe/usercollection/${wallet}/${issuer}/${taxon}`,
+      url: xrpcafeURL,
       icon: 'images/xrpcafe.jpg',
       description: 'View on XRPCAFE'
     }

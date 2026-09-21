@@ -9,7 +9,34 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { AlertCircle, ChevronDown, HelpCircle, Loader2, Maximize, ZoomIn, ZoomOut } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  AlertCircle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronDown,
+  HelpCircle,
+  Loader2,
+  Maximize,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
+import NFTSiteWalletIcons from '@/app/components/NFTSiteWalletIcons';
 import { useCollectionPlant, CollectionPlant, PlantHub, PlantNode } from '@/app/components/useCollectionPlant';
 import { faceImageUrl } from '@/app/components/CollectionFace';
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
@@ -319,6 +346,264 @@ function clampView(view: View, vb: Layout['viewBox']): View {
   };
 }
 
+type SortField = 'spend' | 'leaves' | 'daysSinceLast' | 'daysSinceFirst';
+type SortDirection = 'asc' | 'desc';
+
+interface OwnerPlantListProps {
+  lang: string;
+  issuer: string;
+  nodes: PlacedNode[];
+  dict: Dictionary['project']['detail']['ownerPlant'];
+  groupOf: (wallet: string) => AddressGroup | null;
+  hubOf: (taxon: number) => PlantHub | null;
+  hubName: (taxon: number) => string;
+  /** 行にカーソルを合わせたとき、図のノードを強調する */
+  onHighlight: (wallet: string | null) => void;
+}
+
+/** 一覧用のコレクションアイコン。画像が無いときは taxon 番号を出す */
+const HubIcon: React.FC<{ hub: PlantHub | null; taxon: number }> = ({ hub, taxon }) => {
+  const [error, setError] = useState(false);
+  const url = hub && !error ? hubIconUrl(hub.icon) : null;
+  if (url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={hub?.name ?? String(taxon)}
+        loading="lazy"
+        onError={() => setError(true)}
+        className="h-8 w-8 rounded-full border object-cover"
+      />
+    );
+  }
+  return (
+    <span className="flex h-8 w-8 items-center justify-center rounded-full border bg-muted text-xs text-muted-foreground">
+      {taxon}
+    </span>
+  );
+};
+
+/** 図に描いているオーナーの一覧 */
+const OwnerPlantList: React.FC<OwnerPlantListProps> = ({
+  lang,
+  issuer,
+  nodes,
+  dict,
+  groupOf,
+  hubOf,
+  hubName,
+  onHighlight,
+}) => {
+  const [sproutOnly, setSproutOnly] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
+  const [sort, setSort] = useState<{ field: SortField; direction: SortDirection }>({
+    field: 'spend',
+    direction: 'desc',
+  });
+
+  const rows = useMemo(() => {
+    const filtered = sproutOnly ? nodes.filter(n => n.isSprout) : nodes;
+    // 日数が無いものは並び順に関係なく末尾へ
+    return _.orderBy(
+      filtered,
+      [n => n[sort.field] === null, sort.field, 'wallet'],
+      ['asc', sort.direction, 'asc']
+    );
+  }, [nodes, sproutOnly, sort]);
+
+  const handleSort = (field: SortField) => {
+    setSort(prev =>
+      prev.field === field
+        ? { field, direction: prev.direction === 'desc' ? 'asc' : 'desc' }
+        : { field, direction: 'desc' }
+    );
+  };
+
+  const formatXrp = (value: number) =>
+    value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+
+  const formatDaysAgo = (days: number) =>
+    new Intl.RelativeTimeFormat(lang, { numeric: 'auto' }).format(-days, 'day');
+
+  const formatDuration = (days: number) =>
+    new Intl.NumberFormat(lang, { style: 'unit', unit: 'day', unitDisplay: 'long' }).format(days);
+
+  const SortableHeader = ({
+    field,
+    children,
+    className,
+  }: {
+    field: SortField;
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    <TableHead className={className}>
+      <Button
+        variant="ghost"
+        onClick={() => handleSort(field)}
+        className="h-8 p-0 font-semibold hover:bg-transparent whitespace-normal text-right"
+      >
+        {children}
+        {sort.field !== field ? (
+          <ArrowUpDown className="ml-1 h-4 w-4" />
+        ) : sort.direction === 'asc' ? (
+          <ArrowUp className="ml-1 h-4 w-4" />
+        ) : (
+          <ArrowDown className="ml-1 h-4 w-4" />
+        )}
+      </Button>
+    </TableHead>
+  );
+
+  // 列の説明（表の列と同じ並び）
+  const legendItems: [string, string][] = [
+    [dict.list.owner, dict.list.legend.owner],
+    [dict.list.spend, dict.list.legend.spend],
+    [dict.list.leaves, dict.list.legend.leaves],
+    [dict.list.lastAt, dict.list.legend.lastAt],
+    [dict.list.firstAt, dict.list.legend.firstAt],
+    [dict.list.collections, dict.list.legend.collections],
+  ];
+
+  return (
+    <div className="space-y-3">
+      <Collapsible open={legendOpen} onOpenChange={setLegendOpen}>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <HelpCircle className="h-4 w-4" />
+            {dict.list.legend.toggle}
+            <ChevronDown className={`h-4 w-4 transition-transform ${legendOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-2 rounded-md border bg-muted/30 p-3 sm:p-4 text-sm">
+            <dl className="grid gap-x-6 gap-y-2 md:grid-cols-2">
+              {legendItems.map(([label, text]) => (
+                <div key={label}>
+                  <dt className="font-medium">{label}</dt>
+                  <dd className="text-muted-foreground">{text}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="plantSproutOnly"
+            checked={sproutOnly}
+            onCheckedChange={checked => setSproutOnly(checked as boolean)}
+          />
+          <label htmlFor="plantSproutOnly" className="text-sm">
+            {dict.list.sproutOnly}
+          </label>
+        </div>
+        <div className="text-sm text-gray-500">
+          {dict.list.showing.replace('{count}', rows.length.toLocaleString())}
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="py-8 text-center text-sm text-gray-500">{dict.status.noData}</div>
+      ) : (
+        <div className="border rounded-md overflow-x-auto" onMouseLeave={() => onHighlight(null)}>
+          <TooltipProvider>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[140px] max-w-[220px] whitespace-normal">{dict.list.owner}</TableHead>
+                <SortableHeader field="spend" className="min-w-[100px] text-right">{dict.list.spend}</SortableHeader>
+                <SortableHeader field="leaves" className="min-w-[80px] text-right">{dict.list.leaves}</SortableHeader>
+                <SortableHeader field="daysSinceLast" className="min-w-[90px] text-right">{dict.list.lastAt}</SortableHeader>
+                <SortableHeader field="daysSinceFirst" className="hidden md:table-cell min-w-[90px] text-right">{dict.list.firstAt}</SortableHeader>
+                <TableHead className="hidden md:table-cell min-w-[160px] whitespace-normal">{dict.list.collections}</TableHead>
+                <TableHead className="hidden sm:table-cell min-w-[120px] whitespace-normal">{dict.list.links}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map(node => {
+                const group = groupOf(node.wallet);
+                return (
+                  <TableRow key={node.wallet} onMouseEnter={() => onHighlight(node.wallet)}>
+                    <TableCell className="min-w-[140px] max-w-[220px] whitespace-normal break-words">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="inline-block h-3 w-3 shrink-0 rounded-full"
+                          style={{ background: node.color }}
+                          aria-hidden
+                        />
+                        <div className="min-w-0">
+                          {group?.name && <div>{group.name}</div>}
+                          <div className={group?.name ? 'text-xs font-mono text-muted-foreground' : 'font-mono'}>
+                            {`${node.wallet.slice(0, 6)}...${node.wallet.slice(-4)}`}
+                          </div>
+                        </div>
+                        {node.isSprout && (
+                          <span
+                            className="shrink-0 rounded px-1 text-[10px] font-medium text-black"
+                            style={{ background: SPROUT_COLOR }}
+                          >
+                            {dict.legend.sproutLabel}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{formatXrp(node.spend)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{node.leaves.toLocaleString()}</TableCell>
+                    <TableCell className="text-right whitespace-nowrap tabular-nums">
+                      {node.daysSinceLast === null ? '-' : formatDaysAgo(node.daysSinceLast)}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-right whitespace-nowrap tabular-nums">
+                      {node.daysSinceFirst === null ? '-' : formatDuration(node.daysSinceFirst)}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell whitespace-normal">
+                      <div className="flex flex-wrap gap-2">
+                        {node.taxa.map(t => {
+                          const hub = hubOf(t.taxon);
+                          return (
+                            <Tooltip key={t.taxon}>
+                              <TooltipTrigger asChild>
+                                <a
+                                  href={`https://xrp.cafe/usercollection/${node.wallet}/${issuer}/${t.taxon}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="relative inline-block rounded-full transition-opacity hover:opacity-80"
+                                >
+                                  <HubIcon hub={hub} taxon={t.taxon} />
+                                  <span className="absolute -right-1.5 -top-1.5 min-w-[1.1rem] rounded-full border bg-background px-1 text-center text-[10px] leading-[1rem] text-muted-foreground tabular-nums">
+                                    {t.leaves.toLocaleString()}
+                                  </span>
+                                </a>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {hubName(t.taxon)} ({t.leaves.toLocaleString()})
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <NFTSiteWalletIcons wallet={node.wallet} issuer={issuer} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+          </TooltipProvider>
+        </div>
+      )}
+    </div>
+  );
+};
+
 type Hover =
   | { kind: 'node'; index: number; x: number; y: number }
   | { kind: 'hub'; taxon: number; x: number; y: number };
@@ -329,6 +614,7 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
   const [limit, setLimit] = useState(300);
   const [legendOpen, setLegendOpen] = useState(false);
   const [hover, setHover] = useState<Hover | null>(null);
+  const [highlightWallet, setHighlightWallet] = useState<string | null>(null);
   const [brokenIcons, setBrokenIcons] = useState<Set<number>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -659,8 +945,8 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
                   cy={node.y}
                   r={node.r}
                   fill={node.color}
-                  stroke={hoveredNode === node ? 'currentColor' : 'hsl(var(--background))'}
-                  strokeWidth={hoveredNode === node ? 1.5 : 0.8}
+                  stroke={hoveredNode === node || highlightWallet === node.wallet ? 'currentColor' : 'hsl(var(--background))'}
+                  strokeWidth={hoveredNode === node || highlightWallet === node.wallet ? 2 : 0.8}
                 />
               </g>
             ))}
@@ -815,6 +1101,20 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
           </div>
         )}
       </div>
+
+      <OwnerPlantList
+        lang={lang}
+        issuer={issuer}
+        nodes={layout.nodes}
+        dict={ownerPlant}
+        groupOf={groupOf}
+        hubOf={t => hubByTaxon.get(t) ?? null}
+        hubName={t => {
+          const h = hubByTaxon.get(t);
+          return h ? hubName(h) : ownerPlant.hub.fallback.replace('{taxon}', String(t));
+        }}
+        onHighlight={setHighlightWallet}
+      />
     </div>
   );
 };

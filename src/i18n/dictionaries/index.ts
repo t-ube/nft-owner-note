@@ -344,6 +344,26 @@ export interface Dictionary {
           leavesShort: string;
           note: string;
         };
+        list: {
+          sproutOnly: string;
+          showing: string;
+          owner: string;
+          spend: string;
+          leaves: string;
+          lastAt: string;
+          firstAt: string;
+          collections: string;
+          links: string;
+          legend: {
+            toggle: string;
+            owner: string;
+            spend: string;
+            leaves: string;
+            lastAt: string;
+            firstAt: string;
+            collections: string;
+          };
+        };
         tooltip: {
           lastActive: string;
           acquired: string;
