@@ -256,6 +256,48 @@
           "loadFailed": "NFTデータの読み込みに失敗しました"
         }
       },
+      "ownerActivity": {
+        "title": "オーナー活動",
+        "description": "このコレクションを一度でも取得したウォレットの活動実績です。すでに手放したウォレットも含みます（現在の保有数が0のものは薄く表示）。集計は定期更新のため、最新の取引が反映されていないことがあります。",
+        "status": {
+          "loading": "活動実績を読み込み中...",
+          "showing": "{count} ウォレット",
+          "noData": "活動実績のデータがありません"
+        },
+        "actions": {
+          "holdersOnly": "現在の保有者のみ",
+          "export": "CSVエクスポート"
+        },
+        "table": {
+          "owner": "オーナー",
+          "name": "名前",
+          "holding": "保有数",
+          "purchaseCount": "購入回数",
+          "purchaseXrp": "購入額 (XRP)",
+          "distributionCount": "配布受取",
+          "launchpadCount": "ローンチパッド",
+          "activeDays": "活動日数",
+          "activeMonths": "活動月数",
+          "firstAt": "オーナー歴",
+          "lastAt": "最終活動",
+          "links": "リンク"
+        },
+        "legend": {
+          "toggle": "各列の説明",
+          "holding": "現在このウォレットが保有している数。読み込み済みのNFTデータから数えるため、NFTの取得が終わるまでは少なく出ることがあります。",
+          "purchaseXrp": "マーケットで有償購入した合計額（XRP）。取引額を確定できた購入のみを合算しています。ローンチパッド経由のミントは含みません。",
+          "purchaseCount": "マーケットで有償購入した回数。ローンチパッド経由のミントは含みません。",
+          "distributionCount": "無償の配布（エアドロップなど）で受け取った回数。",
+          "launchpadCount": "ローンチパッド経由のミントで受け取った回数。",
+          "activeDays": "購入・配布・ローンチパッドなどでNFTを取得した日の数（UTCの日付単位）。",
+          "activeMonths": "NFTを取得した月の数。長期間にわたって継続的に集めているかの目安になります。",
+          "lastAt": "最後にNFTを取得してから何日経ったか。売却や出品は含みません。カーソルを合わせると日時を表示します。",
+          "firstAt": "初めてNFTを取得してから何日経ったか。すべて手放した後も日数は増え続けます。カーソルを合わせると日時を表示します。"
+        },
+        "errors": {
+          "loadFailed": "活動実績の読み込みに失敗しました"
+        }
+      },
       "nftListPage": {
         "status": {
           "showing": "{total}個中{start}から{end}個目のNFTを表示中",

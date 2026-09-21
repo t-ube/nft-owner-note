@@ -256,6 +256,48 @@
           "loadFailed": "Failed to load NFT data"
         }
       },
+      "ownerActivity": {
+        "title": "Owner Activity",
+        "description": "Activity of every wallet that has ever acquired an NFT from this collection, including wallets that no longer hold any (shown dimmed). Stats are updated periodically, so the latest trades may not be reflected yet.",
+        "status": {
+          "loading": "Loading activity...",
+          "showing": "{count} wallets",
+          "noData": "No activity data"
+        },
+        "actions": {
+          "holdersOnly": "Current holders only",
+          "export": "Export CSV"
+        },
+        "table": {
+          "owner": "Owner",
+          "name": "Name",
+          "holding": "Holding",
+          "purchaseCount": "Purchases",
+          "purchaseXrp": "Spent (XRP)",
+          "distributionCount": "Airdrops",
+          "launchpadCount": "Launchpad",
+          "activeDays": "Active days",
+          "activeMonths": "Active months",
+          "firstAt": "Owner for",
+          "lastAt": "Last active",
+          "links": "Links"
+        },
+        "legend": {
+          "toggle": "About these columns",
+          "holding": "How many this wallet holds now. Counted from the NFT data loaded so far, so it may be low until all NFTs have been fetched.",
+          "purchaseXrp": "Total paid for marketplace purchases, in XRP. Only purchases with a confirmed price are included. Launchpad mints are not included.",
+          "purchaseCount": "Number of paid marketplace purchases. Launchpad mints are not included.",
+          "distributionCount": "Number of NFTs received through free distributions such as airdrops.",
+          "launchpadCount": "Number of NFTs received by minting through the launchpad.",
+          "activeDays": "Number of days (UTC) on which the wallet acquired an NFT by purchase, distribution, launchpad, etc.",
+          "activeMonths": "Number of months in which the wallet acquired an NFT. A hint of how steadily it has been collecting.",
+          "lastAt": "Days since the wallet last acquired an NFT. Sales and listings are not counted. Hover to see the exact date.",
+          "firstAt": "Days since the wallet first acquired an NFT. Keeps counting even after it has sold them all. Hover to see the exact date."
+        },
+        "errors": {
+          "loadFailed": "Failed to load activity data"
+        }
+      },
       "nftListPage": {
         "status": {
           "showing": "Showing {start} to {end} of {total} NFTs",

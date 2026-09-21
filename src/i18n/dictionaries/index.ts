@@ -263,6 +263,48 @@ export interface Dictionary {
           loadFailed: string;
         };
       };
+      ownerActivity: {
+        title: string;
+        description: string;
+        status: {
+          loading: string;
+          showing: string;
+          noData: string;
+        };
+        actions: {
+          holdersOnly: string;
+          export: string;
+        };
+        table: {
+          owner: string;
+          name: string;
+          holding: string;
+          purchaseCount: string;
+          purchaseXrp: string;
+          distributionCount: string;
+          launchpadCount: string;
+          activeDays: string;
+          activeMonths: string;
+          firstAt: string;
+          lastAt: string;
+          links: string;
+        };
+        legend: {
+          toggle: string;
+          holding: string;
+          purchaseXrp: string;
+          purchaseCount: string;
+          distributionCount: string;
+          launchpadCount: string;
+          activeDays: string;
+          activeMonths: string;
+          lastAt: string;
+          firstAt: string;
+        };
+        errors: {
+          loadFailed: string;
+        };
+      };
       nftListPage: {
         status: {
           showing: string;
