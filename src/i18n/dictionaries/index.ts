@@ -316,6 +316,9 @@ export interface Dictionary {
         actions: {
           limit: string;
           all: string;
+          zoomIn: string;
+          zoomOut: string;
+          zoomReset: string;
         };
         hub: {
           fallback: string;

@@ -308,7 +308,10 @@
         },
         "actions": {
           "limit": "表示数（購入額の上位）",
-          "all": "すべて"
+          "all": "すべて",
+          "zoomIn": "拡大",
+          "zoomOut": "縮小",
+          "zoomReset": "全体を表示"
         },
         "hub": {
           "fallback": "taxon {taxon}"
@@ -330,13 +333,13 @@
           "sproutLabel": "新芽",
           "sprout": "30日以内に加わった新しいオーナー。",
           "leavesLabel": "葉",
-          "leaves": "取得した数。",
-          "leavesShort": "葉 = 取得件数",
+          "leaves": "入手NFT数。",
+          "leavesShort": "葉 = 入手NFT数",
           "note": "手放したウォレットも含みます。"
         },
         "tooltip": {
           "lastActive": "最終活動",
-          "acquired": "取得件数",
+          "acquired": "入手NFT数",
           "spend": "購入額",
           "collections": "コレクション",
           "wallets": "ウォレット数"

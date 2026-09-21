@@ -308,7 +308,10 @@
         },
         "actions": {
           "limit": "Show (top spenders)",
-          "all": "All"
+          "all": "All",
+          "zoomIn": "Zoom in",
+          "zoomOut": "Zoom out",
+          "zoomReset": "Fit to view"
         },
         "hub": {
           "fallback": "taxon {taxon}"
@@ -330,13 +333,13 @@
           "sproutLabel": "Sprout",
           "sprout": "A new owner who joined within 30 days.",
           "leavesLabel": "Leaves",
-          "leaves": "How many they acquired.",
-          "leavesShort": "Leaves = acquisitions",
+          "leaves": "Number of NFTs acquired.",
+          "leavesShort": "Leaves = NFTs acquired",
           "note": "Includes wallets that no longer hold any."
         },
         "tooltip": {
           "lastActive": "Last active",
-          "acquired": "Acquisitions",
+          "acquired": "NFTs acquired",
           "spend": "Spent",
           "collections": "Collections",
           "wallets": "Wallets"

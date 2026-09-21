@@ -9,7 +9,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { AlertCircle, ChevronDown, HelpCircle, Loader2 } from "lucide-react";
+import { AlertCircle, ChevronDown, HelpCircle, Loader2, Maximize, ZoomIn, ZoomOut } from "lucide-react";
 import { useCollectionPlant, CollectionPlant, PlantHub, PlantNode } from '@/app/components/useCollectionPlant';
 import { faceImageUrl } from '@/app/components/CollectionFace';
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
@@ -298,6 +298,27 @@ function computeLayout(plant: CollectionPlant, limit: number): Layout {
 
 const LIMITS = [100, 300, 1000, Infinity];
 
+const ZOOM_MAX = 8;
+const ZOOM_STEP = 1.5;
+
+/** 拡大率と、表示範囲の中心（レイアウト座標） */
+interface View {
+  k: number;
+  cx: number;
+  cy: number;
+}
+
+/** 拡大した表示範囲が図の外にはみ出さないように中心を寄せる */
+function clampView(view: View, vb: Layout['viewBox']): View {
+  const k = Math.min(ZOOM_MAX, Math.max(1, view.k));
+  const w = vb.w / k, h = vb.h / k;
+  return {
+    k,
+    cx: Math.min(vb.x + vb.w - w / 2, Math.max(vb.x + w / 2, view.cx)),
+    cy: Math.min(vb.y + vb.h - h / 2, Math.max(vb.y + h / 2, view.cy)),
+  };
+}
+
 type Hover =
   | { kind: 'node'; index: number; x: number; y: number }
   | { kind: 'hub'; taxon: number; x: number; y: number };
@@ -310,6 +331,11 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
   const [hover, setHover] = useState<Hover | null>(null);
   const [brokenIcons, setBrokenIcons] = useState<Set<number>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  // 拡大表示（null = 全体表示）
+  const [view, setView] = useState<View | null>(null);
+  const dragRef = useRef<{ x: number; y: number; view: View } | null>(null);
+  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     const loadDictionary = async () => {
@@ -342,6 +368,11 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
   };
 
   const layout = useMemo(() => (plant ? computeLayout(plant, limit) : null), [plant, limit]);
+
+  // 表示数を変えると図の大きさが変わるので、全体表示に戻す
+  useEffect(() => {
+    setView(null);
+  }, [layout]);
 
   const hubByTaxon = useMemo(
     () => new Map((layout?.hubs ?? []).map(h => [h.taxon, h])),
@@ -407,6 +438,50 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
     hoveredHub !== null && !node.taxa.some(t => t.taxon === hoveredHub.taxon);
 
   const { viewBox } = layout;
+  const current: View = view ?? {
+    k: 1,
+    cx: viewBox.x + viewBox.w / 2,
+    cy: viewBox.y + viewBox.h / 2,
+  };
+  const visible = {
+    w: viewBox.w / current.k,
+    h: viewBox.h / current.k,
+  };
+  const zoomBy = (factor: number) => {
+    const next = clampView({ ...current, k: current.k * factor }, viewBox);
+    setView(next.k === 1 ? null : next);
+    setHover(null);
+  };
+
+  // 拡大中はマウスのドラッグで表示位置を動かす（タッチはページのスクロールに使うので動かさない）
+  const handleSvgPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    // 何もない場所をクリック・タップしたらツールチップを消す
+    setHover(null);
+    if (e.pointerType !== 'mouse' || current.k <= 1) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = { x: e.clientX, y: e.clientY, view: current };
+    setDragging(true);
+  };
+  const handleSvgPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const drag = dragRef.current;
+    const width = svgRef.current?.clientWidth;
+    if (!drag || !width) return;
+    const unit = visible.w / width;
+    setView(
+      clampView(
+        {
+          k: drag.view.k,
+          cx: drag.view.cx - (e.clientX - drag.x) * unit,
+          cy: drag.view.cy - (e.clientY - drag.y) * unit,
+        },
+        viewBox
+      )
+    );
+  };
+  const endDrag = () => {
+    dragRef.current = null;
+    setDragging(false);
+  };
   const showBranches = layout.hubs.length > 1;
   const containerWidth = containerRef.current?.clientWidth ?? 0;
 
@@ -513,11 +588,16 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
         onPointerLeave={() => setHover(null)}
       >
         <svg
-          viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`}
-          className="block w-full h-auto max-h-[80vh] text-foreground"
+          ref={svgRef}
+          viewBox={`${current.cx - visible.w / 2} ${current.cy - visible.h / 2} ${visible.w} ${visible.h}`}
+          className={`block w-full h-auto max-h-[80vh] text-foreground ${
+            dragging ? 'cursor-grabbing' : current.k > 1 ? 'cursor-grab' : ''
+          }`}
           role="img"
-          // 何もない場所をクリック・タップしたらツールチップを消す
-          onPointerDown={() => setHover(null)}
+          onPointerDown={handleSvgPointerDown}
+          onPointerMove={handleSvgPointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
           aria-label={ownerPlant.title}
         >
           <defs>
@@ -652,6 +732,27 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
             })}
           </g>
         </svg>
+
+        <div className="absolute right-2 top-2 flex flex-col overflow-hidden rounded-md border bg-background/90 shadow-sm">
+          {([
+            [ZoomIn, ownerPlant.actions.zoomIn, () => zoomBy(ZOOM_STEP), current.k >= ZOOM_MAX],
+            [ZoomOut, ownerPlant.actions.zoomOut, () => zoomBy(1 / ZOOM_STEP), current.k <= 1],
+            [Maximize, ownerPlant.actions.zoomReset, () => setView(null), current.k <= 1],
+          ] as const).map(([Icon, label, onClick, disabled]) => (
+            <Button
+              key={label}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-none"
+              onClick={onClick}
+              disabled={disabled}
+              title={label}
+              aria-label={label}
+            >
+              <Icon className="h-4 w-4" />
+            </Button>
+          ))}
+        </div>
 
         {hover && (hoveredNode || hoveredHub) && (
           <div
