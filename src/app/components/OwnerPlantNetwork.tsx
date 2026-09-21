@@ -384,6 +384,20 @@ const HubIcon: React.FC<{ hub: PlantHub | null; taxon: number }> = ({ hub, taxon
   );
 };
 
+/** コレクションアイコンの右上に入手NFT数のバッジを重ねる */
+const HubIconWithCount: React.FC<{ hub: PlantHub | null; taxon: number; count: number }> = ({
+  hub,
+  taxon,
+  count,
+}) => (
+  <span className="relative inline-block">
+    <HubIcon hub={hub} taxon={taxon} />
+    <span className="absolute -right-1.5 -top-1.5 min-w-[1.1rem] rounded-full border bg-background px-1 text-center text-[10px] leading-[1rem] text-muted-foreground tabular-nums">
+      {count.toLocaleString()}
+    </span>
+  </span>
+);
+
 /** 図に描いているオーナーの一覧 */
 const OwnerPlantList: React.FC<OwnerPlantListProps> = ({
   lang,
@@ -573,12 +587,9 @@ const OwnerPlantList: React.FC<OwnerPlantListProps> = ({
                                   href={`https://xrp.cafe/usercollection/${node.wallet}/${issuer}/${t.taxon}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="relative inline-block rounded-full transition-opacity hover:opacity-80"
+                                  className="inline-block rounded-full transition-opacity hover:opacity-80"
                                 >
-                                  <HubIcon hub={hub} taxon={t.taxon} />
-                                  <span className="absolute -right-1.5 -top-1.5 min-w-[1.1rem] rounded-full border bg-background px-1 text-center text-[10px] leading-[1rem] text-muted-foreground tabular-nums">
-                                    {t.leaves.toLocaleString()}
-                                  </span>
+                                  <HubIconWithCount hub={hub} taxon={t.taxon} count={t.leaves} />
                                 </a>
                               </TooltipTrigger>
                               <TooltipContent>
@@ -1078,16 +1089,11 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
                 <div>{ownerPlant.tooltip.spend}: {formatXrp(hoveredNode.spend)} XRP</div>
                 <div>
                   <div>{ownerPlant.tooltip.collections}:</div>
-                  <ul className="ml-2">
-                    {hoveredNode.taxa.map(({ taxon: t, leaves }) => {
-                      const h = hubByTaxon.get(t);
-                      return (
-                        <li key={t} className="truncate">
-                          {h ? hubName(h) : ownerPlant.hub.fallback.replace('{taxon}', String(t))} ({leaves.toLocaleString()})
-                        </li>
-                      );
-                    })}
-                  </ul>
+                  <div className="mt-2 flex flex-wrap gap-2.5 pl-0.5">
+                    {hoveredNode.taxa.map(({ taxon: t, leaves }) => (
+                      <HubIconWithCount key={t} hub={hubByTaxon.get(t) ?? null} taxon={t} count={leaves} />
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
