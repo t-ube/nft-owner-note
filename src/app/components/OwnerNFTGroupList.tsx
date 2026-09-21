@@ -322,10 +322,23 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
       groupName: group?.name ?? null,
       nftCount: ownerGroup.nftCount,
       namedKinds: ownerGroup.nameGroups.filter(g => g.name !== null).length,
+      unnamedCount: ownerGroup.nameGroups.find(g => g.name === null)?.nftIds.length ?? 0,
       nameGroups: orderNameGroups(ownerGroup.nameGroups),
       ...describeRow(ownerGroup),
     };
   });
+
+  // 種類数は名前のある NFT だけで数えるので、名前未取得の分があるときは印を付ける（件数はツールチップで）
+  const renderUnnamedHint = (count: number) => {
+    if (count === 0) return null;
+    const label = page.table.kindsUnnamed.replace('{count}', count.toLocaleString());
+    return (
+      <span title={label} className="ml-1 inline-flex align-[-2px]">
+        <AlertCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" aria-hidden />
+        <span className="sr-only">{label}</span>
+      </span>
+    );
+  };
 
   const formatUsedAt = (usedAt: number) =>
     new Date(usedAt).toLocaleDateString(lang === 'ja' ? 'ja-JP' : 'en-US');
@@ -471,28 +484,6 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
 
   return (
     <div className="space-y-4">
-      {unnamedNFTs.length > 0 && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <span>{page.status.unnamed.replace('{count}', unnamedNFTs.length.toLocaleString())}</span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleFetchNames}
-              disabled={nameFetchProgress !== null}
-            >
-              <RefreshCcw className={cn('h-4 w-4 mr-2', nameFetchProgress && 'animate-spin')} />
-              {nameFetchProgress
-                ? page.actions.fetchingNames
-                    .replace('{done}', nameFetchProgress.done.toLocaleString())
-                    .replace('{total}', nameFetchProgress.total.toLocaleString())
-                : page.actions.fetchNames}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
       <div className="space-y-2">
         <div className="text-sm font-medium">{page.filter.label}</div>
         <NFTNameMultiSelect
@@ -501,6 +492,29 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
           onChange={handleSelectedNamesChange}
           labels={page.filter}
         />
+        {/* 名前未取得の NFT は絞り込みと種類数に入らないので、そのことをフィルタのすぐ下で伝える */}
+        {unnamedNFTs.length > 0 && (
+          <div className="flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 dark:border-amber-900/60 dark:bg-amber-950/30">
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span className="flex-1 min-w-0 text-xs text-amber-900 dark:text-amber-200">
+              {page.status.unnamed.replace('{count}', unnamedNFTs.length.toLocaleString())}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleFetchNames}
+              disabled={nameFetchProgress !== null}
+              className="h-7 shrink-0 px-2.5 text-xs bg-background"
+            >
+              <RefreshCcw className={cn('h-3.5 w-3.5 mr-1.5', nameFetchProgress && 'animate-spin')} />
+              {nameFetchProgress
+                ? page.actions.fetchingNames
+                    .replace('{done}', nameFetchProgress.done.toLocaleString())
+                    .replace('{total}', nameFetchProgress.total.toLocaleString())
+                : page.actions.fetchNames}
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
@@ -549,7 +563,10 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
                   </div>
                 </TableCell>
                 <TableCell className="text-right">{row.nftCount.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{row.namedKinds.toLocaleString()}</TableCell>
+                <TableCell className="text-right whitespace-nowrap">
+                  {row.namedKinds.toLocaleString()}
+                  {renderUnnamedHint(row.unnamedCount)}
+                </TableCell>
                 <TableCell>
                   <div className="space-y-2">
                     {renderUsedControls(row)}
@@ -577,7 +594,7 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
               </div>
               <div className="text-right text-xs text-muted-foreground shrink-0">
                 <div>{page.table.nftCount}: <span className="text-foreground font-medium">{row.nftCount.toLocaleString()}</span></div>
-                <div>{page.table.kinds}: <span className="text-foreground font-medium">{row.namedKinds.toLocaleString()}</span></div>
+                <div>{page.table.kinds}: <span className="text-foreground font-medium">{row.namedKinds.toLocaleString()}</span>{renderUnnamedHint(row.unnamedCount)}</div>
               </div>
             </div>
             {renderUsedControls(row)}

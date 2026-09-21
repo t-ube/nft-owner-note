@@ -192,6 +192,7 @@ export interface Dictionary {
           owner: string;
           nftCount: string;
           kinds: string;
+          kindsUnnamed: string;
           nfts: string;
         };
         errors: {
@@ -268,7 +269,6 @@ export interface Dictionary {
           line: string;
           sizeLabel: string;
           size: string;
-          sizeShort: string;
           colorLabel: string;
           color: string;
           days: string;
@@ -276,7 +276,6 @@ export interface Dictionary {
           sprout: string;
           leavesLabel: string;
           leaves: string;
-          leavesShort: string;
           note: string;
         };
         list: {

@@ -162,7 +162,7 @@
         "status": {
           "owners": "{count} owners",
           "matched": "{matched} of {total} owners hold all {count} selected names",
-          "unnamed": "{count} NFTs have no name yet. Fetch names to filter by them.",
+          "unnamed": "{count} NFTs have no name yet, so they are left out of the filter and the name counts.",
           "noData": "No NFT data yet. Please wait until NFTs have been fetched."
         },
         "actions": {
@@ -185,6 +185,7 @@
           "owner": "Owner",
           "nftCount": "NFTs",
           "kinds": "Names",
+          "kindsUnnamed": "{count} NFTs have no name yet (not counted)",
           "nfts": "Holdings"
         },
         "errors": {
@@ -261,7 +262,6 @@
           "line": "The owner bought or received from that collection.",
           "sizeLabel": "Size",
           "size": "Total paid for marketplace purchases, in XRP. Only purchases with a confirmed price are included. Launchpad mints are not included.",
-          "sizeShort": "Size = spent",
           "colorLabel": "Last active",
           "color": "When they last acquired. Green is recent; the browner, the longer ago.",
           "days": "days ago",
@@ -269,7 +269,6 @@
           "sprout": "A new owner who joined within 30 days.",
           "leavesLabel": "Leaves",
           "leaves": "Number of NFTs acquired.",
-          "leavesShort": "Leaves = NFTs acquired",
           "note": "Includes wallets that no longer hold any."
         },
         "list": {

@@ -32,7 +32,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useNFTContext } from '@/app/contexts/NFTContext';
-import { RefreshCcw, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Pencil } from 'lucide-react';
+import { RefreshCcw, AlertCircle, Pencil } from 'lucide-react';
+import SortableTableHead from '@/app/components/SortableTableHead';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { dbManager, AddressGroup, AddressInfo, NFToken } from '@/utils/db';
 import { AddressGroupDialog } from '@/app/components/AddressGroupDialog';
@@ -282,13 +283,6 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
     return ((lastAmount - firstAmount) / firstAmount) * 100;
   };
 
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sort.field !== field) return <ArrowUpDown className="ml-2 h-4 w-4" />;
-    if (sort.direction === 'asc') return <ArrowUp className="ml-2 h-4 w-4" />;
-    if (sort.direction === 'desc') return <ArrowDown className="ml-2 h-4 w-4" />;
-    return <ArrowUpDown className="ml-2 h-4 w-4" />;
-  };
-
   const handleUpdateNFTHistory = async (nftId: string) => {
     try {
       await updateNFTHistory(nftId);
@@ -317,16 +311,14 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
     children: React.ReactNode;
     className?: string;
   }) => (
-    <TableHead className={className}>
-      <Button
-        variant="ghost"
-        onClick={() => handleSort(field)}
-        className="h-8 p-0 font-semibold hover:bg-transparent"
-      >
-        {children}
-        <SortIcon field={field} />
-      </Button>
-    </TableHead>
+    <SortableTableHead
+      active={sort.field === field && sort.direction !== null}
+      direction={sort.direction ?? 'desc'}
+      onSort={() => handleSort(field)}
+      className={className}
+    >
+      {children}
+    </SortableTableHead>
   );
 
   if (error) {

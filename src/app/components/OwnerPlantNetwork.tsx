@@ -21,9 +21,6 @@ import {
 } from "@/components/ui/tooltip";
 import {
   AlertCircle,
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
   Loader2,
   Maximize,
   ZoomIn,
@@ -31,6 +28,7 @@ import {
 } from "lucide-react";
 import NFTSiteWalletIcons from '@/app/components/NFTSiteWalletIcons';
 import HelpPopover from '@/app/components/HelpPopover';
+import SortableTableHead from '@/app/components/SortableTableHead';
 import { STICKY_COL, STICKY_ROW_HOVER } from '@/app/components/stickyColumn';
 import { useCollectionPlant, CollectionPlant, PlantHub, PlantNode } from '@/app/components/useCollectionPlant';
 import { faceImageUrl } from '@/app/components/CollectionFace';
@@ -393,6 +391,17 @@ const HubIconWithCount: React.FC<{ hub: PlantHub | null; taxon: number; count: n
   </span>
 );
 
+/** 凡例の 1 項目（見出し → 図 → 説明） */
+const LegendItem: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <div className="flex flex-col items-start gap-1.5 min-w-0">
+    <div className="text-sm font-medium">{title}</div>
+    {children}
+  </div>
+);
+
+const LegendCaption: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="text-xs text-muted-foreground max-w-[12rem]">{children}</div>
+);
 
 /** 図に描いているオーナーの一覧 */
 const OwnerPlantList: React.FC<OwnerPlantListProps> = ({
@@ -473,22 +482,15 @@ const OwnerPlantList: React.FC<OwnerPlantListProps> = ({
     children: React.ReactNode;
     className?: string;
   }) => (
-    <TableHead className={className}>
-      <Button
-        variant="ghost"
-        onClick={() => handleSort(field)}
-        className="h-8 p-0 font-semibold hover:bg-transparent whitespace-normal text-right"
-      >
-        {children}
-        {sort.field !== field ? (
-          <ArrowUpDown className="ml-1 h-4 w-4" />
-        ) : sort.direction === 'asc' ? (
-          <ArrowUp className="ml-1 h-4 w-4" />
-        ) : (
-          <ArrowDown className="ml-1 h-4 w-4" />
-        )}
-      </Button>
-    </TableHead>
+    <SortableTableHead
+      active={sort.field === field}
+      direction={sort.direction}
+      onSort={() => handleSort(field)}
+      className={className}
+      buttonClassName="whitespace-normal text-right"
+    >
+      {children}
+    </SortableTableHead>
   );
 
   // 列の説明（表の列と同じ並び）
@@ -843,40 +845,65 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
         </div>
       </div>
 
-      {/* 凡例 */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <span>{ownerPlant.legend.colorLabel}</span>
-          <div className="flex flex-col">
+      {/* 凡例（見出し・図・説明を縦に並べ、項目ごとに区切る） */}
+      <div className="grid grid-cols-2 gap-x-6 gap-y-4 rounded-md border bg-muted/30 p-3 sm:flex sm:flex-wrap sm:items-start sm:gap-x-8">
+        <LegendItem title={ownerPlant.legend.colorLabel}>
+          <div className="w-40 max-w-full">
             <div
-              className="h-2 w-32 rounded-sm"
+              className="h-3 rounded-sm"
               style={{
                 background: `linear-gradient(to right, ${recencyColor(0)} 0%, ${recencyColor(90)} ${(90 / 365) * 100}%, ${recencyColor(365)} 100%)`,
               }}
             />
-            <div className="relative h-4 w-32 tabular-nums">
+            <div className="relative mt-1 h-4 text-xs text-muted-foreground tabular-nums">
               <span className="absolute left-0">0</span>
               <span className="absolute -translate-x-1/2" style={{ left: `${(90 / 365) * 100}%` }}>90</span>
               <span className="absolute right-0">365+</span>
             </div>
           </div>
-          <span>{ownerPlant.legend.days}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-full" style={{ background: SPROUT_COLOR }} />
-          {ownerPlant.legend.sproutLabel}
-        </div>
-        <div className="flex items-center gap-1.5">
-          <svg width="46" height="22" viewBox="0 0 46 22" aria-hidden>
-            {[10, 100, 1000].map((v, i) => {
-              const r = radiusOf(v) * 0.6;
-              const cx = [5, 16, 34][i];
-              return <circle key={v} cx={cx} cy={11} r={r} fill="none" stroke="currentColor" />;
+          <LegendCaption>{ownerPlant.legend.days}</LegendCaption>
+        </LegendItem>
+
+        <LegendItem title={ownerPlant.legend.sproutLabel}>
+          <span className="inline-block h-4 w-4 rounded-full" style={{ background: SPROUT_COLOR }} />
+          <LegendCaption>{ownerPlant.legend.sprout}</LegendCaption>
+        </LegendItem>
+
+        <LegendItem title={ownerPlant.legend.sizeLabel}>
+          <div className="flex items-end gap-3">
+            {[10, 100, 1000].map(v => {
+              const r = radiusOf(v);
+              return (
+                <div key={v} className="flex flex-col items-center gap-0.5">
+                  <svg width={r * 2 + 2} height={r * 2 + 2} aria-hidden>
+                    <circle cx={r + 1} cy={r + 1} r={r} fill={recencyColor(0)} opacity={0.85} />
+                  </svg>
+                  <span className="text-xs text-muted-foreground tabular-nums">{v.toLocaleString()}</span>
+                </div>
+              );
             })}
-          </svg>
-          {ownerPlant.legend.sizeShort}
-        </div>
-        <div>{ownerPlant.legend.leavesShort}</div>
+          </div>
+          <LegendCaption>{ownerPlant.list.spend}</LegendCaption>
+        </LegendItem>
+
+        <LegendItem title={ownerPlant.legend.leavesLabel}>
+          <div className="flex items-end gap-3">
+            {[3, 12].map(count => {
+              const r = 6;
+              const c = r + LEAF_LEN + 1;
+              return (
+                <div key={count} className="flex flex-col items-center gap-0.5">
+                  <svg width={c * 2} height={c * 2} aria-hidden>
+                    <path d={leavesPath(c, c, r, count, 1)} fill={recencyColor(0)} opacity={0.55} />
+                    <circle cx={c} cy={c} r={r} fill={recencyColor(0)} />
+                  </svg>
+                  <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+          <LegendCaption>{ownerPlant.list.leaves}</LegendCaption>
+        </LegendItem>
       </div>
 
       <div

@@ -18,8 +18,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Download, Loader2 } from "lucide-react";
+import { AlertCircle, Download, Loader2 } from "lucide-react";
 import HelpPopover from '@/app/components/HelpPopover';
+import SortableTableHead from '@/app/components/SortableTableHead';
 import { useNFTContext } from '@/app/contexts/NFTContext';
 import { useCollectors, Collector } from '@/app/components/useCollectors';
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
@@ -186,13 +187,6 @@ const OwnerActivityList: React.FC<OwnerActivityListProps> = ({ lang, issuer, tax
     [ownerActivity.table.firstAt, ownerActivity.legend.firstAt],
   ];
 
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sort.field !== field) return <ArrowUpDown className="ml-1 h-4 w-4" />;
-    return sort.direction === 'asc'
-      ? <ArrowUp className="ml-1 h-4 w-4" />
-      : <ArrowDown className="ml-1 h-4 w-4" />;
-  };
-
   const SortableHeader = ({
     field,
     children,
@@ -202,16 +196,15 @@ const OwnerActivityList: React.FC<OwnerActivityListProps> = ({ lang, issuer, tax
     children: React.ReactNode;
     className?: string;
   }) => (
-    <TableHead className={className}>
-      <Button
-        variant="ghost"
-        onClick={() => handleSort(field)}
-        className="h-8 p-0 font-semibold hover:bg-transparent whitespace-normal text-right"
-      >
-        {children}
-        <SortIcon field={field} />
-      </Button>
-    </TableHead>
+    <SortableTableHead
+      active={sort.field === field}
+      direction={sort.direction}
+      onSort={() => handleSort(field)}
+      className={className}
+      buttonClassName="whitespace-normal text-right"
+    >
+      {children}
+    </SortableTableHead>
   );
 
   const DaysCell = ({
