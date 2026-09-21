@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import _ from 'lodash';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,7 @@ import {
   ZoomOut,
 } from "lucide-react";
 import NFTSiteWalletIcons from '@/app/components/NFTSiteWalletIcons';
+import { STICKY_COL, STICKY_ROW_HOVER } from '@/app/components/stickyColumn';
 import { useCollectionPlant, CollectionPlant, PlantHub, PlantNode } from '@/app/components/useCollectionPlant';
 import { faceImageUrl } from '@/app/components/CollectionFace';
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
@@ -398,6 +399,7 @@ const HubIconWithCount: React.FC<{ hub: PlantHub | null; taxon: number; count: n
   </span>
 );
 
+
 /** 図に描いているオーナーの一覧 */
 const OwnerPlantList: React.FC<OwnerPlantListProps> = ({
   lang,
@@ -438,10 +440,36 @@ const OwnerPlantList: React.FC<OwnerPlantListProps> = ({
     value.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
   const formatDaysAgo = (days: number) =>
-    new Intl.RelativeTimeFormat(lang, { numeric: 'auto' }).format(-days, 'day');
+    new Intl.RelativeTimeFormat(lang, { numeric: 'always' }).format(-days, 'day');
 
   const formatDuration = (days: number) =>
     new Intl.NumberFormat(lang, { style: 'unit', unit: 'day', unitDisplay: 'long' }).format(days);
+
+  // API は日時を返さず経過日数だけなので、今日から日数を引いた日付を出す
+  const formatDate = (days: number) =>
+    new Date(Date.now() - days * 86_400_000).toLocaleDateString(lang);
+
+  // 日数は比較しやすいようそのまま出し、日付はツールチップに回す
+  const DaysCell = ({
+    days,
+    format,
+    className,
+  }: {
+    days: number | null;
+    format: (days: number) => string;
+    className: string;
+  }) => (
+    <TableCell className={className}>
+      {days === null ? '-' : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-default">{format(days)}</span>
+          </TooltipTrigger>
+          <TooltipContent>{formatDate(days)}</TooltipContent>
+        </Tooltip>
+      )}
+    </TableCell>
+  );
 
   const SortableHeader = ({
     field,
@@ -531,11 +559,11 @@ const OwnerPlantList: React.FC<OwnerPlantListProps> = ({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[140px] max-w-[220px] whitespace-normal">{dict.list.owner}</TableHead>
+                <TableHead className={`${STICKY_COL} min-w-[140px] max-w-[180px] whitespace-normal`}>{dict.list.owner}</TableHead>
                 <SortableHeader field="spend" className="min-w-[100px] text-right">{dict.list.spend}</SortableHeader>
-                <SortableHeader field="leaves" className="min-w-[80px] text-right">{dict.list.leaves}</SortableHeader>
-                <SortableHeader field="daysSinceLast" className="min-w-[90px] text-right">{dict.list.lastAt}</SortableHeader>
-                <SortableHeader field="daysSinceFirst" className="hidden md:table-cell min-w-[90px] text-right">{dict.list.firstAt}</SortableHeader>
+                <SortableHeader field="leaves" className="min-w-[100px] text-right">{dict.list.leaves}</SortableHeader>
+                <SortableHeader field="daysSinceLast" className="min-w-[100px] text-right">{dict.list.lastAt}</SortableHeader>
+                <SortableHeader field="daysSinceFirst" className="hidden md:table-cell min-w-[100px] text-right">{dict.list.firstAt}</SortableHeader>
                 <TableHead className="hidden md:table-cell min-w-[160px] whitespace-normal">{dict.list.collections}</TableHead>
                 <TableHead className="hidden sm:table-cell min-w-[120px] whitespace-normal">{dict.list.links}</TableHead>
               </TableRow>
@@ -544,8 +572,8 @@ const OwnerPlantList: React.FC<OwnerPlantListProps> = ({
               {rows.map(node => {
                 const group = groupOf(node.wallet);
                 return (
-                  <TableRow key={node.wallet} onMouseEnter={() => onHighlight(node.wallet)}>
-                    <TableCell className="min-w-[140px] max-w-[220px] whitespace-normal break-words">
+                  <TableRow key={node.wallet} className="group" onMouseEnter={() => onHighlight(node.wallet)}>
+                    <TableCell className={`${STICKY_COL} ${STICKY_ROW_HOVER} min-w-[140px] max-w-[180px] whitespace-normal break-words`}>
                       <div className="flex items-center gap-2">
                         <span
                           className="inline-block h-3 w-3 shrink-0 rounded-full"
@@ -570,12 +598,16 @@ const OwnerPlantList: React.FC<OwnerPlantListProps> = ({
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{formatXrp(node.spend)}</TableCell>
                     <TableCell className="text-right tabular-nums">{node.leaves.toLocaleString()}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap tabular-nums">
-                      {node.daysSinceLast === null ? '-' : formatDaysAgo(node.daysSinceLast)}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-right whitespace-nowrap tabular-nums">
-                      {node.daysSinceFirst === null ? '-' : formatDuration(node.daysSinceFirst)}
-                    </TableCell>
+                    <DaysCell
+                      days={node.daysSinceLast}
+                      format={formatDaysAgo}
+                      className="text-right whitespace-nowrap tabular-nums"
+                    />
+                    <DaysCell
+                      days={node.daysSinceFirst}
+                      format={formatDuration}
+                      className="hidden md:table-cell text-right whitespace-nowrap tabular-nums"
+                    />
                     <TableCell className="hidden md:table-cell whitespace-normal">
                       <div className="flex flex-wrap gap-2">
                         {node.taxa.map(t => {
@@ -628,7 +660,26 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
   const [highlightWallet, setHighlightWallet] = useState<string | null>(null);
   const [brokenIcons, setBrokenIcons] = useState<Set<number>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // ツールチップが図の外に見切れないよう、実際の大きさを測って置き場所を決める。
+  // 右（下）に収まらなければ左（上）に出し、それでもはみ出す分は内側へ寄せる
+  useLayoutEffect(() => {
+    const tip = tooltipRef.current;
+    const box = containerRef.current;
+    if (!hover || !tip || !box) return;
+    const MARGIN = 4, OFFSET = 12;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    const cw = box.clientWidth, ch = box.clientHeight;
+    let x = hover.x + OFFSET;
+    if (x + w > cw - MARGIN) x = hover.x - OFFSET - w;
+    let y = hover.y + OFFSET;
+    if (y + h > ch - MARGIN) y = hover.y - OFFSET - h;
+    x = Math.max(MARGIN, Math.min(x, cw - w - MARGIN));
+    y = Math.max(MARGIN, Math.min(y, ch - h - MARGIN));
+    tip.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+  }, [hover]);
   // 拡大表示（null = 全体表示）
   const [view, setView] = useState<View | null>(null);
   const dragRef = useRef<{ x: number; y: number; view: View } | null>(null);
@@ -704,7 +755,7 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
     value.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
   const formatDaysAgo = (days: number) =>
-    new Intl.RelativeTimeFormat(lang, { numeric: 'auto' }).format(-days, 'day');
+    new Intl.RelativeTimeFormat(lang, { numeric: 'always' }).format(-days, 'day');
 
   if (status === 'loading') {
     return (
@@ -780,7 +831,6 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
     setDragging(false);
   };
   const showBranches = layout.hubs.length > 1;
-  const containerWidth = containerRef.current?.clientWidth ?? 0;
 
   return (
     <div className="space-y-4">
@@ -881,7 +931,7 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
 
       <div
         ref={containerRef}
-        className="relative rounded-md border bg-background overflow-hidden touch-pan-y"
+        className="relative rounded-md border bg-background overflow-hidden touch-pan-y select-none"
         onPointerLeave={() => setHover(null)}
       >
         <svg
@@ -892,6 +942,8 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
           }`}
           role="img"
           onPointerDown={handleSvgPointerDown}
+          // ドラッグで文字が選択されたり、選択に引きずられてページがスクロールしたりしないようにする
+          onMouseDown={e => e.preventDefault()}
           onPointerMove={handleSvgPointerMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
@@ -1053,13 +1105,8 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
 
         {hover && (hoveredNode || hoveredHub) && (
           <div
-            className="pointer-events-none absolute z-10 max-w-[260px] rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md"
-            style={{
-              top: hover.y + 12,
-              ...(hover.x > containerWidth / 2
-                ? { right: containerWidth - hover.x + 12 }
-                : { left: hover.x + 12 }),
-            }}
+            ref={tooltipRef}
+            className="pointer-events-none absolute left-0 top-0 z-10 max-w-[260px] rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md"
           >
             {hoveredNode && (
               <div className="space-y-1">

@@ -28,6 +28,7 @@ import { useNFTContext } from '@/app/contexts/NFTContext';
 import { useCollectors, Collector } from '@/app/components/useCollectors';
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
 import NFTSiteWalletIcons from '@/app/components/NFTSiteWalletIcons';
+import { STICKY_COL, STICKY_ROW_HOVER } from '@/app/components/stickyColumn';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 
@@ -132,7 +133,7 @@ const OwnerActivityList: React.FC<OwnerActivityListProps> = ({ lang, issuer, tax
   };
 
   const formatAddress = (address: string) =>
-    `${address.substring(0, 4)}...${address.substring(address.length - 4)}`;
+    `${address.slice(0, 6)}...${address.slice(-4)}`;
 
   // 日付は比較しやすいよう日数で出し、正確な日時はツールチップに回す
   const formatDaysAgo = (days: number) =>
@@ -321,8 +322,7 @@ const OwnerActivityList: React.FC<OwnerActivityListProps> = ({ lang, issuer, tax
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[120px] whitespace-normal hidden sm:table-cell">{ownerActivity.table.owner}</TableHead>
-                  <TableHead className="min-w-[140px] max-w-[200px] whitespace-normal break-words">{ownerActivity.table.name}</TableHead>
+                  <TableHead className={`${STICKY_COL} min-w-[140px] max-w-[200px] whitespace-normal`}>{ownerActivity.table.owner}</TableHead>
                   <SortableHeader field="holding" className="min-w-[80px] text-right">{ownerActivity.table.holding}</SortableHeader>
                   <SortableHeader field="purchaseXrpValue" className="min-w-[100px] text-right">{ownerActivity.table.purchaseXrp}</SortableHeader>
                   <SortableHeader field="purchaseCount" className="min-w-[80px] text-right">{ownerActivity.table.purchaseCount}</SortableHeader>
@@ -337,17 +337,12 @@ const OwnerActivityList: React.FC<OwnerActivityListProps> = ({ lang, issuer, tax
               </TableHeader>
               <TableBody>
                 {rows.map(r => (
-                  <TableRow key={r.wallet} className={r.holding === 0 ? 'text-muted-foreground' : undefined}>
-                    <TableCell className="font-mono hidden sm:table-cell">{formatAddress(r.wallet)}</TableCell>
-                    <TableCell className="min-w-[140px] max-w-[200px] whitespace-normal break-words">
-                      <span className="hidden sm:inline">{r.group?.name || '-'}</span>
-                      <span className="sm:hidden">
-                        {r.group?.name || (
-                          <span className="text-xs font-mono text-muted-foreground bg-muted/50 px-1 rounded">
-                            {`${r.wallet.slice(0, 6)}...${r.wallet.slice(-4)}`}
-                          </span>
-                        )}
-                      </span>
+                  <TableRow key={r.wallet} className={r.holding === 0 ? 'group text-muted-foreground' : 'group'}>
+                    <TableCell className={`${STICKY_COL} ${STICKY_ROW_HOVER} min-w-[140px] max-w-[200px] whitespace-normal break-words`}>
+                      {r.group?.name && <div>{r.group.name}</div>}
+                      <div className={r.group?.name ? 'text-xs font-mono text-muted-foreground' : 'font-mono'}>
+                        {formatAddress(r.wallet)}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">{r.holding.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{formatXrp(r.purchaseXrpValue)}</TableCell>
