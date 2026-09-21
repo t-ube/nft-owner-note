@@ -11,11 +11,11 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, AlertTriangle, Check, HelpCircle, RefreshCcw } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Check, RefreshCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import HelpPopover from '@/app/components/HelpPopover';
 import _ from 'lodash';
 import { dbManager, AddressGroup, AddressInfo, NFToken } from '@/utils/db';
 import {
@@ -494,23 +494,7 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
       )}
 
       <div className="space-y-2">
-        <div className="flex items-center gap-1 text-sm font-medium">
-          {page.filter.label}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                aria-label={page.title}
-                className="rounded-full p-0.5 text-muted-foreground hover:text-foreground"
-              >
-                <HelpCircle className="h-4 w-4" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-72 text-sm text-muted-foreground">
-              {page.description}
-            </PopoverContent>
-          </Popover>
-        </div>
+        <div className="text-sm font-medium">{page.filter.label}</div>
         <NFTNameMultiSelect
           options={nameOptions}
           selected={selectedNames}
@@ -537,6 +521,7 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
             <Switch id="reward-mode" checked={rewardMode} onCheckedChange={handleRewardModeChange} />
             <Label htmlFor="reward-mode" className="font-normal">{page.used.modeLabel}</Label>
           </div>
+          <HelpPopover label={page.title} description={page.description} />
         </div>
       </div>
 
@@ -557,10 +542,11 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
               <TableRow key={row.owner} className="align-top">
                 <TableCell className="text-muted-foreground">{row.rank}</TableCell>
                 <TableCell className="whitespace-nowrap">
-                  <div className="font-mono" title={row.owner}>{formatAddress(row.owner)}</div>
-                  {row.groupName && (
-                    <div className="text-sm text-muted-foreground mt-1">{row.groupName}</div>
-                  )}
+                  <div title={row.owner}>
+                    {row.groupName ? row.groupName : (
+                      <span className="font-mono">{formatAddress(row.owner)}</span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">{row.nftCount.toLocaleString()}</TableCell>
                 <TableCell className="text-right">{row.namedKinds.toLocaleString()}</TableCell>
@@ -583,8 +569,11 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
             <div className="flex items-start gap-2">
               <span className="text-sm text-muted-foreground w-6 shrink-0">{row.rank}</span>
               <div className="min-w-0 flex-1">
-                {row.groupName && <div className="font-medium truncate">{row.groupName}</div>}
-                <div className="text-xs font-mono text-muted-foreground">{formatAddress(row.owner)}</div>
+                {row.groupName ? (
+                  <div className="font-medium truncate">{row.groupName}</div>
+                ) : (
+                  <div className="text-sm font-mono">{formatAddress(row.owner)}</div>
+                )}
               </div>
               <div className="text-right text-xs text-muted-foreground shrink-0">
                 <div>{page.table.nftCount}: <span className="text-foreground font-medium">{row.nftCount.toLocaleString()}</span></div>

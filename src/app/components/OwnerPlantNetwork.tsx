@@ -5,11 +5,6 @@ import _ from 'lodash';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
   Table,
   TableBody,
   TableCell,
@@ -29,14 +24,13 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
-  ChevronDown,
-  HelpCircle,
   Loader2,
   Maximize,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
 import NFTSiteWalletIcons from '@/app/components/NFTSiteWalletIcons';
+import HelpPopover from '@/app/components/HelpPopover';
 import { STICKY_COL, STICKY_ROW_HOVER } from '@/app/components/stickyColumn';
 import { useCollectionPlant, CollectionPlant, PlantHub, PlantNode } from '@/app/components/useCollectionPlant';
 import { faceImageUrl } from '@/app/components/CollectionFace';
@@ -412,7 +406,6 @@ const OwnerPlantList: React.FC<OwnerPlantListProps> = ({
   onHighlight,
 }) => {
   const [sproutOnly, setSproutOnly] = useState(false);
-  const [legendOpen, setLegendOpen] = useState(false);
   const [sort, setSort] = useState<{ field: SortField; direction: SortDirection }>({
     field: 'spend',
     direction: 'desc',
@@ -510,31 +503,6 @@ const OwnerPlantList: React.FC<OwnerPlantListProps> = ({
 
   return (
     <div className="space-y-3">
-      <Collapsible open={legendOpen} onOpenChange={setLegendOpen}>
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <HelpCircle className="h-4 w-4" />
-            {dict.list.legend.toggle}
-            <ChevronDown className={`h-4 w-4 transition-transform ${legendOpen ? 'rotate-180' : ''}`} />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="mt-2 rounded-md border bg-muted/30 p-3 sm:p-4 text-sm">
-            <dl className="grid gap-x-6 gap-y-2 md:grid-cols-2">
-              {legendItems.map(([label, text]) => (
-                <div key={label}>
-                  <dt className="font-medium">{label}</dt>
-                  <dd className="text-muted-foreground">{text}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center space-x-2">
           <Checkbox
@@ -546,8 +514,11 @@ const OwnerPlantList: React.FC<OwnerPlantListProps> = ({
             {dict.list.sproutOnly}
           </label>
         </div>
-        <div className="text-sm text-gray-500">
-          {dict.list.showing.replace('{count}', rows.length.toLocaleString())}
+        <div className="flex items-center gap-2">
+          <div className="text-sm text-gray-500">
+            {dict.list.showing.replace('{count}', rows.length.toLocaleString())}
+          </div>
+          <HelpPopover label={dict.list.legend.toggle} items={legendItems} />
         </div>
       </div>
 
@@ -580,11 +551,10 @@ const OwnerPlantList: React.FC<OwnerPlantListProps> = ({
                           style={{ background: node.color }}
                           aria-hidden
                         />
-                        <div className="min-w-0">
-                          {group?.name && <div>{group.name}</div>}
-                          <div className={group?.name ? 'text-xs font-mono text-muted-foreground' : 'font-mono'}>
-                            {`${node.wallet.slice(0, 6)}...${node.wallet.slice(-4)}`}
-                          </div>
+                        <div className="min-w-0" title={node.wallet}>
+                          {group?.name ? group.name : (
+                            <span className="font-mono">{`${node.wallet.slice(0, 6)}...${node.wallet.slice(-4)}`}</span>
+                          )}
                         </div>
                         {node.isSprout && (
                           <span
@@ -655,7 +625,6 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
   const { status, plant } = useCollectionPlant(issuer);
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [limit, setLimit] = useState(300);
-  const [legendOpen, setLegendOpen] = useState(false);
   const [hover, setHover] = useState<Hover | null>(null);
   const [highlightWallet, setHighlightWallet] = useState<string | null>(null);
   const [brokenIcons, setBrokenIcons] = useState<Set<number>>(new Set());
@@ -834,41 +803,6 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
 
   return (
     <div className="space-y-4">
-      <Collapsible open={legendOpen} onOpenChange={setLegendOpen}>
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <HelpCircle className="h-4 w-4" />
-            {ownerPlant.legend.toggle}
-            <ChevronDown className={`h-4 w-4 transition-transform ${legendOpen ? 'rotate-180' : ''}`} />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="mt-2 rounded-md border bg-muted/30 p-3 sm:p-4 space-y-3 text-sm">
-            <p className="text-muted-foreground">{ownerPlant.description}</p>
-            <dl className="grid gap-x-6 gap-y-2 md:grid-cols-2">
-              {([
-                [ownerPlant.legend.branchLabel, ownerPlant.legend.branch],
-                [ownerPlant.legend.nodeLabel, ownerPlant.legend.node],
-                [ownerPlant.legend.lineLabel, ownerPlant.legend.line],
-                [ownerPlant.legend.sizeLabel, ownerPlant.legend.size],
-                [ownerPlant.legend.colorLabel, ownerPlant.legend.color],
-                [ownerPlant.legend.sproutLabel, ownerPlant.legend.sprout],
-                [ownerPlant.legend.leavesLabel, ownerPlant.legend.leaves],
-              ] as [string, string][]).map(([label, text]) => (
-                <div key={label}>
-                  <dt className="font-medium">{label}</dt>
-                  <dd className="text-muted-foreground">{text}</dd>
-                </div>
-              ))}
-            </dl>
-            <p className="text-muted-foreground">{ownerPlant.legend.note}</p>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex items-center gap-2">
           <span className="text-sm">{ownerPlant.actions.limit}</span>
@@ -886,10 +820,26 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
             ))}
           </div>
         </div>
-        <div className="text-sm text-gray-500">
-          {ownerPlant.status.showing
-            .replace('{shown}', layout.nodes.length.toLocaleString())
-            .replace('{total}', plant.nodes.length.toLocaleString())}
+        <div className="flex items-center gap-2">
+          <div className="text-sm text-gray-500">
+            {ownerPlant.status.showing
+              .replace('{shown}', layout.nodes.length.toLocaleString())
+              .replace('{total}', plant.nodes.length.toLocaleString())}
+          </div>
+          <HelpPopover
+            label={ownerPlant.legend.toggle}
+            description={ownerPlant.description}
+            items={[
+              [ownerPlant.legend.branchLabel, ownerPlant.legend.branch],
+              [ownerPlant.legend.nodeLabel, ownerPlant.legend.node],
+              [ownerPlant.legend.lineLabel, ownerPlant.legend.line],
+              [ownerPlant.legend.sizeLabel, ownerPlant.legend.size],
+              [ownerPlant.legend.colorLabel, ownerPlant.legend.color],
+              [ownerPlant.legend.sproutLabel, ownerPlant.legend.sprout],
+              [ownerPlant.legend.leavesLabel, ownerPlant.legend.leaves],
+            ]}
+            note={ownerPlant.legend.note}
+          />
         </div>
       </div>
 
@@ -1122,11 +1072,8 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
                     </span>
                   )}
                 </div>
-                {hoveredGroup?.name && (
-                  <div className="text-muted-foreground">
-                    <span className="font-mono">{hoveredNode.wallet.slice(0, 6)}…</span>
-                    {hoveredGroup.xAccount && <span className="ml-2">@{hoveredGroup.xAccount.replace(/^@/, '')}</span>}
-                  </div>
+                {hoveredGroup?.name && hoveredGroup.xAccount && (
+                  <div className="text-muted-foreground">@{hoveredGroup.xAccount.replace(/^@/, '')}</div>
                 )}
                 <div>
                   {ownerPlant.tooltip.lastActive}:{' '}

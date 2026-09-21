@@ -99,11 +99,9 @@ export interface Dictionary {
       notFound: string;
       ownerRank: string;
       nftList: string;
-      statistics: string;
       tabs: {
         owners: string;
         nfts: string;
-        stats: string;
       };
       info: {
         title: string;
@@ -121,71 +119,8 @@ export interface Dictionary {
         issuerName: string;
         xAccount: string;
         links: string;
-      };
-      stats: {
-        error: string;
-        sevenDayMints: {
-          title: string;
-          totalMints: string;
-        };
-        sevenDayFirstSales: {
-          title: string;
-          totalFirstSales: string;
-        };
-        sevenDayUniqueBuyers: {
-          title: string;
-          description: string;
-        };
-        avgTimeToFirstSale: {
-          title: string;
-          description: string;
-        };
-        colorClassification: {
-          title: string;
-          classified: string;
-          unclassified: string;
-          nfts: string;
-          lastUpdated: string;
-        };
-        colorDistribution: {
-          title: string;
-          colors: {
-            red: string;
-            orange: string;
-            yellow: string;
-            green: string;
-            blue: string;
-            purple: string;
-            brown: string;
-            unclassified: string;
-          };
-        };
-        paretoAnalysis: {
-          title: string;
-          status: {
-            wellDistributed: {
-              label: string;
-              description: string;
-            };
-            typical: {
-              label: string;
-              description: string;
-            };
-            concentrated: {
-              label: string;
-              description: string;
-            };
-          };
-          holdersInfo: string;
-        };
-        notice: {
-          noSalesData: string;
-          noSalesDataYet: string;
-        },
-        actions: {
-          updateSaleInfo: string;
-          updating: string;
-        };
+        details: string;
+        copy: string;
       };
       ownerList: {
         status: {

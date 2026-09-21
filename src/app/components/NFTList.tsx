@@ -419,9 +419,11 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
                   <TableCell className="font-mono text-xs">
                     <NFTSiteIcons tokenId={nft.nft_id} />
                   </TableCell>
-                  <TableCell className="font-mono group relative hidden sm:table-cell">
-                    <div className="flex items-center gap-2">
-                      {formatAddress(nft.owner)}
+                  <TableCell className="group relative hidden sm:table-cell">
+                    <div className="flex items-center gap-2" title={nft.owner}>
+                      {group?.name ? group.name : (
+                        <span className="font-mono">{formatAddress(nft.owner)}</span>
+                      )}
                       <AddressGroupDialog
                         initialAddresses={[nft.owner]}
                         groupId={group?.id}
@@ -437,11 +439,6 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
                         </Button>
                       </AddressGroupDialog>
                     </div>
-                    {group && (
-                      <div className="text-sm text-gray-500 mt-1">
-                        {group.name}
-                      </div>
-                    )}
                   </TableCell>
                   <TableCell className="sm:hidden">
                     {group ? (group.name) : (

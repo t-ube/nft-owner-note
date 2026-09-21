@@ -92,11 +92,9 @@
       "notFound": "プロジェクトが見つかりません",
       "ownerRank": "オーナーランク",
       "nftList": "NFTリスト",
-      "statistics": "統計",
       "tabs": {
         "owners": "オーナーランク",
-        "nfts": "NFTリスト",
-        "stats": "統計"
+        "nfts": "NFTリスト"
       },
       "info": {
         "title": "プロジェクト情報",
@@ -113,72 +111,9 @@
         "updateError": "プロジェクト名の更新に失敗しました",
         "issuerName": "発行者名",
         "xAccount": "Xアカウント",
-        "links": "リンク"
-      },
-      "stats": {
-        "error": "NFTデータの読み込みに失敗しました",
-        "sevenDayMints": {
-          "title": "7日間のミント数",
-          "totalMints": "総ミント数"
-        },
-        "sevenDayFirstSales": {
-          "title": "7日間の初回販売数",
-          "totalFirstSales": "総初回販売数"
-        },
-        "sevenDayUniqueBuyers": {
-          "title": "7日間の購入者数",
-          "description": "初回購入の異なるアドレス数"
-        },
-        "avgTimeToFirstSale": {
-          "title": "初回販売までの平均時間",
-          "description": "ミントから初回販売までの日数"
-        },
-        "colorClassification": {
-          "title": "カラー分類の進捗",
-          "classified": "分類済み",
-          "unclassified": "未分類",
-          "nfts": "NFT",
-          "lastUpdated": "最終更新"
-        },
-        "colorDistribution": {
-          "title": "カラー分布",
-          "colors": {
-            "red": "🔴 赤",
-            "orange": "🟠 オレンジ",
-            "yellow": "🟡 黄",
-            "green": "🟢 緑",
-            "blue": "🔵 青",
-            "purple": "🟣 紫",
-            "brown": "🟤 茶",
-            "unclassified": "⚪ 未分類"
-          }
-        },
-        "paretoAnalysis": {
-          "title": "パレート分析",
-          "status": {
-            "wellDistributed": {
-              "label": "分散型分布",
-              "description": "一般的なパレート分布(80/20)より均等に分散しています"
-            },
-            "typical": {
-              "label": "一般的な分布",
-              "description": "一般的なパレート分布に近い分布です"
-            },
-            "concentrated": {
-              "label": "集中型分布",
-              "description": "一般的なパレート分布(80/20)より集中しています"
-            }
-          },
-          "holdersInfo": "上位20%の保有者（{totalHolders}人中{topHolders}人）が保有するNFTの割合"
-        },
-        "notice": {
-          "noSalesData": "* この統計は販売データがある場合のみ正しく表示されます。",
-          "noSalesDataYet": "販売データなし"
-        },
-        "actions": {
-          "updateSaleInfo": "最新の販売データを取得",
-          "updating": "更新中（{count}）"
-        }
+        "links": "リンク",
+        "details": "詳細",
+        "copy": "コピー"
       },
       "ownerList": {
         "status": {

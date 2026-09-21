@@ -13,17 +13,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Download, HelpCircle, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Download, Loader2 } from "lucide-react";
+import HelpPopover from '@/app/components/HelpPopover';
 import { useNFTContext } from '@/app/contexts/NFTContext';
 import { useCollectors, Collector } from '@/app/components/useCollectors';
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
@@ -76,7 +72,6 @@ const OwnerActivityList: React.FC<OwnerActivityListProps> = ({ lang, issuer, tax
   const [addressGroups, setAddressGroups] = useState<Record<string, AddressGroup>>({});
   const [addressInfos, setAddressInfos] = useState<Record<string, AddressInfo>>({});
   const [holdersOnly, setHoldersOnly] = useState(false);
-  const [legendOpen, setLegendOpen] = useState(false);
   const [sort, setSort] = useState<{ field: SortField; direction: SortDirection }>({
     field: 'purchaseXrpValue',
     direction: 'desc',
@@ -260,32 +255,6 @@ const OwnerActivityList: React.FC<OwnerActivityListProps> = ({ lang, issuer, tax
 
   return (
     <div className="space-y-4">
-      <Collapsible open={legendOpen} onOpenChange={setLegendOpen}>
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <HelpCircle className="h-4 w-4" />
-            {ownerActivity.legend.toggle}
-            <ChevronDown className={`h-4 w-4 transition-transform ${legendOpen ? 'rotate-180' : ''}`} />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="mt-2 rounded-md border bg-muted/30 p-3 sm:p-4 space-y-3 text-sm">
-            <p className="text-muted-foreground">{ownerActivity.description}</p>
-            <dl className="grid gap-x-6 gap-y-2 md:grid-cols-2">
-              {legendItems.map(([label, text]) => (
-                <div key={label}>
-                  <dt className="font-medium">{label}</dt>
-                  <dd className="text-muted-foreground">{text}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
@@ -302,16 +271,23 @@ const OwnerActivityList: React.FC<OwnerActivityListProps> = ({ lang, issuer, tax
             {ownerActivity.status.showing.replace('{count}', rows.length.toLocaleString())}
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExportCSV}
-          disabled={rows.length === 0}
-          className="flex items-center gap-2"
-        >
-          <Download className="h-4 w-4" />
-          {ownerActivity.actions.export}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCSV}
+            disabled={rows.length === 0}
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            {ownerActivity.actions.export}
+          </Button>
+          <HelpPopover
+            label={ownerActivity.legend.toggle}
+            description={ownerActivity.description}
+            items={legendItems}
+          />
+        </div>
       </div>
 
       {rows.length === 0 ? (
@@ -339,9 +315,10 @@ const OwnerActivityList: React.FC<OwnerActivityListProps> = ({ lang, issuer, tax
                 {rows.map(r => (
                   <TableRow key={r.wallet} className={r.holding === 0 ? 'group text-muted-foreground' : 'group'}>
                     <TableCell className={`${STICKY_COL} ${STICKY_ROW_HOVER} min-w-[140px] max-w-[200px] whitespace-normal break-words`}>
-                      {r.group?.name && <div>{r.group.name}</div>}
-                      <div className={r.group?.name ? 'text-xs font-mono text-muted-foreground' : 'font-mono'}>
-                        {formatAddress(r.wallet)}
+                      <div title={r.wallet}>
+                        {r.group?.name ? r.group.name : (
+                          <span className="font-mono">{formatAddress(r.wallet)}</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">{r.holding.toLocaleString()}</TableCell>
