@@ -22,7 +22,7 @@ export const faceImageUrl = (hexUri: string) =>
 // 未キャッシュだった hex は一度だけ生成を依頼する
 const requested = new Set<string>();
 
-function requestFaceCache(hexUri: string) {
+export function requestFaceCache(hexUri: string) {
   if (requested.has(hexUri)) return;
   requested.add(hexUri);
   void fetch(`${CACHE_API_BASE}/api/cache`, {

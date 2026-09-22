@@ -251,6 +251,8 @@ export interface Dictionary {
         };
         actions: {
           limit: string;
+          openCollection: string;
+          closeFocus: string;
           all: string;
           zoomIn: string;
           zoomOut: string;
@@ -304,6 +306,64 @@ export interface Dictionary {
           spend: string;
           collections: string;
           wallets: string;
+        };
+        errors: {
+          loadFailed: string;
+        };
+      };
+      community: {
+        title: string;
+        description: string;
+        status: {
+          loading: string;
+          showing: string;
+          noData: string;
+        };
+        actions: {
+          fansOnly: string;
+          creatorsOnly: string;
+          openCreator: string;
+          showHome: string;
+          closeFocus: string;
+          zoomIn: string;
+          zoomOut: string;
+          zoomReset: string;
+        };
+        hub: {
+          others: string;
+          members: string;
+        };
+        bands: {
+          core: string;
+          light: string;
+          guest: string;
+          gift: string;
+        };
+        legend: {
+          toggle: string;
+          centerLabel: string;
+          center: string;
+          hubLabel: string;
+          hub: string;
+          othersLabel: string;
+          others: string;
+          flowLabel: string;
+          flow: string;
+          sizeLabel: string;
+          size: string;
+          colorLabel: string;
+          color: string;
+          creatorLabel: string;
+          creator: string;
+          note: string;
+        };
+        tooltip: {
+          home: string;
+          spend: string;
+          loyalty: string;
+          creator: string;
+          members: string;
+          flow: string;
         };
         errors: {
           loadFailed: string;

@@ -12,13 +12,15 @@ import {
   List,
   LayoutGrid,
   Activity,
-  Sprout
+  Sprout,
+  Waypoints
 } from 'lucide-react';
 import NFTList from '@/app/components/NFTList';
 import OwnerList from '@/app/components/OwnerList';
 import OwnerNFTGroupList from '@/app/components/OwnerNFTGroupList';
 import OwnerActivityList from '@/app/components/OwnerActivityList';
 import OwnerPlantNetwork from '@/app/components/OwnerPlantNetwork';
+import CommunityInflowNetwork from '@/app/components/CommunityInflowNetwork';
 import { NFTContextProvider } from '@/app/contexts/NFTContext';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
@@ -94,6 +96,10 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, project: proje
                   <Sprout className="h-4 w-4 mr-2" />
                   {dict?.project.detail.ownerPlant.title}
                 </TabsTrigger>
+                <TabsTrigger value="community">
+                  <Waypoints className="h-4 w-4 mr-2" />
+                  {dict?.project.detail.community.title}
+                </TabsTrigger>
                 <TabsTrigger value="ownerActivity">
                   <Activity className="h-4 w-4 mr-2" />
                   {dict?.project.detail.ownerActivity.title}
@@ -132,6 +138,14 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, project: proje
                       issuer={project.issuer}
                       taxon={project.taxon}
                     />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="community" className="space-y-4">
+                <Card className="mx-[-0.75rem] sm:mx-0 rounded-none sm:rounded-lg border-x-0 sm:border-x">
+                  <CardContent className="px-2 pt-3 sm:px-6 sm:pt-6">
+                    <CommunityInflowNetwork lang={lang} issuer={project.issuer} />
                   </CardContent>
                 </Card>
               </TabsContent>

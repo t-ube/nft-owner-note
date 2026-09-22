@@ -244,6 +244,8 @@
         },
         "actions": {
           "limit": "Show (top spenders)",
+          "openCollection": "Open this collection",
+          "closeFocus": "Close",
           "all": "All",
           "zoomIn": "Zoom in",
           "zoomOut": "Zoom out",
@@ -255,7 +257,7 @@
         "legend": {
           "toggle": "How to read this chart",
           "branchLabel": "Branch",
-          "branch": "A collection. The one you are viewing has a thicker ring.",
+          "branch": "A collection. The one you are viewing has a thicker ring. Click a branch or an owner to zoom in.",
           "nodeLabel": "Circle",
           "node": "An owner.",
           "lineLabel": "Line",
@@ -300,6 +302,64 @@
         },
         "errors": {
           "loadFailed": "Failed to load ecosystem data"
+        }
+      },
+      "community": {
+        "title": "Community",
+        "description": "Where this creator's owners come from, and how much they support this creator. An owner's \"home\" is the creator they have spent the most on at xrp.cafe. \"Loyalty\" is the share of their total xrp.cafe spending that went to this creator.",
+        "status": {
+          "loading": "Loading community...",
+          "showing": "{owners} owners / {hubs} communities",
+          "noData": "No community data"
+        },
+        "actions": {
+          "fansOnly": "Fans only",
+          "creatorsOnly": "Creators only",
+          "openCreator": "Open this creator",
+          "showHome": "Show home community",
+          "closeFocus": "Close",
+          "zoomIn": "Zoom in",
+          "zoomOut": "Zoom out",
+          "zoomReset": "Fit to view"
+        },
+        "hub": {
+          "others": "Others",
+          "members": "{count} owners"
+        },
+        "bands": {
+          "core": "Core",
+          "light": "Light",
+          "guest": "Guest",
+          "gift": "Gift"
+        },
+        "legend": {
+          "toggle": "How to read this chart",
+          "centerLabel": "Center",
+          "center": "This creator. The owners attached to it are homegrown (their home is this creator).",
+          "hubLabel": "Outer circles",
+          "hub": "Other creators' communities, with the owners whose home is there. Click one to zoom in and get a button to open that creator.",
+          "othersLabel": "Others",
+          "others": "Smaller communities grouped together.",
+          "flowLabel": "Line width",
+          "flow": "How much that community has paid to this creator (inflow).",
+          "sizeLabel": "Size",
+          "size": "Paid to this creator, in XRP.",
+          "colorLabel": "Color",
+          "color": "Loyalty: the share of the owner's total xrp.cafe spending that went to this creator. Core is 20% or more, Light is 5–20%, Guest is under 5%, and Gift means they have not paid this creator. Core and Light together are called fans.",
+          "creatorLabel": "Outline",
+          "creator": "The owner is a creator too (an issuer bought by 5 or more wallets).",
+          "note": "Big collectors tend to have low loyalty even when they pay a lot, so a large gray circle usually means a big buyer whose home is elsewhere."
+        },
+        "tooltip": {
+          "home": "Home",
+          "spend": "Paid",
+          "loyalty": "Loyalty",
+          "creator": "Creator",
+          "members": "Owners based here",
+          "flow": "Inflow"
+        },
+        "errors": {
+          "loadFailed": "Failed to load community data"
         }
       },
       "nftListPage": {

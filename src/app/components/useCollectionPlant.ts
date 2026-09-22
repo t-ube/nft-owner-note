@@ -107,7 +107,7 @@ async function fetchPlant(issuer: string): Promise<CollectionPlant | null> {
   return decode((await res.json()) as PlantRow);
 }
 
-function loadPlant(issuer: string): Promise<CollectionPlant | null> {
+export function loadPlant(issuer: string): Promise<CollectionPlant | null> {
   let p = cache.get(issuer);
   if (!p) {
     p = fetchPlant(issuer);

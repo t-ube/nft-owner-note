@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import _ from 'lodash';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -21,8 +22,10 @@ import {
 } from "@/components/ui/tooltip";
 import {
   AlertCircle,
+  ArrowRight,
   Loader2,
   Maximize,
+  X,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -32,6 +35,16 @@ import SortableTableHead from '@/app/components/SortableTableHead';
 import { STICKY_COL, STICKY_ROW_HOVER } from '@/app/components/stickyColumn';
 import { useCollectionPlant, CollectionPlant, PlantHub, PlantNode } from '@/app/components/useCollectionPlant';
 import { faceImageUrl } from '@/app/components/CollectionFace';
+import {
+  View,
+  clampView,
+  fitView,
+  animateView,
+  cancelViewAnimation,
+  ZOOM_MAX,
+  ZOOM_STEP,
+} from '@/app/components/networkView';
+import { collectionPath } from '@/utils/routes';
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
@@ -318,27 +331,6 @@ function computeLayout(plant: CollectionPlant, limit: number): Layout {
 
 const LIMITS = [100, 300, 1000, Infinity];
 
-const ZOOM_MAX = 8;
-const ZOOM_STEP = 1.5;
-
-/** 拡大率と、表示範囲の中心（レイアウト座標） */
-interface View {
-  k: number;
-  cx: number;
-  cy: number;
-}
-
-/** 拡大した表示範囲が図の外にはみ出さないように中心を寄せる */
-function clampView(view: View, vb: Layout['viewBox']): View {
-  const k = Math.min(ZOOM_MAX, Math.max(1, view.k));
-  const w = vb.w / k, h = vb.h / k;
-  return {
-    k,
-    cx: Math.min(vb.x + vb.w - w / 2, Math.max(vb.x + w / 2, view.cx)),
-    cy: Math.min(vb.y + vb.h - h / 2, Math.max(vb.y + h / 2, view.cy)),
-  };
-}
-
 type SortField = 'spend' | 'leaves' | 'daysSinceLast' | 'daysSinceFirst';
 type SortDirection = 'asc' | 'desc';
 
@@ -623,7 +615,11 @@ type Hover =
   | { kind: 'node'; index: number; x: number; y: number }
   | { kind: 'hub'; taxon: number; x: number; y: number };
 
+/** クリックして拡大表示しているもの（node は layout.nodes の添字、hub は taxon） */
+type Focus = { kind: 'node'; index: number } | { kind: 'hub'; taxon: number };
+
 const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, taxon }) => {
+  const router = useRouter();
   const { status, plant } = useCollectionPlant(issuer);
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [limit, setLimit] = useState(300);
@@ -633,6 +629,10 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const [focus, setFocus] = useState<Focus | null>(null);
+  const animRef = useRef<number | null>(null);
+
+  useEffect(() => () => cancelViewAnimation(animRef), []);
 
   // ツールチップが図の外に見切れないよう、実際の大きさを測って置き場所を決める。
   // 右（下）に収まらなければ左（上）に出し、それでもはみ出す分は内側へ寄せる
@@ -691,6 +691,8 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
   // 表示数を変えると図の大きさが変わるので、全体表示に戻す
   useEffect(() => {
     setView(null);
+    setHover(null);
+    setFocus(null);
   }, [layout]);
 
   const hubByTaxon = useMemo(
@@ -753,8 +755,15 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
   const hoveredNode = hover?.kind === 'node' ? layout.nodes[hover.index] : null;
   const hoveredHub = hover?.kind === 'hub' ? hubByTaxon.get(hover.taxon) ?? null : null;
   const hoveredGroup = hoveredNode ? groupOf(hoveredNode.wallet) : null;
+  const focusedNode = focus?.kind === 'node' ? layout.nodes[focus.index] ?? null : null;
+  const focusedHub = focus?.kind === 'hub' ? hubByTaxon.get(focus.taxon) ?? null : null;
+  const focusedGroup = focusedNode ? groupOf(focusedNode.wallet) : null;
+  // カーソルを合わせた枝、なければ拡大中の枝を取得していない wallet を薄くする
+  const spotlightHub = hoveredHub ?? focusedHub;
   const isDimmed = (node: PlacedNode) =>
-    hoveredHub !== null && !node.taxa.some(t => t.taxon === hoveredHub.taxon);
+    spotlightHub !== null && !node.taxa.some(t => t.taxon === spotlightHub.taxon);
+  // 線を強調する wallet
+  const activeNode = hoveredNode ?? focusedNode;
 
   const { viewBox } = layout;
   const current: View = view ?? {
@@ -772,11 +781,45 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
     setHover(null);
   };
 
+  // 表示範囲をなめらかに動かす（target が null なら全体表示）
+  const animateTo = (target: View | null) => animateView(animRef, current, target, viewBox, setView);
+
+  // 枝と、そのコレクションを取得した wallet が収まるように拡大する
+  const focusHub = (h: PlacedHub) => {
+    let x0 = h.x - HUB_R, y0 = h.y - HUB_R, x1 = h.x + HUB_R, y1 = h.y + HUB_R + 22;
+    for (const node of layout.nodes) {
+      if (!node.taxa.some(t => t.taxon === h.taxon)) continue;
+      const er = node.r + LEAF_LEN;
+      x0 = Math.min(x0, node.x - er);
+      y0 = Math.min(y0, node.y - er);
+      x1 = Math.max(x1, node.x + er);
+      y1 = Math.max(y1, node.y + er);
+    }
+    setFocus({ kind: 'hub', taxon: h.taxon });
+    setHover(null);
+    animateTo(fitView(viewBox, x0, y0, x1, y1));
+  };
+
+  // wallet とその周り（大きさに応じた範囲）が見えるように拡大する
+  const focusNode = (index: number) => {
+    const node = layout.nodes[index];
+    const half = Math.max(60, (node.r + LEAF_LEN) * 3);
+    setFocus({ kind: 'node', index });
+    setHover(null);
+    animateTo(fitView(viewBox, node.x - half, node.y - half, node.x + half, node.y + half));
+  };
+
+  const closeFocus = () => {
+    setFocus(null);
+    animateTo(null);
+  };
+
   // 拡大中はマウスのドラッグで表示位置を動かす（タッチはページのスクロールに使うので動かさない）
   const handleSvgPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     // 何もない場所をクリック・タップしたらツールチップを消す
     setHover(null);
     if (e.pointerType !== 'mouse' || current.k <= 1) return;
+    cancelViewAnimation(animRef);
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = { x: e.clientX, y: e.clientY, view: current };
     setDragging(true);
@@ -805,328 +848,445 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-sm">{ownerPlant.actions.limit}</span>
-          <div className="inline-flex rounded-md border">
-            {LIMITS.map(value => (
-              <Button
-                key={value}
-                variant={limit === value ? 'secondary' : 'ghost'}
-                size="sm"
-                className="h-8 rounded-none first:rounded-l-md last:rounded-r-md"
-                onClick={() => setLimit(value)}
-              >
-                {value === Infinity ? ownerPlant.actions.all : value.toLocaleString()}
-              </Button>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="text-sm text-gray-500">
-            {ownerPlant.status.showing
-              .replace('{shown}', layout.nodes.length.toLocaleString())
-              .replace('{total}', plant.nodes.length.toLocaleString())}
-          </div>
-          <HelpPopover
-            label={ownerPlant.legend.toggle}
-            description={ownerPlant.description}
-            items={[
-              [ownerPlant.legend.branchLabel, ownerPlant.legend.branch],
-              [ownerPlant.legend.nodeLabel, ownerPlant.legend.node],
-              [ownerPlant.legend.lineLabel, ownerPlant.legend.line],
-              [ownerPlant.legend.sizeLabel, ownerPlant.legend.size],
-              [ownerPlant.legend.colorLabel, ownerPlant.legend.color],
-              [ownerPlant.legend.sproutLabel, ownerPlant.legend.sprout],
-              [ownerPlant.legend.leavesLabel, ownerPlant.legend.leaves],
-            ]}
-            note={ownerPlant.legend.note}
-          />
-        </div>
-      </div>
-
-      {/* 凡例（見出し・図・説明を縦に並べ、項目ごとに区切る） */}
-      <div className="grid grid-cols-2 gap-x-6 gap-y-4 rounded-md border bg-muted/30 p-3 sm:flex sm:flex-wrap sm:items-start sm:gap-x-8">
-        <LegendItem title={ownerPlant.legend.colorLabel}>
-          <div className="w-40 max-w-full">
-            <div
-              className="h-3 rounded-sm"
-              style={{
-                background: `linear-gradient(to right, ${recencyColor(0)} 0%, ${recencyColor(90)} ${(90 / 365) * 100}%, ${recencyColor(365)} 100%)`,
-              }}
-            />
-            <div className="relative mt-1 h-4 text-xs text-muted-foreground tabular-nums">
-              <span className="absolute left-0">0</span>
-              <span className="absolute -translate-x-1/2" style={{ left: `${(90 / 365) * 100}%` }}>90</span>
-              <span className="absolute right-0">365+</span>
+      {/* PC では操作・凡例を左の列に縦に並べ、図を縦スクロールなしで見られるようにする */}
+      <div className="space-y-4 lg:flex lg:items-start lg:gap-4 lg:space-y-0">
+        <aside className="space-y-4 lg:w-56 lg:shrink-0">
+          <div className="flex flex-col sm:flex-row lg:flex-col justify-between items-start sm:items-center lg:items-start gap-3">
+            <div className="flex flex-wrap lg:flex-col items-center lg:items-start gap-2">
+              <span className="text-sm">{ownerPlant.actions.limit}</span>
+              <div className="inline-flex rounded-md border">
+                {LIMITS.map(value => (
+                  <Button
+                    key={value}
+                    variant={limit === value ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="h-8 rounded-none first:rounded-l-md last:rounded-r-md"
+                    onClick={() => setLimit(value)}
+                  >
+                    {value === Infinity ? ownerPlant.actions.all : value.toLocaleString()}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-gray-500">
+                {ownerPlant.status.showing
+                  .replace('{shown}', layout.nodes.length.toLocaleString())
+                  .replace('{total}', plant.nodes.length.toLocaleString())}
+              </div>
+              <HelpPopover
+                label={ownerPlant.legend.toggle}
+                description={ownerPlant.description}
+                items={[
+                  [ownerPlant.legend.branchLabel, ownerPlant.legend.branch],
+                  [ownerPlant.legend.nodeLabel, ownerPlant.legend.node],
+                  [ownerPlant.legend.lineLabel, ownerPlant.legend.line],
+                  [ownerPlant.legend.sizeLabel, ownerPlant.legend.size],
+                  [ownerPlant.legend.colorLabel, ownerPlant.legend.color],
+                  [ownerPlant.legend.sproutLabel, ownerPlant.legend.sprout],
+                  [ownerPlant.legend.leavesLabel, ownerPlant.legend.leaves],
+                ]}
+                note={ownerPlant.legend.note}
+              />
             </div>
           </div>
-          <LegendCaption>{ownerPlant.legend.days}</LegendCaption>
-        </LegendItem>
 
-        <LegendItem title={ownerPlant.legend.sproutLabel}>
-          <span className="inline-block h-4 w-4 rounded-full" style={{ background: SPROUT_COLOR }} />
-          <LegendCaption>{ownerPlant.legend.sprout}</LegendCaption>
-        </LegendItem>
-
-        <LegendItem title={ownerPlant.legend.sizeLabel}>
-          <div className="flex items-end gap-3">
-            {[10, 100, 1000].map(v => {
-              const r = radiusOf(v);
-              return (
-                <div key={v} className="flex flex-col items-center gap-0.5">
-                  <svg width={r * 2 + 2} height={r * 2 + 2} aria-hidden>
-                    <circle cx={r + 1} cy={r + 1} r={r} fill={recencyColor(0)} opacity={0.85} />
-                  </svg>
-                  <span className="text-xs text-muted-foreground tabular-nums">{v.toLocaleString()}</span>
-                </div>
-              );
-            })}
-          </div>
-          <LegendCaption>{ownerPlant.list.spend}</LegendCaption>
-        </LegendItem>
-
-        <LegendItem title={ownerPlant.legend.leavesLabel}>
-          <div className="flex items-end gap-3">
-            {[3, 12].map(count => {
-              const r = 6;
-              const c = r + LEAF_LEN + 1;
-              return (
-                <div key={count} className="flex flex-col items-center gap-0.5">
-                  <svg width={c * 2} height={c * 2} aria-hidden>
-                    <path d={leavesPath(c, c, r, count, 1)} fill={recencyColor(0)} opacity={0.55} />
-                    <circle cx={c} cy={c} r={r} fill={recencyColor(0)} />
-                  </svg>
-                  <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
-                </div>
-              );
-            })}
-          </div>
-          <LegendCaption>{ownerPlant.list.leaves}</LegendCaption>
-        </LegendItem>
-      </div>
-
-      <div
-        ref={containerRef}
-        className="relative rounded-md border bg-background overflow-hidden touch-pan-y select-none"
-        onPointerLeave={() => setHover(null)}
-      >
-        <svg
-          ref={svgRef}
-          viewBox={`${current.cx - visible.w / 2} ${current.cy - visible.h / 2} ${visible.w} ${visible.h}`}
-          className={`block w-full h-auto max-h-[80vh] text-foreground ${
-            dragging ? 'cursor-grabbing' : current.k > 1 ? 'cursor-grab' : ''
-          }`}
-          role="img"
-          onPointerDown={handleSvgPointerDown}
-          // ドラッグで文字が選択されたり、選択に引きずられてページがスクロールしたりしないようにする
-          onMouseDown={e => e.preventDefault()}
-          onPointerMove={handleSvgPointerMove}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
-          aria-label={ownerPlant.title}
-        >
-          <defs>
-            {layout.hubs.map(h => (
-              <clipPath key={h.taxon} id={`plant-hub-${h.taxon}`}>
-                <circle cx={h.x} cy={h.y} r={HUB_R - 2} />
-              </clipPath>
-            ))}
-          </defs>
-
-          {/* 枝 */}
-          {showBranches && (
-            <g stroke={BRANCH_COLOR} strokeLinecap="round" fill="none" opacity={0.35}>
-              {layout.hubs.map(h => (
-                <path
-                  key={h.taxon}
-                  d={`M0 0Q${(h.x * 0.5 - h.y * 0.15).toFixed(1)} ${(h.y * 0.5 + h.x * 0.15).toFixed(1)} ${h.x.toFixed(1)} ${h.y.toFixed(1)}`}
-                  strokeWidth={4}
-                />
-              ))}
-              <circle cx={0} cy={0} r={5} fill={BRANCH_COLOR} stroke="none" />
-            </g>
-          )}
-
-          {/* 線 */}
-          <path
-            d={edgesPath}
-            stroke="currentColor"
-            strokeWidth={0.6}
-            opacity={hoveredNode || hoveredHub ? 0.04 : 0.1}
-            fill="none"
-          />
-          {hoveredNode && (
-            <g stroke="currentColor" strokeWidth={1.5} opacity={0.6}>
-              {hoveredNode.taxa.map(({ taxon: t }) => {
-                const h = hubByTaxon.get(t);
-                return h ? <line key={t} x1={hoveredNode.x} y1={hoveredNode.y} x2={h.x} y2={h.y} /> : null;
-              })}
-            </g>
-          )}
-
-          {/* wallet（大きいものから描き、小さいものを上に重ねる） */}
-          <g>
-            {layout.nodes.map((node, i) => (
-              <g
-                key={node.wallet}
-                opacity={isDimmed(node) ? 0.15 : 1}
-                className="cursor-pointer"
-                onPointerEnter={e => setHover({ kind: 'node', index: i, ...pointerAt(e) })}
-                onPointerMove={e => setHover({ kind: 'node', index: i, ...pointerAt(e) })}
-                onPointerDown={e => {
-                  e.stopPropagation();
-                  setHover({ kind: 'node', index: i, ...pointerAt(e) });
-                }}
-              >
-                {node.leafPath && <path d={node.leafPath} fill={node.color} opacity={0.55} />}
-                <circle
-                  cx={node.x}
-                  cy={node.y}
-                  r={node.r}
-                  fill={node.color}
-                  stroke={hoveredNode === node || highlightWallet === node.wallet ? 'currentColor' : 'hsl(var(--background))'}
-                  strokeWidth={hoveredNode === node || highlightWallet === node.wallet ? 2 : 0.8}
-                />
-              </g>
-            ))}
-          </g>
-
-          {/* 枝（taxon ハブ） */}
-          <g>
-            {layout.hubs.map(h => {
-              const icon = brokenIcons.has(h.taxon) ? null : hubIconUrl(h.icon);
-              const isCurrent = String(h.taxon) === String(taxon);
-              const label = hubName(h);
-              return (
-                <g
-                  key={h.taxon}
-                  className="cursor-pointer"
-                  onPointerEnter={e => setHover({ kind: 'hub', taxon: h.taxon, ...pointerAt(e) })}
-                  onPointerMove={e => setHover({ kind: 'hub', taxon: h.taxon, ...pointerAt(e) })}
-                  onPointerDown={e => {
-                    e.stopPropagation();
-                    setHover({ kind: 'hub', taxon: h.taxon, ...pointerAt(e) });
+          {/* 凡例（見出し・図・説明を縦に並べ、項目ごとに区切る） */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4 rounded-md border bg-muted/30 p-3 sm:flex sm:flex-wrap sm:items-start sm:gap-x-8 lg:flex-col lg:flex-nowrap">
+            <LegendItem title={ownerPlant.legend.colorLabel}>
+              <div className="w-40 max-w-full">
+                <div
+                  className="h-3 rounded-sm"
+                  style={{
+                    background: `linear-gradient(to right, ${recencyColor(0)} 0%, ${recencyColor(90)} ${(90 / 365) * 100}%, ${recencyColor(365)} 100%)`,
                   }}
-                >
-                  <circle
-                    cx={h.x}
-                    cy={h.y}
-                    r={HUB_R}
-                    fill="hsl(var(--muted))"
-                    stroke={isCurrent ? 'hsl(var(--primary))' : BRANCH_COLOR}
-                    strokeWidth={isCurrent ? 3 : 2}
-                  />
-                  {icon ? (
-                    <image
-                      href={icon}
-                      x={h.x - HUB_R + 2}
-                      y={h.y - HUB_R + 2}
-                      width={(HUB_R - 2) * 2}
-                      height={(HUB_R - 2) * 2}
-                      preserveAspectRatio="xMidYMid slice"
-                      clipPath={`url(#plant-hub-${h.taxon})`}
-                      onError={() => setBrokenIcons(prev => new Set(prev).add(h.taxon))}
-                    />
-                  ) : (
-                    <text
-                      x={h.x}
-                      y={h.y}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      fontSize={11}
-                      fill="currentColor"
-                    >
-                      {h.taxon}
-                    </text>
-                  )}
-                  <text
-                    x={h.x}
-                    y={h.y + HUB_R + 13}
-                    textAnchor="middle"
-                    fontSize={11}
-                    fontWeight={isCurrent ? 700 : 500}
-                    fill="currentColor"
-                    stroke="hsl(var(--background))"
-                    strokeWidth={3}
-                    paintOrder="stroke"
-                  >
-                    {label.length > 20 ? `${label.slice(0, 19)}…` : label}
-                  </text>
-                </g>
-              );
-            })}
-          </g>
-        </svg>
+                />
+                <div className="relative mt-1 h-4 text-xs text-muted-foreground tabular-nums">
+                  <span className="absolute left-0">0</span>
+                  <span className="absolute -translate-x-1/2" style={{ left: `${(90 / 365) * 100}%` }}>90</span>
+                  <span className="absolute right-0">365+</span>
+                </div>
+              </div>
+              <LegendCaption>{ownerPlant.legend.days}</LegendCaption>
+            </LegendItem>
 
-        <div className="absolute right-2 top-2 flex flex-col overflow-hidden rounded-md border bg-background/90 shadow-sm">
-          {([
-            [ZoomIn, ownerPlant.actions.zoomIn, () => zoomBy(ZOOM_STEP), current.k >= ZOOM_MAX],
-            [ZoomOut, ownerPlant.actions.zoomOut, () => zoomBy(1 / ZOOM_STEP), current.k <= 1],
-            [Maximize, ownerPlant.actions.zoomReset, () => setView(null), current.k <= 1],
-          ] as const).map(([Icon, label, onClick, disabled]) => (
-            <Button
-              key={label}
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-none"
-              onClick={onClick}
-              disabled={disabled}
-              title={label}
-              aria-label={label}
-            >
-              <Icon className="h-4 w-4" />
-            </Button>
-          ))}
-        </div>
+            <LegendItem title={ownerPlant.legend.sproutLabel}>
+              <span className="inline-block h-4 w-4 rounded-full" style={{ background: SPROUT_COLOR }} />
+              <LegendCaption>{ownerPlant.legend.sprout}</LegendCaption>
+            </LegendItem>
 
-        {hover && (hoveredNode || hoveredHub) && (
+            <LegendItem title={ownerPlant.legend.sizeLabel}>
+              <div className="flex items-end gap-3">
+                {[10, 100, 1000].map(v => {
+                  const r = radiusOf(v);
+                  return (
+                    <div key={v} className="flex flex-col items-center gap-0.5">
+                      <svg width={r * 2 + 2} height={r * 2 + 2} aria-hidden>
+                        <circle cx={r + 1} cy={r + 1} r={r} fill={recencyColor(0)} opacity={0.85} />
+                      </svg>
+                      <span className="text-xs text-muted-foreground tabular-nums">{v.toLocaleString()}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <LegendCaption>{ownerPlant.list.spend}</LegendCaption>
+            </LegendItem>
+
+            <LegendItem title={ownerPlant.legend.leavesLabel}>
+              <div className="flex items-end gap-3">
+                {[3, 12].map(count => {
+                  const r = 6;
+                  const c = r + LEAF_LEN + 1;
+                  return (
+                    <div key={count} className="flex flex-col items-center gap-0.5">
+                      <svg width={c * 2} height={c * 2} aria-hidden>
+                        <path d={leavesPath(c, c, r, count, 1)} fill={recencyColor(0)} opacity={0.55} />
+                        <circle cx={c} cy={c} r={r} fill={recencyColor(0)} />
+                      </svg>
+                      <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <LegendCaption>{ownerPlant.list.leaves}</LegendCaption>
+            </LegendItem>
+          </div>
+        </aside>
+
+        <div className="min-w-0 flex-1">
           <div
-            ref={tooltipRef}
-            className="pointer-events-none absolute left-0 top-0 z-10 max-w-[260px] rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md"
+            ref={containerRef}
+            className="relative rounded-md border bg-background overflow-hidden touch-pan-y select-none"
+            onPointerLeave={() => setHover(null)}
           >
-            {hoveredNode && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  {hoveredGroup?.name ? (
-                    <span className="font-medium break-words">{hoveredGroup.name}</span>
-                  ) : (
-                    <span className="font-mono font-medium">{hoveredNode.wallet.slice(0, 6)}…</span>
-                  )}
-                  {hoveredNode.isSprout && (
-                    <span className="rounded px-1 text-[10px] font-medium text-black" style={{ background: SPROUT_COLOR }}>
-                      {ownerPlant.legend.sproutLabel}
-                    </span>
-                  )}
+            <svg
+              ref={svgRef}
+              viewBox={`${current.cx - visible.w / 2} ${current.cy - visible.h / 2} ${visible.w} ${visible.h}`}
+              className={`block w-full h-auto max-h-[80vh] lg:max-h-[calc(100vh-14rem)] text-foreground ${
+                dragging ? 'cursor-grabbing' : current.k > 1 ? 'cursor-grab' : ''
+              }`}
+              role="img"
+              onPointerDown={handleSvgPointerDown}
+              // ドラッグで文字が選択されたり、選択に引きずられてページがスクロールしたりしないようにする
+              onMouseDown={e => e.preventDefault()}
+              onPointerMove={handleSvgPointerMove}
+              onPointerUp={endDrag}
+              onPointerCancel={endDrag}
+              aria-label={ownerPlant.title}
+            >
+              <defs>
+                {layout.hubs.map(h => (
+                  <clipPath key={h.taxon} id={`plant-hub-${h.taxon}`}>
+                    <circle cx={h.x} cy={h.y} r={HUB_R - 2} />
+                  </clipPath>
+                ))}
+              </defs>
+
+              {/* 枝 */}
+              {showBranches && (
+                <g stroke={BRANCH_COLOR} strokeLinecap="round" fill="none" opacity={0.35}>
+                  {layout.hubs.map(h => (
+                    <path
+                      key={h.taxon}
+                      d={`M0 0Q${(h.x * 0.5 - h.y * 0.15).toFixed(1)} ${(h.y * 0.5 + h.x * 0.15).toFixed(1)} ${h.x.toFixed(1)} ${h.y.toFixed(1)}`}
+                      strokeWidth={4}
+                    />
+                  ))}
+                  <circle cx={0} cy={0} r={5} fill={BRANCH_COLOR} stroke="none" />
+                </g>
+              )}
+
+              {/* 線 */}
+              <path
+                d={edgesPath}
+                stroke="currentColor"
+                strokeWidth={0.6}
+                opacity={activeNode || spotlightHub ? 0.04 : 0.1}
+                fill="none"
+              />
+              {activeNode && (
+                <g stroke="currentColor" strokeWidth={1.5 / current.k} opacity={0.6}>
+                  {activeNode.taxa.map(({ taxon: t }) => {
+                    const h = hubByTaxon.get(t);
+                    return h ? <line key={t} x1={activeNode.x} y1={activeNode.y} x2={h.x} y2={h.y} /> : null;
+                  })}
+                </g>
+              )}
+
+              {/* wallet（大きいものから描き、小さいものを上に重ねる） */}
+              <g>
+                {layout.nodes.map((node, i) => (
+                  <g
+                    key={node.wallet}
+                    opacity={isDimmed(node) ? 0.15 : 1}
+                    className="cursor-pointer"
+                    onPointerEnter={e => setHover({ kind: 'node', index: i, ...pointerAt(e) })}
+                    onPointerMove={e => setHover({ kind: 'node', index: i, ...pointerAt(e) })}
+                    onPointerDown={e => {
+                      e.stopPropagation();
+                      setHover({ kind: 'node', index: i, ...pointerAt(e) });
+                    }}
+                    onClick={() => focusNode(i)}
+                  >
+                    {node.leafPath && <path d={node.leafPath} fill={node.color} opacity={0.55} />}
+                    <circle
+                      cx={node.x}
+                      cy={node.y}
+                      r={node.r}
+                      fill={node.color}
+                      stroke={hoveredNode === node || focusedNode === node || highlightWallet === node.wallet ? 'currentColor' : 'hsl(var(--background))'}
+                      strokeWidth={focusedNode === node ? 3 : hoveredNode === node || highlightWallet === node.wallet ? 2 : 0.8}
+                    />
+                  </g>
+                ))}
+              </g>
+
+              {/* 枝（taxon ハブ） */}
+              <g>
+                {layout.hubs.map(h => {
+                  const icon = brokenIcons.has(h.taxon) ? null : hubIconUrl(h.icon);
+                  const isCurrent = String(h.taxon) === String(taxon);
+                  const isFocused = focusedHub === h;
+                  const label = hubName(h);
+                  return (
+                    <g
+                      key={h.taxon}
+                      className="cursor-pointer"
+                      onPointerEnter={e => setHover({ kind: 'hub', taxon: h.taxon, ...pointerAt(e) })}
+                      onPointerMove={e => setHover({ kind: 'hub', taxon: h.taxon, ...pointerAt(e) })}
+                      onPointerDown={e => {
+                        e.stopPropagation();
+                        setHover({ kind: 'hub', taxon: h.taxon, ...pointerAt(e) });
+                      }}
+                      onClick={() => focusHub(h)}
+                    >
+                      <circle
+                        cx={h.x}
+                        cy={h.y}
+                        r={HUB_R}
+                        fill="hsl(var(--muted))"
+                        stroke={isCurrent || isFocused ? 'hsl(var(--primary))' : BRANCH_COLOR}
+                        strokeWidth={isCurrent || isFocused ? 3 : 2}
+                      />
+                      {icon ? (
+                        <image
+                          href={icon}
+                          x={h.x - HUB_R + 2}
+                          y={h.y - HUB_R + 2}
+                          width={(HUB_R - 2) * 2}
+                          height={(HUB_R - 2) * 2}
+                          preserveAspectRatio="xMidYMid slice"
+                          clipPath={`url(#plant-hub-${h.taxon})`}
+                          onError={() => setBrokenIcons(prev => new Set(prev).add(h.taxon))}
+                        />
+                      ) : (
+                        <text
+                          x={h.x}
+                          y={h.y}
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fontSize={11}
+                          fill="currentColor"
+                        >
+                          {h.taxon}
+                        </text>
+                      )}
+                      {/* 名前は wallet に重なるので、クリックして拡大している間は出さない。
+                          ボタンで拡大したときも文字は大きくせず、画面上で同じ大きさに保つ */}
+                      {focus === null && (
+                        <text
+                          x={h.x}
+                          y={h.y + HUB_R + 13 / current.k}
+                          textAnchor="middle"
+                          fontSize={11 / current.k}
+                          fontWeight={isCurrent ? 700 : 500}
+                          fill="currentColor"
+                          stroke="hsl(var(--background))"
+                          strokeWidth={3 / current.k}
+                          paintOrder="stroke"
+                        >
+                          {label.length > 20 ? `${label.slice(0, 19)}…` : label}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })}
+              </g>
+            </svg>
+
+            <div className="absolute right-2 top-2 flex flex-col overflow-hidden rounded-md border bg-background/90 shadow-sm">
+              {([
+                [ZoomIn, ownerPlant.actions.zoomIn, () => zoomBy(ZOOM_STEP), current.k >= ZOOM_MAX],
+                [ZoomOut, ownerPlant.actions.zoomOut, () => zoomBy(1 / ZOOM_STEP), current.k <= 1],
+                [Maximize, ownerPlant.actions.zoomReset, closeFocus, current.k <= 1 && focus === null],
+              ] as const).map(([Icon, label, onClick, disabled]) => (
+                <Button
+                  key={label}
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-none"
+                  onClick={onClick}
+                  disabled={disabled}
+                  title={label}
+                  aria-label={label}
+                >
+                  <Icon className="h-4 w-4" />
+                </Button>
+              ))}
+            </div>
+
+            {focusedHub && (
+              <div className="absolute left-2 top-2 z-10 w-64 max-w-[calc(100%-3.5rem)] space-y-2 rounded-md border bg-background/95 p-3 text-sm shadow-md">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <HubIcon key={focusedHub.taxon} hub={focusedHub} taxon={focusedHub.taxon} />
+                    <div className="min-w-0 break-words font-medium">{hubName(focusedHub)}</div>
+                  </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="-mr-1 -mt-1 h-6 w-6 shrink-0"
+                      onClick={closeFocus}
+                      title={ownerPlant.actions.closeFocus}
+                      aria-label={ownerPlant.actions.closeFocus}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                 </div>
-                {hoveredGroup?.name && hoveredGroup.xAccount && (
-                  <div className="text-muted-foreground">@{hoveredGroup.xAccount.replace(/^@/, '')}</div>
+                <div className="space-y-0.5 text-xs text-muted-foreground">
+                  <div>{ownerPlant.tooltip.wallets}: {focusedHub.wallets.toLocaleString()}</div>
+                  <div>{ownerPlant.tooltip.spend}: {formatXrp(focusedHub.spend)} XRP</div>
+                </div>
+                {String(focusedHub.taxon) !== String(taxon) && (
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    onClick={() => router.push(collectionPath(lang, { issuer, taxon: String(focusedHub.taxon) }))}
+                  >
+                    <ArrowRight className="mr-2 h-4 w-4" />
+                    {ownerPlant.actions.openCollection}
+                  </Button>
                 )}
-                <div>
-                  {ownerPlant.tooltip.lastActive}:{' '}
-                  {hoveredNode.daysSinceLast === null ? '-' : formatDaysAgo(hoveredNode.daysSinceLast)}
+              </div>
+            )}
+
+            {focusedNode && (
+              <div className="absolute left-2 top-2 z-10 w-64 max-w-[calc(100%-3.5rem)] space-y-2 rounded-md border bg-background/95 p-3 text-sm shadow-md">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className="inline-block h-4 w-4 shrink-0 rounded-full"
+                      style={{ background: focusedNode.color }}
+                      aria-hidden
+                    />
+                    <div className="min-w-0" title={focusedNode.wallet}>
+                      {focusedGroup?.name && <div className="break-words font-medium">{focusedGroup.name}</div>}
+                      <div className={`font-mono ${focusedGroup?.name ? 'text-xs text-muted-foreground' : 'font-medium'}`}>
+                        {`${focusedNode.wallet.slice(0, 6)}...${focusedNode.wallet.slice(-4)}`}
+                      </div>
+                    </div>
+                    {focusedNode.isSprout && (
+                      <span className="shrink-0 rounded px-1 text-[10px] font-medium text-black" style={{ background: SPROUT_COLOR }}>
+                        {ownerPlant.legend.sproutLabel}
+                      </span>
+                    )}
+                  </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="-mr-1 -mt-1 h-6 w-6 shrink-0"
+                      onClick={closeFocus}
+                      title={ownerPlant.actions.closeFocus}
+                      aria-label={ownerPlant.actions.closeFocus}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                 </div>
-                <div>{ownerPlant.tooltip.acquired}: {hoveredNode.leaves.toLocaleString()}</div>
-                <div>{ownerPlant.tooltip.spend}: {formatXrp(hoveredNode.spend)} XRP</div>
-                <div>
-                  <div>{ownerPlant.tooltip.collections}:</div>
-                  <div className="mt-2 flex flex-wrap gap-2.5 pl-0.5">
-                    {hoveredNode.taxa.map(({ taxon: t, leaves }) => (
-                      <HubIconWithCount key={t} hub={hubByTaxon.get(t) ?? null} taxon={t} count={leaves} />
-                    ))}
+                {focusedGroup?.name && focusedGroup.xAccount && (
+                  <div className="text-xs text-muted-foreground">@{focusedGroup.xAccount.replace(/^@/, '')}</div>
+                )}
+                <div className="space-y-0.5 text-xs text-muted-foreground">
+                  <div>
+                    {ownerPlant.tooltip.lastActive}:{' '}
+                    {focusedNode.daysSinceLast === null ? '-' : formatDaysAgo(focusedNode.daysSinceLast)}
+                  </div>
+                  <div>{ownerPlant.tooltip.acquired}: {focusedNode.leaves.toLocaleString()}</div>
+                  <div>{ownerPlant.tooltip.spend}: {formatXrp(focusedNode.spend)} XRP</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground">{ownerPlant.tooltip.collections}:</div>
+                  {/* アイコンを押すと、そのコレクションの枝へ拡大し直す */}
+                  <div className="flex flex-wrap gap-2.5 pl-0.5">
+                    {focusedNode.taxa.map(({ taxon: t, leaves }) => {
+                      const h = hubByTaxon.get(t);
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          className="rounded-full transition-opacity hover:opacity-80 disabled:cursor-default"
+                          onClick={() => h && focusHub(h)}
+                          disabled={!h}
+                          title={h ? hubName(h) : undefined}
+                        >
+                          <HubIconWithCount hub={h ?? null} taxon={t} count={leaves} />
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
+                <NFTSiteWalletIcons wallet={focusedNode.wallet} issuer={issuer} />
               </div>
             )}
-            {hoveredHub && (
-              <div className="space-y-1">
-                <div className="font-medium">{hubName(hoveredHub)}</div>
-                <div>{ownerPlant.tooltip.wallets}: {hoveredHub.wallets.toLocaleString()}</div>
-                <div>{ownerPlant.tooltip.spend}: {formatXrp(hoveredHub.spend)} XRP</div>
+
+            {hover && (hoveredNode || hoveredHub) && (
+              <div
+                ref={tooltipRef}
+                className="pointer-events-none absolute left-0 top-0 z-10 max-w-[260px] rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md"
+              >
+                {hoveredNode && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      {hoveredGroup?.name ? (
+                        <span className="font-medium break-words">{hoveredGroup.name}</span>
+                      ) : (
+                        <span className="font-mono font-medium">{hoveredNode.wallet.slice(0, 6)}…</span>
+                      )}
+                      {hoveredNode.isSprout && (
+                        <span className="rounded px-1 text-[10px] font-medium text-black" style={{ background: SPROUT_COLOR }}>
+                          {ownerPlant.legend.sproutLabel}
+                        </span>
+                      )}
+                    </div>
+                    {hoveredGroup?.name && hoveredGroup.xAccount && (
+                      <div className="text-muted-foreground">@{hoveredGroup.xAccount.replace(/^@/, '')}</div>
+                    )}
+                    <div>
+                      {ownerPlant.tooltip.lastActive}:{' '}
+                      {hoveredNode.daysSinceLast === null ? '-' : formatDaysAgo(hoveredNode.daysSinceLast)}
+                    </div>
+                    <div>{ownerPlant.tooltip.acquired}: {hoveredNode.leaves.toLocaleString()}</div>
+                    <div>{ownerPlant.tooltip.spend}: {formatXrp(hoveredNode.spend)} XRP</div>
+                    <div>
+                      <div>{ownerPlant.tooltip.collections}:</div>
+                      <div className="mt-2 flex flex-wrap gap-2.5 pl-0.5">
+                        {hoveredNode.taxa.map(({ taxon: t, leaves }) => (
+                          <HubIconWithCount key={t} hub={hubByTaxon.get(t) ?? null} taxon={t} count={leaves} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {hoveredHub && (
+                  <div className="space-y-1">
+                    <div className="font-medium">{hubName(hoveredHub)}</div>
+                    <div>{ownerPlant.tooltip.wallets}: {hoveredHub.wallets.toLocaleString()}</div>
+                    <div>{ownerPlant.tooltip.spend}: {formatXrp(hoveredHub.spend)} XRP</div>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
+        </div>
       </div>
 
       <OwnerPlantList
