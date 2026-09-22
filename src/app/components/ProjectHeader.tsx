@@ -129,6 +129,21 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
                 autoFocus
                 className="flex-1 min-w-0 text-base sm:text-lg font-bold dark:bg-gray-700 dark:text-gray-200"
               />
+              {/* 保存・キャンセルは入力欄のすぐ右に並べる */}
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={!editedName.trim() || editedName.trim() === project.name}
+                aria-label={dict?.project.detail.info.save}
+                className="shrink-0"
+              >
+                <Save className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">{dict?.project.detail.info.save}</span>
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleCancel} className="shrink-0 dark:border-gray-600 dark:text-gray-200" aria-label={dict?.project.detail.info.cancel}>
+                <X className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">{dict?.project.detail.info.cancel}</span>
+              </Button>
             </div>
           ) : (
             <h1 className="text-xl sm:text-2xl font-bold truncate">{project.name}</h1>
@@ -216,30 +231,15 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
-          {isEditing ? (
-            <>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={!editedName.trim() || editedName.trim() === project.name}
-                aria-label={dict?.project.detail.info.save}
-              >
-                <Save className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">{dict?.project.detail.info.save}</span>
-              </Button>
-              <Button size="sm" variant="outline" onClick={handleCancel} className="dark:border-gray-600 dark:text-gray-200" aria-label={dict?.project.detail.info.cancel}>
-                <X className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">{dict?.project.detail.info.cancel}</span>
-              </Button>
-            </>
-          ) : (
+        {/* URL を開いて自動で作ったプロジェクトは見るだけなので、名前を編集させない */}
+        {!isEditing && !project.isAutoCreated && (
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
             <Button size="sm" variant="outline" onClick={handleStartEdit} className="dark:border-gray-600 dark:text-gray-200">
               <Edit2 className="h-4 w-4 mr-1.5" />
               {dict?.project.detail.info.edit}
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {error && (

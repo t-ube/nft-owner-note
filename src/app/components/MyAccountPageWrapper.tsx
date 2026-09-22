@@ -52,16 +52,6 @@ export default function MyAccountPageWrapper({ lang }: MyAccountPageWrapperProps
     setIsDeleteDialogOpen(true);
   };
 
-  const handleProjectUpdate = useCallback(async (updatedProject: Project) => {
-    try {
-      await dbManager.updateProject(updatedProject);
-      await loadAllProjects();
-    } catch (error) {
-      console.error('Failed to update project:', error);
-      throw error;
-    }
-  }, [loadAllProjects]);
-
   const handleDeleteConfirm = async () => {
     if (projectToDelete) {
       try {
@@ -89,7 +79,6 @@ export default function MyAccountPageWrapper({ lang }: MyAccountPageWrapperProps
         onSearchChange={setSearchTerm}
         onDeleteClick={handleDeleteClick}
         onProjectsUpdated={refreshProjects}
-        onProjectUpdate={handleProjectUpdate}
         lang={lang}
       />
       <div className="flex-1 overflow-auto">

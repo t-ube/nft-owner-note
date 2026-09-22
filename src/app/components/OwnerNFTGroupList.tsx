@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -28,7 +29,7 @@ import {
   OwnerNFTGroup,
   OwnerNFTNameGroup,
 } from '@/utils/ownerNftGroups';
-import { fetchNftName } from '@/app/components/useNftCache';
+import { fetchNftName, fetchNftNames } from '@/app/components/useNftCache';
 import { useNFTContext } from '@/app/contexts/NFTContext';
 import NFTThumbnail from '@/app/components/NFTThumbnail';
 import NFTNameMultiSelect from '@/app/components/NFTNameMultiSelect';
@@ -103,6 +104,8 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedOwners, setExpandedOwners] = useState<Set<string>>(new Set());
   const [nameFetchProgress, setNameFetchProgress] = useState<{ done: number; total: number } | null>(null);
+  // 開発用の操作を出すか（URL に ?dev があるとき）
+  const isDev = useSearchParams().has('dev');
   const [hideUsedOwners, setHideUsedOwners] = useState(false);
   const [rewardMode, setRewardMode] = useState<boolean>(() => loadRewardMode(projectId));
   const { isLoading: isSyncingNFTs, updatingNFTs } = useNFTContext();
@@ -167,7 +170,17 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
     let done = 0;
     setNameFetchProgress({ done, total: uris.length });
     try {
-      for (const batch of _.chunk(uris, NAME_FETCH_CONCURRENCY)) {
+      // まず一括 API でまとめて取り、1 つのトランザクションで保存する
+      const bulk = await fetchNftNames(uris);
+      await dbManager.updateNFTsDetails(
+        Array.from(bulk, ([uri, name]) => nftsByUri[uri].map(nft => ({ ...nft, name }))).flat()
+      );
+      done = bulk.size;
+      setNameFetchProgress({ done, total: uris.length });
+
+      // 一括で取れなかったものだけ 1 件ずつ取る（キャッシュに無ければ生成も依頼する）
+      const rest = uris.filter(uri => !bulk.has(uri));
+      for (const batch of _.chunk(rest, NAME_FETCH_CONCURRENCY)) {
         await Promise.all(batch.map(async (uri) => {
           try {
             const name = (await fetchNftName(uri))?.trim();
@@ -500,20 +513,23 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
             <span className="flex-1 min-w-0 text-xs text-amber-900 dark:text-amber-200">
               {page.status.unnamed.replace('{count}', unnamedNFTs.length.toLocaleString())}
             </span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleFetchNames}
-              disabled={nameFetchProgress !== null}
-              className="h-7 shrink-0 px-2.5 text-xs bg-background"
-            >
-              <RefreshCcw className={cn('h-3.5 w-3.5 mr-1.5', nameFetchProgress && 'animate-spin')} />
-              {nameFetchProgress
-                ? page.actions.fetchingNames
-                    .replace('{done}', nameFetchProgress.done.toLocaleString())
-                    .replace('{total}', nameFetchProgress.total.toLocaleString())
-                : page.actions.fetchNames}
-            </Button>
+            {/* 名前は同期のときに一括で入るので、手動の取得は開発用（URL に ?dev があるとき）だけ出す */}
+            {isDev && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleFetchNames}
+                disabled={nameFetchProgress !== null}
+                className="h-7 shrink-0 px-2.5 text-xs bg-background"
+              >
+                <RefreshCcw className={cn('h-3.5 w-3.5 mr-1.5', nameFetchProgress && 'animate-spin')} />
+                {nameFetchProgress
+                  ? page.actions.fetchingNames
+                      .replace('{done}', nameFetchProgress.done.toLocaleString())
+                      .replace('{total}', nameFetchProgress.total.toLocaleString())
+                  : page.actions.fetchNames}
+              </Button>
+            )}
           </div>
         )}
       </div>

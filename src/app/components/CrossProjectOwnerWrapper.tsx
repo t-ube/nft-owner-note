@@ -55,16 +55,6 @@ export default function CrossProjectOwnerWrapper({ lang }: CrossProjectOwnerPage
     setIsDeleteDialogOpen(true);
   };
 
-  const handleProjectUpdate = useCallback(async (updatedProject: Project) => {
-    try {
-      await dbManager.updateProject(updatedProject);
-      await loadAllProjects();
-    } catch (error) {
-      console.error('Failed to update project:', error);
-      throw error;
-    }
-  }, [loadAllProjects]);
-
   const handleDeleteConfirm = async () => {
     if (projectToDelete) {
       try {
@@ -92,7 +82,6 @@ export default function CrossProjectOwnerWrapper({ lang }: CrossProjectOwnerPage
         onSearchChange={setSearchTerm}
         onDeleteClick={handleDeleteClick}
         onProjectsUpdated={refreshProjects}
-        onProjectUpdate={handleProjectUpdate}
         lang={lang}
       />
       <div className="flex-1 overflow-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">

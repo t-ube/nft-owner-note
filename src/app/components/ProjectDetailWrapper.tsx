@@ -205,7 +205,6 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({
       onSearchChange={setSearchTerm}
       onDeleteClick={handleDeleteClick}
       onProjectsUpdated={refreshProjects}
-      onProjectUpdate={handleProjectUpdate}
       lang={lang}
     />
   );

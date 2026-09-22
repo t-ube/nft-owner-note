@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Project } from '@/utils/db';
-import { ProjectTab, parseProjectTab, tabQuery } from '@/utils/routes';
+import { PROJECT_TABS, ProjectTab, parseProjectTab } from '@/utils/routes';
 import ProjectHeader from '@/app/components/ProjectHeader';
 import { useNFTContext } from '@/app/contexts/NFTContext';
 import { 
@@ -35,6 +35,23 @@ interface ProjectDetailProps {
   onProjectsUpdated: () => Promise<void>;
 }
 
+// NFTListから自動ロード機能を移動。
+// ProjectDetail の中で定義すると、描画のたびに別のコンポーネントになって中身が作り直されるので外に置く
+const NFTWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { hasMore, isLoading, loadMore } = useNFTContext();
+
+  useEffect(() => {
+    const autoLoad = async () => {
+      if (hasMore && !isLoading) {
+        await loadMore();
+      }
+    };
+    autoLoad();
+  }, [hasMore, isLoading, loadMore]);
+
+  return <>{children}</>;
+};
+
 const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, project: projectProp, lang, onProjectsUpdated }) => {
   // 読み込みは親（ProjectDetailWrapper）が行う。親で更新されたら追従する
   const [project, setProject] = useState<Project>(projectProp);
@@ -56,7 +73,12 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, project: proje
   const handleTabChange = (value: string) => {
     const next = parseProjectTab(value);
     setTab(next);
-    window.history.replaceState(null, '', `${window.location.pathname}${tabQuery(next)}`);
+    // ?dev など、tab 以外のクエリは残す
+    const params = new URLSearchParams(window.location.search);
+    if (next === PROJECT_TABS[0]) params.delete('tab');
+    else params.set('tab', next);
+    const query = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
   };
 
   useEffect(() => {
@@ -72,21 +94,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, project: proje
     onProjectsUpdated();
   };
 
-  // NFTListから自動ロード機能を移動
-  const NFTWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { hasMore, isLoading, loadMore } = useNFTContext();
-
-    useEffect(() => {
-      const autoLoad = async () => {
-        if (hasMore && !isLoading) {
-          await loadMore();
-        }
-      };
-      autoLoad();
-    }, [hasMore, isLoading, loadMore]);
-
-    return <>{children}</>;
-  };
 
   return (
     <NFTContextProvider 

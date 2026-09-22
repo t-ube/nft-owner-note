@@ -10,7 +10,6 @@ import {
   Sun,
   Network,
   ChevronDown,
-  Pencil,
   Book,
   LayoutGrid,
   Menu as MenuIcon,
@@ -19,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Project, dbManager } from '@/utils/db';
+import { Project } from '@/utils/db';
 import { collectionPath } from '@/utils/routes';
 import ProjectCSVImportExport from '@/app/components/ProjectCSVImportExport';
 import CollectionFace from '@/app/components/CollectionFace';
@@ -34,13 +33,7 @@ interface ProjectSidebarProps {
   onSearchChange: (term: string) => void;
   onDeleteClick: (e: React.MouseEvent, project: Project) => void;
   onProjectsUpdated: () => void;
-  onProjectUpdate: (project: Project) => Promise<void>;
   lang: string;
-}
-
-interface EditingProject {
-  id: string;
-  name: string;
 }
 
 const ProjectSidebar = ({
@@ -50,15 +43,12 @@ const ProjectSidebar = ({
   onSearchChange,
   onDeleteClick,
   onProjectsUpdated,
-  onProjectUpdate,
   lang,
 }: ProjectSidebarProps) => {
   const router = useRouter();
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isCreditsOpen, setIsCreditsOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<EditingProject | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
 
@@ -333,100 +323,12 @@ const ProjectSidebar = ({
                         className="h-12 w-12 mr-2"
                       />
                       <div className="flex flex-col min-w-0 flex-1">
-                        {editingProject?.id === project.id ? (
-                          <form 
-                            onSubmit={async (e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              if (!editingProject.name.trim()) {
-                                setError('Project name cannot be empty');
-                                return;
-                              }
-                              try {
-                                const updatedProject = await dbManager.updateProject({
-                                  ...project,
-                                  name: editingProject.name.trim(),
-                                  isAutoCreated: false,
-                                });
-                                onProjectsUpdated();
-                                
-                                if (project.projectId === currentProjectId) {
-                                  router.refresh();
-                                }
-                                
-                                await onProjectUpdate(updatedProject);
-                                setEditingProject(null);
-                                setError(null);
-                              } catch (err) {
-                                setError('Failed to update project name');
-                                console.error('Error updating project:', err);
-                              }
-                            }}
-                            className="flex-1"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                value={editingProject.name}
-                                onChange={(e) => setEditingProject({ ...editingProject, name: e.target.value })}
-                                className="w-full px-2 py-1 bg-white dark:bg-gray-700 border rounded
-                                  focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-200 text-sm"
-                                autoFocus
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Escape') {
-                                    setEditingProject(null);
-                                    setError(null);
-                                  }
-                                }}
-                              />
-                              <button
-                                type="submit"
-                                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-green-600 dark:text-green-400"
-                                title={dict?.project.sidebar.save || 'Save'}
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingProject(null);
-                                  setError(null);
-                                }}
-                                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-red-600 dark:text-red-400"
-                                title={dict?.project.sidebar.cancel || 'Cancel'}
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
-                              </button>
-                            </div>
-                            {error && (
-                              <div className="text-xs text-red-500 mt-1">{error}</div>
-                            )}
-                          </form>
-                        ) : (
-                          <span className="font-medium truncate">
-                            {project.name}
-                          </span>
-                        )}
+                        <span className="font-medium truncate">
+                          {project.name}
+                        </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingProject({ id: project.id, name: project.name });
-                        }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1
-                          hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
-                        title={dict?.project.sidebar.edit || 'Edit'}
-                      >
-                        <Pencil className="h-4 w-4 text-gray-400 hover:text-blue-500 transition-colors" />
-                      </button>
                       <button
                         onClick={(e) => onDeleteClick(e, project)}
                         className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1

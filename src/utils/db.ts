@@ -564,6 +564,42 @@ class DatabaseManager {
     await this.done(transaction);
   }
 
+  /** 複数の NFT をまとめて保存する（1 つのトランザクションで書く） */
+  async updateNFTsDetails(nfts: NFToken[]): Promise<void> {
+    if (nfts.length === 0) return;
+    const db = await this.initDB();
+    const transaction = db.transaction('nfts', 'readwrite');
+    const store = transaction.objectStore('nfts');
+    const now = Date.now();
+    for (const nft of nfts) store.put({ ...nft, updatedAt: now });
+    await this.done(transaction);
+  }
+
+  /**
+   * 名前がまだ無い NFT にだけ名前を入れる（1 つのトランザクションで書く）。
+   * 既に名前がある NFT は上書きしない。書き換えた NFT を返す。
+   * `id` は nfts ストアのキー（`${projectId}-${nft_id}`）。
+   */
+  async fillNFTNames(entries: { id: string; name: string }[]): Promise<NFToken[]> {
+    if (entries.length === 0) return [];
+    const db = await this.initDB();
+    const transaction = db.transaction('nfts', 'readwrite');
+    const store = transaction.objectStore('nfts');
+    const now = Date.now();
+    const updated: NFToken[] = [];
+
+    for (const { id, name } of entries) {
+      const nft = await this.request(store.get(id)) as NFToken | undefined;
+      if (!nft || nft.name?.trim()) continue;
+      const next: NFToken = { ...nft, name, updatedAt: now };
+      store.put(next);
+      updated.push(next);
+    }
+
+    await this.done(transaction);
+    return updated;
+  }
+
   /**
    * 指定した NFT の使用済み状態をまとめて更新する。
    * `ids` は nfts ストアのキー（`${projectId}-${nft_id}`）。

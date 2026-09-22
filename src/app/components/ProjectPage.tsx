@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, HelpCircle, Search, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -92,16 +92,6 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
       setError('Failed to load projects');
     }
   };
-
-  const handleProjectUpdate = useCallback(async (updatedProject: Project) => {
-    try {
-      await dbManager.updateProject(updatedProject);
-      await loadProjects(); // プロジェクトリストを更新
-    } catch (error) {
-      console.error('Failed to update project:', error);
-      throw error; // エラーを上位に伝播
-    }
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -312,7 +302,6 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
         onSearchChange={setSearchTerm}
         onDeleteClick={handleDeleteClick}
         onProjectsUpdated={refreshProjects}
-        onProjectUpdate={handleProjectUpdate}
         lang={lang}
       />
   

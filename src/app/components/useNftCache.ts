@@ -97,6 +97,58 @@ export async function fetchNftName(uri: string): Promise<string | null> {
   return data.metadata?.name ?? null;
 }
 
+/** 一括取得 API が 1 回に受け付ける URI の数 */
+const NAMES_BATCH_SIZE = 1000;
+
+/** デコード済みの uri を、キャッシュ側のキーと同じ hex（大文字）に戻す */
+function toHexUri(uri: string): string {
+  return Array.from(new TextEncoder().encode(uri), b => b.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase();
+}
+
+/**
+ * 複数の URI（XRPL の生 hex）の NFT 名をまとめて取得する（POST /api/nft-names、1000 件ずつ）。
+ * 結果のキーは大文字の hex。キャッシュに無い・名前が無いものは含めない。
+ * 失敗したまとまりも含めない（呼び出し側で個別に取り直す）。
+ */
+export async function fetchNftNamesByHex(hexUris: string[]): Promise<Map<string, string>> {
+  // キャッシュ側のキーは大文字の hex
+  const unique = Array.from(new Set(hexUris.map(uri => uri.toUpperCase())));
+  const names = new Map<string, string>();
+  for (let i = 0; i < unique.length; i += NAMES_BATCH_SIZE) {
+    const batch = unique.slice(i, i + NAMES_BATCH_SIZE);
+    try {
+      const res = await fetch(`${CACHE_API_BASE}/api/nft-names`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uris: batch }),
+      });
+      if (!res.ok) throw new Error(`nft-names: HTTP ${res.status}`);
+      // { names: [...] } の形で、入力と同じ順番・同じ長さで返る
+      const result = ((await res.json()) as { names?: (string | null)[] }).names ?? [];
+      batch.forEach((uri, k) => {
+        const name = result[k]?.trim();
+        if (name) names.set(uri, name);
+      });
+    } catch (err) {
+      console.error('Failed to fetch NFT names in bulk:', err);
+    }
+  }
+  return names;
+}
+
+/** デコード済みの uri で NFT 名をまとめて取得する。結果のキーは渡した uri */
+export async function fetchNftNames(uris: string[]): Promise<Map<string, string>> {
+  const byHex = await fetchNftNamesByHex(uris.map(toHexUri));
+  const names = new Map<string, string>();
+  for (const uri of uris) {
+    const name = byHex.get(toHexUri(uri));
+    if (name) names.set(uri, name);
+  }
+  return names;
+}
+
 // レスポンスを状態へ反映。終端状態（完了/失敗）なら true を返す。
 function applyData(uri: string, data: CacheResponse): boolean {
   const status = data.status;

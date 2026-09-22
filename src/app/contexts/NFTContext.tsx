@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect, createContext, useContext, useCallback } from 'react';
+import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react';
 import { dbManager, NFToken } from '@/utils/db';
+import { fetchNftNamesByHex } from '@/app/components/useNftCache';
 import { fetchNFTTransferHistory } from '@/utils/nftHistory';
 import { updateNFTName } from '@/utils/nftMetadata';
 import _ from 'lodash';
@@ -10,6 +11,8 @@ import { Client } from 'xrpl';
 const XRPL_WEBSOCKET_URL = 'wss://s1.ripple.com';
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 2000;
+/** 名前の一括取得は、この件数の URI がたまるごとにまとめて行う */
+const NAMES_FLUSH_SIZE = 1000;
 
 interface NFTContextType {
   nfts: NFToken[];
@@ -85,6 +88,36 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
   const BATCH_SIZE = 100;
   const HISTORY_BATCH_SIZE = 5;
   const CONCURRENT_CONNECTIONS = 4;
+
+  // 同期中に見つけた名前の無い NFT（URI の生 hex → nfts ストアの id）
+  const pendingNamesRef = useRef(new Map<string, string[]>());
+  // 実行中の名前の一括取得（同期の終わりにすべて待つ）
+  const nameFlushesRef = useRef(new Set<Promise<void>>());
+
+  /** たまった URI の名前をまとめて引き、名前がまだ無い NFT にだけ保存する */
+  const flushNames = useCallback((): Promise<void> => {
+    const pending = pendingNamesRef.current;
+    if (pending.size === 0) return Promise.resolve();
+    pendingNamesRef.current = new Map();
+
+    const p = (async () => {
+      try {
+        const names = await fetchNftNamesByHex(Array.from(pending.keys()));
+        const entries = Array.from(names, ([hex, name]) =>
+          (pending.get(hex) ?? []).map(id => ({ id, name }))
+        ).flat();
+        const updated = await dbManager.fillNFTNames(entries);
+        if (updated.length === 0) return;
+        const nameById = new Map(updated.map(nft => [nft.id, nft.name]));
+        setNfts(prev => prev.map(nft => (nameById.has(nft.id) ? { ...nft, name: nameById.get(nft.id) } : nft)));
+      } catch (err) {
+        console.error('Failed to fill NFT names:', err);
+      }
+    })();
+    nameFlushesRef.current.add(p);
+    void p.finally(() => nameFlushesRef.current.delete(p));
+    return p;
+  }, []);
 
   // 単一のNFTの履歴を更新
   const updateNFTHistory = async (nftId: string) => {
@@ -269,6 +302,16 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
       });
 
       const updatedNFTs = await dbManager.updateNFTs(projectId, mergedNFTs);
+
+      // 名前が無いものは、XRPL の生 hex の URI のまま名前の一括取得に回す
+      const updatedById = new Map(updatedNFTs.map(nft => [nft.nft_id, nft]));
+      for (const raw of response.result.nfts) {
+        if (!raw.uri || updatedById.get(raw.nft_id)?.name?.trim()) continue;
+        const key = raw.uri.toUpperCase();
+        const ids = pendingNamesRef.current.get(key) ?? [];
+        ids.push(`${projectId}-${raw.nft_id}`);
+        pendingNamesRef.current.set(key, ids);
+      }
   
       const nextMarker = response.result.marker;
       let willExceedLimit = false;
@@ -278,8 +321,18 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
       });
       const isIncomplete = transformedNFTs.length < BATCH_SIZE;
 
-      setHasMore(!!nextMarker && !willExceedLimit && !isIncomplete);
+      const more = !!nextMarker && !willExceedLimit && !isIncomplete;
+      setHasMore(more);
       setMarker(nextMarker);
+
+      if (!more) {
+        // 同期の終わり: 残りの名前を引き、実行中のものも含めて終わるまで待つ
+        // （他のタブは同期の終わりに DB を読み直すので、そのときに名前が入っているようにする）
+        void flushNames();
+        await Promise.all(Array.from(nameFlushesRef.current));
+      } else if (pendingNamesRef.current.size >= NAMES_FLUSH_SIZE) {
+        void flushNames();
+      }
 
       setNfts(prev => {
         const existingIds = new Set(prev.map(n => n.nft_id));
@@ -296,7 +349,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [hasMore, marker, projectId, issuer, taxon]);
+  }, [hasMore, marker, projectId, issuer, taxon, flushNames]);
 
   // Load cached data from database
   useEffect(() => {
