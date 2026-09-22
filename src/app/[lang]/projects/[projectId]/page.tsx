@@ -1,10 +1,11 @@
 // app/projects/[projectId]/page.tsx
 export const runtime = 'edge';
 
-import ProjectDetailWrapper from '@/app/components/ProjectDetailWrapper';
+import LegacyProjectRedirect from '@/app/components/LegacyProjectRedirect';
 
+/** 旧 URL。/collections/<issuer>/<taxon> へ転送する。 */
 export default function ProjectDetailPage({ params }: { params: { projectId: string, lang: string } }) {
   return (
-    <ProjectDetailWrapper projectId={params.projectId} lang={params.lang} />
+    <LegacyProjectRedirect projectId={params.projectId} lang={params.lang} />
   );
 }

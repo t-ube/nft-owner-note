@@ -19,28 +19,35 @@ function getOrCreateUserId(): string {
   }
 }
 
-const extractProjectId = (pathname: string): string | null => {
+/** パスからプロジェクトを引く。/collections/<issuer>/<taxon> と旧 /projects/<projectId> に対応。 */
+const findProjectByPath = async (pathname: string): Promise<Project | undefined> => {
   const segments = pathname.split('/').filter(Boolean)
-  const projectsIndex = segments.indexOf('projects')
-  if (projectsIndex === -1) return null
 
-  const id = segments[projectsIndex + 1]
-  return id ?? null
+  const collectionsIndex = segments.indexOf('collections')
+  if (collectionsIndex !== -1) {
+    const issuer = segments[collectionsIndex + 1]
+    const taxon = segments[collectionsIndex + 2]
+    if (!issuer || !taxon) return undefined
+    return dbManager.getProjectByIssuerAndTaxon(decodeURIComponent(issuer), decodeURIComponent(taxon))
+  }
+
+  const projectsIndex = segments.indexOf('projects')
+  if (projectsIndex !== -1) {
+    const id = segments[projectsIndex + 1]
+    return id ? dbManager.getProjectByProjectId(id) : undefined
+  }
+
+  return undefined
 }
 
 export function Tracker() {
   const pathname = usePathname()
 
   useEffect(() => {
-    const projectId = extractProjectId(pathname)
-
     let cancelled = false
 
     const run = async () => {
-      let project: Project | undefined
-      if (projectId) {
-        project = await dbManager.getProjectByProjectId(projectId)
-      }
+      const project = await findProjectByPath(pathname)
 
       const infos: AddressInfo[] = await dbManager.getAllAddressInfos()
       const ownerListCount = infos.length

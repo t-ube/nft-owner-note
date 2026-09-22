@@ -20,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Project, dbManager } from '@/utils/db';
+import { collectionPath } from '@/utils/routes';
 import ProjectCSVImportExport from '@/app/components/ProjectCSVImportExport';
 import CollectionFace from '@/app/components/CollectionFace';
 import { getDictionary } from '@/i18n/get-dictionary';
@@ -69,8 +70,8 @@ const ProjectSidebar = ({
     loadDictionary();
   }, [lang]);
 
-  const handleProjectClick = (projectId: string) => {
-    router.push(`/${lang}/projects/${projectId}`);
+  const handleProjectClick = (project: Project) => {
+    router.push(collectionPath(lang, project));
     setIsOpen(false);
   };
 
@@ -319,7 +320,7 @@ const ProjectSidebar = ({
                         : 'hover:bg-gray-50 dark:hover:bg-gray-700'}
                       dark:text-gray-200
                     `}
-                    onClick={() => handleProjectClick(project.projectId)}
+                    onClick={() => handleProjectClick(project)}
                   >
                     <div className="flex items-center min-w-0 flex-1">
                       <CollectionFace

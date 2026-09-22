@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { dbManager, Project } from '@/utils/db';
+import { collectionPath } from '@/utils/routes';
 import ProjectSidebar from '@/app/components/ProjectSidebar';
 import CollectionFace from '@/app/components/CollectionFace';
 import BulkProjectCreation from '@/app/components/BulkProjectCreation';
@@ -131,7 +132,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
       // フォームをリセットし、遷移を遅延実行
       setIsSubmitting(false);
       setTimeout(() => {
-        router.push(`/${lang}/projects/${project.projectId}`);
+        router.push(collectionPath(lang, project));
       }, 2000);
     } catch (error) {
       console.error('Failed to add project:', error);
@@ -367,11 +368,11 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ lang }) => {
                     role="button"
                     tabIndex={0}
                     className="flex items-center gap-2 px-2 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors"
-                    onClick={() => router.push(`/${lang}/projects/${project.projectId}`)}
+                    onClick={() => router.push(collectionPath(lang, project))}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        router.push(`/${lang}/projects/${project.projectId}`);
+                        router.push(collectionPath(lang, project));
                       }
                     }}
                   >

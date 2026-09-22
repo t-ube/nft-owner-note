@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Plus, RefreshCw } from 'lucide-react';
 import { dbManager } from '@/utils/db';
+import { collectionPath } from '@/utils/routes';
 import { fetchNFTMetadataSafe } from '@/utils/nftMetadata';
 import { Dictionary } from '@/i18n/dictionaries/index';
 
@@ -269,7 +270,7 @@ const BulkProjectCreation: React.FC<BulkProjectCreationProps> = ({ onProjectsCre
         const lastProject = createdProjects[createdProjects.length - 1];
         setTimeout(() => {
           setOpen(false);
-          router.push(`/${lang}/projects/${lastProject.projectId}`);
+          router.push(collectionPath(lang, lastProject));
         }, 2000);
       } else {
         setError(dictionary.project.bulkCreate.noNewProjects);

@@ -21,12 +21,20 @@ import ProjectSidebar from '@/app/components/ProjectSidebar';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 
-interface ProjectDetailWrapperProps {
-  projectId: string;
-  lang: string;
-}
+/** プロジェクトは projectId か、issuer と taxon の組のどちらかで指定する。 */
+type ProjectDetailWrapperProps = { lang: string } & (
+  | { projectId: string; issuer?: never; taxon?: never }
+  | { projectId?: never; issuer: string; taxon: string }
+);
 
-const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, lang }) => {
+const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({
+  projectId: projectIdProp,
+  issuer,
+  taxon,
+  lang,
+}) => {
+  // issuer/taxon で指定されたときは、読み込み後に projectId が決まる
+  const [projectId, setProjectId] = useState<string | undefined>(projectIdProp);
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,9 +49,12 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
   const loadProject = useCallback(async () => {
     setIsLoading(true);
     try {
-      const projectData = await dbManager.getProjectByProjectId(projectId);
+      const projectData = projectIdProp !== undefined
+        ? await dbManager.getProjectByProjectId(projectIdProp)
+        : await dbManager.getProjectByIssuerAndTaxon(issuer, taxon);
       if (projectData) {
         setProject(projectData);
+        setProjectId(projectData.projectId);
       } else {
         setError('Project not found');
       }
@@ -53,7 +64,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
     } finally {
       setIsLoading(false);
     }
-  }, [projectId]);
+  }, [projectIdProp, issuer, taxon]);
 
   const loadAllProjects = useCallback(async () => {
     try {
@@ -168,13 +179,13 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({ projectId, 
   return (
     <div className="flex h-screen">
       {sidebarComponent}
-      <NFTContextProvider 
-        projectId={projectId}
+      <NFTContextProvider
+        projectId={project.projectId}
         issuer={project.issuer}
         taxon={project.taxon}
       >
-        <ProjectDetail 
-          projectId={projectId} 
+        <ProjectDetail
+          projectId={project.projectId}
           project={project}
           lang={lang} 
           onProjectUpdate={handleProjectUpdate}
