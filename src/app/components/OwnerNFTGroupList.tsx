@@ -195,6 +195,7 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
     if (ids.length === 0) return;
     try {
       await dbManager.setNFTsUsed(ids, used, owner);
+      await dbManager.markProjectAsUserEdited(projectId);
       await loadData();
     } catch (err) {
       console.error('Failed to update used state:', err);

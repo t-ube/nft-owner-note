@@ -20,6 +20,21 @@ import {
 import ProjectSidebar from '@/app/components/ProjectSidebar';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
+import { loadCollection } from '@/app/components/useCollection';
+
+/** XRPL のクラシックアドレスの形式か（厳密なチェックサム検証はしない）。 */
+const isValidIssuer = (issuer: string) => /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(issuer);
+
+/** taxon を 10 進の数字列にそろえる（"01" → "1"）。UInt32 の範囲外なら null。 */
+const normalizeTaxon = (taxon: string): string | null => {
+  if (!/^\d+$/.test(taxon)) return null;
+  const value = Number(taxon);
+  return value <= 0xFFFFFFFF ? String(value) : null;
+};
+
+/** 自動作成時の仮の名前。 */
+const defaultCollectionName = (issuer: string, taxon: string) =>
+  `${issuer.slice(0, 8)}… / ${taxon}`;
 
 /** プロジェクトは projectId か、issuer と taxon の組のどちらかで指定する。 */
 type ProjectDetailWrapperProps = { lang: string } & (
@@ -45,16 +60,62 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({
   const [dict, setDict] = useState<Dictionary | null>(null);
   const router = useRouter();
 
+  const loadAllProjects = useCallback(async () => {
+    try {
+      const allProjects = await dbManager.getAllProjects();
+      setProjects(allProjects);
+    } catch (error) {
+      console.error('Failed to load projects:', error);
+    }
+  }, []);
+
+  /** 自動作成したプロジェクトの名前を、コレクション情報の名前で置き換える。 */
+  const fillCollectionName = useCallback(async (target: Project) => {
+    try {
+      const name = (await loadCollection(target.issuer, target.taxon))?.name?.trim();
+      if (!name) return;
+      // 取得中に名前が変えられていたら上書きしない
+      const latest = await dbManager.getProjectByProjectId(target.projectId);
+      if (!latest || latest.name !== target.name) return;
+      const updated = await dbManager.updateProject({ ...latest, name });
+      setProject(prev => (prev?.projectId === updated.projectId ? updated : prev));
+      await loadAllProjects();
+    } catch (error) {
+      console.error('Failed to fetch collection name:', error);
+    }
+  }, [loadAllProjects]);
+
   // プロジェクトの読み込み処理を一元化
   const loadProject = useCallback(async () => {
     setIsLoading(true);
     try {
-      const projectData = projectIdProp !== undefined
-        ? await dbManager.getProjectByProjectId(projectIdProp)
-        : await dbManager.getProjectByIssuerAndTaxon(issuer, taxon);
+      let projectData: Project | undefined;
+      if (projectIdProp !== undefined) {
+        projectData = await dbManager.getProjectByProjectId(projectIdProp);
+      } else {
+        projectData = await dbManager.getProjectByIssuerAndTaxon(issuer, taxon);
+        // 未登録のコレクションは自動で作る（形式が正しいときだけ）
+        const normalizedTaxon = normalizeTaxon(taxon);
+        if (!projectData && isValidIssuer(issuer) && normalizedTaxon !== null) {
+          const { project: ensured, created } = await dbManager.getOrCreateProjectByIssuerAndTaxon(
+            issuer,
+            normalizedTaxon,
+            defaultCollectionName(issuer, normalizedTaxon)
+          );
+          projectData = ensured;
+          if (created) await loadAllProjects();
+        }
+      }
       if (projectData) {
         setProject(projectData);
         setProjectId(projectData.projectId);
+        // 仮の名前のままなら、裏でコレクション名を取ってきて差し替える
+        if (
+          projectData.isAutoCreated &&
+          projectData.name === defaultCollectionName(projectData.issuer, projectData.taxon)
+        ) {
+          void fillCollectionName(projectData);
+        }
       } else {
         setError('Project not found');
       }
@@ -64,16 +125,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [projectIdProp, issuer, taxon]);
-
-  const loadAllProjects = useCallback(async () => {
-    try {
-      const allProjects = await dbManager.getAllProjects();
-      setProjects(allProjects);
-    } catch (error) {
-      console.error('Failed to load projects:', error);
-    }
-  }, []);
+  }, [projectIdProp, issuer, taxon, loadAllProjects, fillCollectionName]);
 
   // プロジェクト更新処理を一元化
   const handleProjectUpdate = useCallback(async (updatedProject: Project) => {
@@ -97,6 +149,18 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({
     loadProject();
     loadAllProjects();
   }, [loadProject, loadAllProjects]);
+
+  // 自動作成の目印が外れたら、サイドバーに出すため一覧と表示中のプロジェクトを読み直す
+  useEffect(() => {
+    return dbManager.addProjectsChangedListener(() => {
+      void loadAllProjects();
+      if (projectId) {
+        void dbManager.getProjectByProjectId(projectId).then(latest => {
+          if (latest) setProject(latest);
+        });
+      }
+    });
+  }, [loadAllProjects, projectId]);
 
   useEffect(() => {
     const loadDictionary = async () => {

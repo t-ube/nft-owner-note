@@ -84,8 +84,10 @@ const ProjectSidebar = ({
   };
 
   const filteredProjects = projects.filter(project =>
-    project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.projectId.toLowerCase().includes(searchTerm.toLowerCase())
+    // URL から自動作成されたものは、ユーザーが手を加えるまで出さない
+    !project.isAutoCreated &&
+    (project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.projectId.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   if (!dict) return null;
@@ -343,6 +345,7 @@ const ProjectSidebar = ({
                                 const updatedProject = await dbManager.updateProject({
                                   ...project,
                                   name: editingProject.name.trim(),
+                                  isAutoCreated: false,
                                 });
                                 onProjectsUpdated();
                                 

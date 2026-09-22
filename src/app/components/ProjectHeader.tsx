@@ -67,6 +67,7 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
       const updatedProject: Project = {
         ...project,
         name,
+        isAutoCreated: false, // 名前を付けたら通常のプロジェクトとして扱う
         updatedAt: Date.now()
       };
 

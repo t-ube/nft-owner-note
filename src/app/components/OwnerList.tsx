@@ -238,6 +238,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
       await dbManager.setProjectOwnerValues(projectId, address, {
         [field]: value
       });
+      await dbManager.markProjectAsUserEdited(projectId);
 
       setOwnerValues(prev => ({
         ...prev,

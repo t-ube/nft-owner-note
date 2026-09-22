@@ -9,6 +9,8 @@ export interface Project {
   isDeleted: boolean;
   createdAt: number;
   updatedAt: number;
+  /** URL を開いたときに自動で作ったプロジェクト。 */
+  isAutoCreated?: boolean;
 }
 
 export interface NFTokenBase {
@@ -831,6 +833,72 @@ class DatabaseManager {
         resolve(matchingProject);
       };
     });
+  }
+
+  /**
+   * issuer/taxon のプロジェクトを返す。無ければ isAutoCreated を付けて作る。
+   * 検索と追加を同じトランザクションで行うので、同時に呼ばれても重複しない。
+   */
+  private projectsChangedListeners = new Set<() => void>();
+
+  /** プロジェクト一覧が裏で変わったとき（自動作成の目印が外れたときなど）に呼ばれる。戻り値で解除。 */
+  addProjectsChangedListener(listener: () => void): () => void {
+    this.projectsChangedListeners.add(listener);
+    return () => {
+      this.projectsChangedListeners.delete(listener);
+    };
+  }
+
+  /**
+   * ユーザーが手を加えたプロジェクトから、自動作成の目印を外す。
+   * 名前の変更やユーザー値の保存など、ユーザー自身の操作のあとに呼ぶ（自動保存では呼ばない）。
+   */
+  async markProjectAsUserEdited(projectId: string): Promise<void> {
+    const db = await this.initDB();
+    const transaction = db.transaction('projects', 'readwrite');
+    const store = transaction.objectStore('projects');
+    const project = await this.request(store.index('projectId').get(projectId)) as Project | undefined;
+    const changed = !!project?.isAutoCreated;
+    if (project && changed) {
+      store.put({ ...project, isAutoCreated: false, updatedAt: Date.now() });
+    }
+    await this.done(transaction);
+    if (changed) this.projectsChangedListeners.forEach(listener => listener());
+  }
+
+  async getOrCreateProjectByIssuerAndTaxon(
+    issuer: string,
+    taxon: string,
+    name: string
+  ): Promise<{ project: Project; created: boolean }> {
+    const db = await this.initDB();
+    // ハッシュ計算は非同期なので、トランザクションを開く前に済ませておく
+    const projectId = await this.generateProjectId({ name, issuer, taxon });
+    const transaction = db.transaction('projects', 'readwrite');
+    const store = transaction.objectStore('projects');
+
+    const projects = await this.request(store.getAll()) as Project[];
+    const existing = projects.find(p => p.issuer === issuer && p.taxon === taxon);
+    if (existing) {
+      await this.done(transaction);
+      return { project: existing, created: false };
+    }
+
+    const now = Date.now();
+    const project: Project = {
+      id: crypto.randomUUID(),
+      projectId,
+      name,
+      issuer,
+      taxon,
+      isDeleted: false,
+      createdAt: now,
+      updatedAt: now,
+      isAutoCreated: true,
+    };
+    store.add(project);
+    await this.done(transaction);
+    return { project, created: true };
   }
 
   async getPaginatedNFTs({

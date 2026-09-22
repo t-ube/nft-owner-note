@@ -243,7 +243,8 @@ const NFTList: React.FC<NFTListProps> = ({ lang, projectId }) => {
 
     try {
       await dbManager.updateNFTDetails(updatedNFT);
-      setNfts(prev => prev.map(n => 
+      await dbManager.markProjectAsUserEdited(nft.projectId);
+      setNfts(prev => prev.map(n =>
         n.nft_id === nftId ? updatedNFT : n
       ));
     } catch (error) {

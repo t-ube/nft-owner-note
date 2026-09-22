@@ -1,22 +1,19 @@
 "use client";
 
 // ProjectDetail.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { dbManager, Project } from '@/utils/db';
+import { Project } from '@/utils/db';
 import ProjectHeader from '@/app/components/ProjectHeader';
 import { useNFTContext } from '@/app/contexts/NFTContext';
 import { 
-  RefreshCcw,
   Users,
   List,
-  AlertCircle,
   LayoutGrid,
   Activity,
   Sprout
 } from 'lucide-react';
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import NFTList from '@/app/components/NFTList';
 import OwnerList from '@/app/components/OwnerList';
 import OwnerNFTGroupList from '@/app/components/OwnerNFTGroupList';
@@ -34,29 +31,15 @@ interface ProjectDetailProps {
   onProjectsUpdated: () => Promise<void>;
 }
 
-const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjectsUpdated }) => {
-  const [project, setProject] = useState<Project | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, project: projectProp, lang, onProjectsUpdated }) => {
+  // 読み込みは親（ProjectDetailWrapper）が行う。親で更新されたら追従する
+  const [project, setProject] = useState<Project>(projectProp);
   const [dict, setDict] = useState<Dictionary | null>(null);
 
-  const loadProjectData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const projectData = await dbManager.getProjectByProjectId(projectId);
-      if (projectData) {
-        setProject(projectData);
-      }
-    } catch (error) {
-      console.error('Failed to load project data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [projectId]);
-
   useEffect(() => {
-    loadProjectData();
-  }, [loadProjectData]);
-  
+    setProject(projectProp);
+  }, [projectProp]);
+
   useEffect(() => {
     const loadDictionary = async () => {
       const dictionary = await getDictionary(lang as 'en' | 'ja');
@@ -69,28 +52,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, lang, onProjec
     setProject(updatedProject);
     onProjectsUpdated();
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex-1 p-6 flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <RefreshCcw className="h-5 w-5 animate-spin" />
-          <span>{dict?.project.detail.loading}</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!project) {
-    return (
-      <div className="flex-1 p-6 flex items-center justify-center">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{dict?.project.detail.notFound}</AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
 
   // NFTListから自動ロード機能を移動
   const NFTWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {

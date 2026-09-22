@@ -29,7 +29,8 @@ export interface CollectionState {
 interface Entry {
   state: CollectionState;
   subscribers: Set<() => void>;
-  started: boolean;
+  /** 取得処理。一度始めたら使い回す。 */
+  promise: Promise<void> | null;
 }
 
 const store = new Map<string, Entry>();
@@ -42,7 +43,7 @@ function getEntry(key: string): Entry {
     entry = {
       state: { status: 'loading', collection: null },
       subscribers: new Set(),
-      started: false,
+      promise: null,
     };
     store.set(key, entry);
   }
@@ -55,12 +56,11 @@ function setState(key: string, state: CollectionState) {
   entry.subscribers.forEach(cb => cb());
 }
 
-function start(key: string, issuer: string, taxon: string | number) {
+function start(key: string, issuer: string, taxon: string | number): Promise<void> {
   const entry = getEntry(key);
-  if (entry.started) return;
-  entry.started = true;
+  if (entry.promise) return entry.promise;
 
-  void (async () => {
+  entry.promise = (async () => {
     try {
       const res = await fetch(
         `${CACHE_API_BASE}/api/collection/${encodeURIComponent(issuer)}/${encodeURIComponent(String(taxon))}`,
@@ -81,6 +81,14 @@ function start(key: string, issuer: string, taxon: string | number) {
       setState(key, { status: 'missing', collection: null });
     }
   })();
+  return entry.promise;
+}
+
+/** コレクション情報を取得する（フックの外から使う用）。共有ストアを通すので重複して取りに行かない。 */
+export async function loadCollection(issuer: string, taxon: string | number): Promise<Collection | null> {
+  const key = keyOf(issuer, taxon);
+  await start(key, issuer, taxon);
+  return getEntry(key).state.collection;
 }
 
 /**
