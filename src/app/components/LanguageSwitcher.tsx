@@ -10,7 +10,8 @@ export function LanguageSwitcher() {
 
   const handleLanguageChange = (newLocale: string) => {
     const currentPath = pathname.split('/').slice(2).join('/');
-    router.push(`/${newLocale}/${currentPath}`);
+    // ?tab= などのクエリも引き継ぐ
+    router.push(`/${newLocale}/${currentPath}${window.location.search}`);
   };
 
   return (

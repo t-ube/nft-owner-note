@@ -118,7 +118,8 @@ const ProjectSidebar = ({
         <select
           onChange={(e) => {
             const currentPath = pathname.split('/').slice(2).join('/');
-            router.push(`/${e.target.value}/${currentPath}`);
+            // ?tab= などのクエリも引き継ぐ
+            router.push(`/${e.target.value}/${currentPath}${window.location.search}`);
           }}
           value={pathname.split('/')[1]}
           className="flex-1 p-2 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"

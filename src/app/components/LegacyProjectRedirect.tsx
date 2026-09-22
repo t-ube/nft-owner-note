@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { dbManager } from '@/utils/db';
-import { collectionPath } from '@/utils/routes';
+import { collectionPath, parseProjectTab } from '@/utils/routes';
 import ProjectDetailWrapper from './ProjectDetailWrapper';
 
 interface LegacyProjectRedirectProps {
@@ -17,6 +17,8 @@ interface LegacyProjectRedirectProps {
  */
 const LegacyProjectRedirect: React.FC<LegacyProjectRedirectProps> = ({ projectId, lang }) => {
   const router = useRouter();
+  // ?tab= は転送先にも引き継ぐ
+  const tab = parseProjectTab(useSearchParams().get('tab'));
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -25,7 +27,7 @@ const LegacyProjectRedirect: React.FC<LegacyProjectRedirectProps> = ({ projectId
       .then(project => {
         if (cancelled) return;
         if (project) {
-          router.replace(collectionPath(lang, project));
+          router.replace(collectionPath(lang, project, tab));
         } else {
           setNotFound(true);
         }
@@ -37,7 +39,7 @@ const LegacyProjectRedirect: React.FC<LegacyProjectRedirectProps> = ({ projectId
     return () => {
       cancelled = true;
     };
-  }, [projectId, lang, router]);
+  }, [projectId, lang, router, tab]);
 
   // 見つからないときは、従来どおりの「見つかりません」表示に任せる
   if (notFound) {

@@ -2,9 +2,11 @@
 
 // ProjectDetail.tsx
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Project } from '@/utils/db';
+import { ProjectTab, parseProjectTab, tabQuery } from '@/utils/routes';
 import ProjectHeader from '@/app/components/ProjectHeader';
 import { useNFTContext } from '@/app/contexts/NFTContext';
 import { 
@@ -37,10 +39,25 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, project: proje
   // 読み込みは親（ProjectDetailWrapper）が行う。親で更新されたら追従する
   const [project, setProject] = useState<Project>(projectProp);
   const [dict, setDict] = useState<Dictionary | null>(null);
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [tab, setTab] = useState<ProjectTab>(() => parseProjectTab(tabParam));
 
   useEffect(() => {
     setProject(projectProp);
   }, [projectProp]);
+
+  // 戻る・進むなどで URL が変わったら追従する
+  useEffect(() => {
+    setTab(parseProjectTab(tabParam));
+  }, [tabParam]);
+
+  // タブを切り替えたら URL も書き換える（サーバーへの再取得を起こさないよう history を直接使う。履歴は増やさない）
+  const handleTabChange = (value: string) => {
+    const next = parseProjectTab(value);
+    setTab(next);
+    window.history.replaceState(null, '', `${window.location.pathname}${tabQuery(next)}`);
+  };
 
   useEffect(() => {
     const loadDictionary = async () => {
@@ -82,17 +99,17 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, project: proje
           <div className="p-3 sm:p-6">
             <ProjectHeader lang={lang} project={project} onProjectUpdate={handleProjectUpdate} />
 
-            <Tabs defaultValue="owners" className="space-y-4">
+            <Tabs value={tab} onValueChange={handleTabChange} className="space-y-4">
               <TabsList className="grid h-auto w-full grid-cols-2 sm:inline-flex sm:h-9 sm:w-auto">
                 <TabsTrigger value="owners">
                   <Users className="h-4 w-4 mr-2" />
                   {dict?.project.detail.ownerRank}
                 </TabsTrigger>
-                <TabsTrigger value="ownerNfts">
+                <TabsTrigger value="holdings">
                   <LayoutGrid className="h-4 w-4 mr-2" />
                   {dict?.project.detail.ownerCollection.title}
                 </TabsTrigger>
-                <TabsTrigger value="ownerPlant">
+                <TabsTrigger value="ecosystem">
                   <Sprout className="h-4 w-4 mr-2" />
                   {dict?.project.detail.ownerPlant.title}
                 </TabsTrigger>
@@ -100,7 +117,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, project: proje
                   <Waypoints className="h-4 w-4 mr-2" />
                   {dict?.project.detail.community.title}
                 </TabsTrigger>
-                <TabsTrigger value="ownerActivity">
+                <TabsTrigger value="activity">
                   <Activity className="h-4 w-4 mr-2" />
                   {dict?.project.detail.ownerActivity.title}
                 </TabsTrigger>
@@ -122,7 +139,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, project: proje
                 </Card>
               </TabsContent>
 
-              <TabsContent value="ownerNfts" className="space-y-4">
+              <TabsContent value="holdings" className="space-y-4">
                 <Card className="mx-[-0.75rem] sm:mx-0 rounded-none sm:rounded-lg border-x-0 sm:border-x">
                   <CardContent className="px-2 pt-3 sm:px-6 sm:pt-6">
                     <OwnerNFTGroupList lang={lang} projectId={projectId} />
@@ -130,7 +147,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, project: proje
                 </Card>
               </TabsContent>
 
-              <TabsContent value="ownerPlant" className="space-y-4">
+              <TabsContent value="ecosystem" className="space-y-4">
                 <Card className="mx-[-0.75rem] sm:mx-0 rounded-none sm:rounded-lg border-x-0 sm:border-x">
                   <CardContent className="px-2 pt-3 sm:px-6 sm:pt-6">
                     <OwnerPlantNetwork
@@ -150,7 +167,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, project: proje
                 </Card>
               </TabsContent>
 
-              <TabsContent value="ownerActivity" className="space-y-4">
+              <TabsContent value="activity" className="space-y-4">
                 <Card className="mx-[-0.75rem] sm:mx-0 rounded-none sm:rounded-lg border-x-0 sm:border-x">
                   <CardContent className="px-2 pt-3 sm:px-6 sm:pt-6">
                     <OwnerActivityList
