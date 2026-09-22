@@ -235,12 +235,12 @@
         }
       },
       "ownerPlant": {
-        "title": "オーナー活性図",
+        "title": "エコシステム",
         "description": "コレクションを植物に見立てて、オーナーが元気かどうかを表した図です。",
         "status": {
-          "loading": "活性図を読み込み中...",
+          "loading": "エコシステムを読み込み中...",
           "showing": "{shown} / {total} ウォレット",
-          "noData": "活性図のデータがありません"
+          "noData": "エコシステムのデータがありません"
         },
         "actions": {
           "limit": "表示数（購入額の上位）",
@@ -265,41 +265,41 @@
           "colorLabel": "最終活動",
           "color": "最後に取得した時期。緑は最近、茶色になるほど前です。",
           "days": "日前",
-          "sproutLabel": "新芽",
+          "sproutLabel": "新規",
           "sprout": "30日以内に加わった新しいオーナー。",
           "leavesLabel": "葉",
-          "leaves": "入手NFT数。",
+          "leaves": "NFTを入手した回数。",
           "note": "手放したウォレットも含みます。"
         },
         "list": {
-          "sproutOnly": "新芽のみ",
+          "sproutOnly": "新規のみ",
           "showing": "{count} オーナー",
           "owner": "オーナー",
           "spend": "購入額 (XRP)",
-          "leaves": "入手NFT数",
+          "leaves": "NFT入手回数",
           "lastAt": "最終活動",
           "firstAt": "オーナー歴",
-          "collections": "コレクション",
+          "collections": "入手回数内訳",
           "links": "リンク",
           "legend": {
             "toggle": "各列の説明",
-            "owner": "アドレス帳に名前があれば名前を出します。左の丸は図と同じ色で、最後に入手した時期を表します。新芽のバッジは30日以内に加わったオーナーです。",
+            "owner": "アドレス帳に名前があれば名前を出します。左の丸は図と同じ色で、最後に入手した時期を表します。新規のバッジは30日以内に加わったオーナーです。",
             "spend": "マーケットで有償購入した合計額（XRP）。取引額を確定できた購入のみを合算しています。ローンチパッド経由のミントは含みません。",
-            "leaves": "これまでに入手したNFTの数。今も持っているかは関係ありません。",
+            "leaves": "これまでにNFTを入手した回数。今も持っているかは関係ありません。",
             "lastAt": "最後にNFTを入手してから何日たったか。",
             "firstAt": "初めてNFTを入手してから何日たったか。",
-            "collections": "入手したコレクションと、それぞれの入手NFT数。アイコンにカーソルを合わせると名前が出ます。"
+            "collections": "コレクションごとの入手回数。アイコンにカーソルを合わせると名前が出ます。"
           }
         },
         "tooltip": {
           "lastActive": "最終活動",
-          "acquired": "入手NFT数",
+          "acquired": "NFT入手回数",
           "spend": "購入額",
-          "collections": "コレクション",
+          "collections": "入手回数内訳",
           "wallets": "ウォレット数"
         },
         "errors": {
-          "loadFailed": "活性図の読み込みに失敗しました"
+          "loadFailed": "エコシステムの読み込みに失敗しました"
         }
       },
       "nftListPage": {

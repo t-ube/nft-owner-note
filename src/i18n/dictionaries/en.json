@@ -235,12 +235,12 @@
         }
       },
       "ownerPlant": {
-        "title": "Owner Plant",
+        "title": "Ecosystem",
         "description": "Your collections drawn as a plant, showing how lively your owners are.",
         "status": {
-          "loading": "Loading plant...",
+          "loading": "Loading ecosystem...",
           "showing": "{shown} / {total} wallets",
-          "noData": "No plant data"
+          "noData": "No ecosystem data"
         },
         "actions": {
           "limit": "Show (top spenders)",
@@ -265,41 +265,41 @@
           "colorLabel": "Last active",
           "color": "When they last acquired. Green is recent; the browner, the longer ago.",
           "days": "days ago",
-          "sproutLabel": "Sprout",
+          "sproutLabel": "New",
           "sprout": "A new owner who joined within 30 days.",
           "leavesLabel": "Leaves",
-          "leaves": "Number of NFTs acquired.",
+          "leaves": "Number of times they acquired an NFT.",
           "note": "Includes wallets that no longer hold any."
         },
         "list": {
-          "sproutOnly": "Sprouts only",
+          "sproutOnly": "New only",
           "showing": "{count} owners",
           "owner": "Owner",
           "spend": "Spent (XRP)",
-          "leaves": "NFTs acquired",
+          "leaves": "Acquisitions",
           "lastAt": "Last active",
           "firstAt": "Owner for",
-          "collections": "Collections",
+          "collections": "By collection",
           "links": "Links",
           "legend": {
             "toggle": "About these columns",
-            "owner": "Shows the name from your address book if there is one. The dot uses the chart color for when they last acquired. The sprout badge marks owners who joined within 30 days.",
+            "owner": "Shows the name from your address book if there is one. The dot uses the chart color for when they last acquired. The New badge marks owners who joined within 30 days.",
             "spend": "Total paid for marketplace purchases, in XRP. Only purchases with a confirmed price are included. Launchpad mints are not included.",
-            "leaves": "How many NFTs they have acquired, whether or not they still hold them.",
+            "leaves": "How many times they have acquired an NFT, whether or not they still hold them.",
             "lastAt": "Days since they last acquired an NFT.",
             "firstAt": "Days since they first acquired an NFT.",
-            "collections": "The collections they acquired from, with the number from each. Hover over an icon to see its name."
+            "collections": "Acquisitions per collection. Hover over an icon to see its name."
           }
         },
         "tooltip": {
           "lastActive": "Last active",
-          "acquired": "NFTs acquired",
+          "acquired": "Acquisitions",
           "spend": "Spent",
-          "collections": "Collections",
+          "collections": "By collection",
           "wallets": "Wallets"
         },
         "errors": {
-          "loadFailed": "Failed to load plant data"
+          "loadFailed": "Failed to load ecosystem data"
         }
       },
       "nftListPage": {

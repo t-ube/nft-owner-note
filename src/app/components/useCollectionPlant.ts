@@ -118,7 +118,7 @@ function loadPlant(issuer: string): Promise<CollectionPlant | null> {
   return p;
 }
 
-/** issuer のオーナー活性図のデータを取得するフック。 */
+/** issuer のエコシステム（旧オーナー活性図）のデータを取得するフック。 */
 export function useCollectionPlant(issuer?: string | null): CollectionPlantState {
   const [state, setState] = useState<CollectionPlantState>({ status: 'loading', plant: null });
 
