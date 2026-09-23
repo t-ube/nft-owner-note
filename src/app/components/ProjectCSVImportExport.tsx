@@ -17,6 +17,8 @@ interface ProjectCSVImportExportProps {
   onProjectsUpdated: () => void;
   lang: string;
   importOnly?: boolean;
+  /** 他のメニューの中に置くとき。メニュー項目だけを返す */
+  asMenuItems?: boolean;
 }
 
 // CSV形式のデータ型を定義
@@ -33,7 +35,7 @@ interface ValidationError {
   errors: string[];
 }
 
-const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProjectsUpdated, lang, importOnly = false }) => {
+const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProjectsUpdated, lang, importOnly = false, asMenuItems = false }) => {
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -189,6 +191,28 @@ const ProjectCSVImportExport: React.FC<ProjectCSVImportExportProps> = ({ onProje
   if (!dict) return null;
 
   const { csvImportExport: t } = dict.project;
+
+  if (asMenuItems) {
+    return (
+      <>
+        <DropdownMenuItem onSelect={handleExport}>
+          <Download className="mr-2 h-4 w-4" />
+          {t.buttons.exportCSV}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>
+          <Upload className="mr-2 h-4 w-4" />
+          {t.buttons.importCSV}
+        </DropdownMenuItem>
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept=".csv,text/csv"
+          onChange={handleImport}
+          className="hidden"
+        />
+      </>
+    );
+  }
 
   return (
     <div>

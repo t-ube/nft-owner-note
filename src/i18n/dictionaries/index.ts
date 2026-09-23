@@ -603,6 +603,25 @@ export interface Dictionary {
       search: {
         placeholder: string;
       };
+      add: {
+        label: string;
+        manual: string;
+        dialogTitle: string;
+        dialogDescription: string;
+        issuer: string;
+        taxon: string;
+        submit: string;
+        invalid: string;
+        failed: string;
+      };
+      sections: {
+        pinned: string;
+        recent: string;
+        all: string;
+        pinHint: string;
+      };
+      pin: string;
+      unpin: string;
       noProjects: string;
       edit: string;
       save: string;
@@ -614,6 +633,8 @@ export interface Dictionary {
       footer: {
         developedBy: string;
         followOnX: string;
+        help: string;
+        settings: string;
       };
       bottomNav: {
         projects: string;

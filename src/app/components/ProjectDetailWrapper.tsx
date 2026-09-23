@@ -21,6 +21,7 @@ import ProjectSidebar from '@/app/components/ProjectSidebar';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import { loadCollection } from '@/app/components/useCollection';
+import { pushRecentProject } from '@/utils/recentProjects';
 
 /** XRPL のクラシックアドレスの形式か（厳密なチェックサム検証はしない）。 */
 const isValidIssuer = (issuer: string) => /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(issuer);
@@ -109,6 +110,7 @@ const ProjectDetailWrapper: React.FC<ProjectDetailWrapperProps> = ({
       if (projectData) {
         setProject(projectData);
         setProjectId(projectData.projectId);
+        pushRecentProject(projectData.projectId); // サイドバーの「最近見た」に記録する
         // 仮の名前のままなら、裏でコレクション名を取ってきて差し替える
         if (
           projectData.isAutoCreated &&

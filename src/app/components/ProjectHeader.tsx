@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AlertCircle, Edit2, Save, X, ExternalLink, Copy, Check, Images, Info, Users } from 'lucide-react';
+import { AlertCircle, Edit2, Save, X, ExternalLink, Copy, Check, Images, Info, Star, Users } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { dbManager, Project } from '@/utils/db';
 import {
@@ -30,6 +30,11 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [copied, setCopied] = useState(false);
   const [issuerInfo, setIssuerInfo] = useState<{ groupName: string | null; xAccount: string | null } | null>(null);
+  const [isPinned, setIsPinned] = useState(!!project.isPinned);
+
+  useEffect(() => {
+    setIsPinned(!!project.isPinned);
+  }, [project.isPinned]);
   const { isLoading: isSyncingNFTs, nfts } = useNFTContext();
 
   // バーンされた NFT は数えない
@@ -99,6 +104,17 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
     setEditedName(project.name);
     setIsEditing(false);
     setError(null);
+  };
+
+  const handlePinClick = async () => {
+    const next = !isPinned;
+    setIsPinned(next); // 先に見た目を変えて、押した手応えを出す
+    try {
+      await dbManager.setProjectPinned(project.projectId, next);
+    } catch (err) {
+      console.error('Failed to update pin:', err);
+      setIsPinned(!next);
+    }
   };
 
   const handleCopyAddress = async () => {
@@ -256,6 +272,21 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
           </div>
         </div>
 
+        {!isEditing && (
+          <div className="flex items-center gap-1 shrink-0 self-start sm:self-center">
+            {/* お気に入り。押しても画面を作り直さないよう、表示はここで持つ */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handlePinClick}
+              title={isPinned ? dict?.project.sidebar.unpin : dict?.project.sidebar.pin}
+              aria-label={isPinned ? dict?.project.sidebar.unpin : dict?.project.sidebar.pin}
+            >
+              <Star className={`h-5 w-5 ${isPinned ? 'fill-current text-amber-400' : 'text-gray-400'}`} />
+            </Button>
+          </div>
+        )}
+
         {/* URL を開いて自動で作ったプロジェクトは見るだけなので、名前を編集させない */}
         {!isEditing && !project.isAutoCreated && (
           <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
@@ -270,7 +301,7 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
       {/* 同期中の目安。行が増えて画面ががたつかないよう、バーは下端に重ねて出す */}
       {isSyncingNFTs && (
         <div className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden rounded-full bg-muted">
-          <div className="h-full w-1/5 rounded-full bg-primary animate-indeterminate-bar" />
+          <div className="h-full w-1/5 rounded-full bg-foreground/20 animate-indeterminate-bar" />
         </div>
       )}
 

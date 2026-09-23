@@ -11,6 +11,10 @@ export interface Project {
   updatedAt: number;
   /** URL を開いたときに自動で作ったプロジェクト。 */
   isAutoCreated?: boolean;
+  /** サイドバーのピン留め。 */
+  isPinned?: boolean;
+  /** ピン留めした日時（ピン留めした順に並べるのに使う）。 */
+  pinnedAt?: number;
 }
 
 export interface NFTokenBase {
@@ -887,6 +891,31 @@ class DatabaseManager {
     return () => {
       this.projectsChangedListeners.delete(listener);
     };
+  }
+
+  /** ピン留めを切り替える。ピン留めしたものは通常のプロジェクトとして扱う。 */
+  async setProjectPinned(projectId: string, pinned: boolean): Promise<Project | undefined> {
+    const db = await this.initDB();
+    const transaction = db.transaction('projects', 'readwrite');
+    const store = transaction.objectStore('projects');
+    const project = await this.request(store.index('projectId').get(projectId)) as Project | undefined;
+    if (!project) {
+      await this.done(transaction);
+      return undefined;
+    }
+
+    const now = Date.now();
+    const updated: Project = {
+      ...project,
+      isPinned: pinned,
+      pinnedAt: pinned ? project.pinnedAt ?? now : undefined,
+      isAutoCreated: pinned ? false : project.isAutoCreated,
+      updatedAt: now,
+    };
+    store.put(updated);
+    await this.done(transaction);
+    this.projectsChangedListeners.forEach(listener => listener());
+    return updated;
   }
 
   /**

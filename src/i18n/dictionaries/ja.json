@@ -594,8 +594,27 @@
       "integration": "プロジェクト連携",
       "projectsTitle": "プロジェクト",
       "search": {
-        "placeholder": "プロジェクトを検索"
+        "placeholder": "検索"
       },
+      "add": {
+        "label": "プロジェクトを追加",
+        "manual": "手動で追加",
+        "dialogTitle": "プロジェクトを追加",
+        "dialogDescription": "発行者アドレスとタクソン（Taxon）を入れてください。名前は自動で取得します。",
+        "issuer": "発行者アドレス",
+        "taxon": "タクソン（Taxon）",
+        "submit": "追加",
+        "invalid": "発行者アドレスかタクソンの形式が正しくありません",
+        "failed": "プロジェクトの追加に失敗しました"
+      },
+      "sections": {
+        "pinned": "お気に入り",
+        "recent": "最近見た",
+        "all": "すべて",
+        "pinHint": "星でお気に入りに追加"
+      },
+      "pin": "お気に入りに追加",
+      "unpin": "お気に入りから外す",
       "noProjects": "プロジェクトが見つかりません",
       "edit": "プロジェクト名を編集",
       "save": "保存",
@@ -606,7 +625,9 @@
       "manual": "使い方・ヘルプ",
       "footer": {
         "developedBy": "開発者：shirome",
-        "followOnX": "Xでフォロー"
+        "followOnX": "Xでフォロー",
+        "help": "ヘルプ",
+        "settings": "設定"
       },
       "bottomNav": {
         "projects": "プロジェクト",

@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 interface SegmentedControlOption<T> {
   value: T;
   label: React.ReactNode;
+  /** アイコンだけのときなど、カーソルを合わせたときに出す名前 */
+  title?: string;
 }
 
 interface SegmentedControlProps<T> {
@@ -34,9 +36,12 @@ export function SegmentedControl<T extends string | number | boolean>({
             key={String(option.value)}
             type="button"
             aria-pressed={isActive}
+            title={option.title}
+            aria-label={option.title}
             onClick={() => onChange(option.value)}
             className={cn(
-              'inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1 text-sm font-medium transition-colors',
+              // 幅が足りないときは等分に縮める（はみ出さないように）
+              'inline-flex min-w-0 flex-1 items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-sm px-2.5 py-1.5 text-sm font-medium transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               isActive ? 'bg-background text-foreground shadow-sm' : 'hover:text-foreground'
             )}

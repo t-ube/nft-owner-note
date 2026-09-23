@@ -594,8 +594,27 @@
       "integration": "Project Integration",
       "projectsTitle": "Projects",
       "search": {
-        "placeholder": "Search projects"
+        "placeholder": "Search"
       },
+      "add": {
+        "label": "Add project",
+        "manual": "Add manually",
+        "dialogTitle": "Add project",
+        "dialogDescription": "Enter the issuer address and taxon. The name is fetched automatically.",
+        "issuer": "Issuer address",
+        "taxon": "Taxon",
+        "submit": "Add",
+        "invalid": "The issuer address or taxon is not valid",
+        "failed": "Failed to add the project"
+      },
+      "sections": {
+        "pinned": "Favorites",
+        "recent": "Recent",
+        "all": "All",
+        "pinHint": "Tap the star to add a favorite"
+      },
+      "pin": "Add to favorites",
+      "unpin": "Remove from favorites",
       "noProjects": "No projects found",
       "edit": "Edit project name",
       "save": "Save",
@@ -606,7 +625,9 @@
       "manual": "Help & Documentation",
       "footer": {
         "developedBy": "Developed by shirome",
-        "followOnX": "Follow on X"
+        "followOnX": "Follow on X",
+        "help": "Help",
+        "settings": "Settings"
       },
       "bottomNav": {
         "projects": "Projects",
