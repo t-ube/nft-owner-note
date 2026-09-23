@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CACHE_API_BASE } from '@/app/components/useNftCache';
 
 /** 枝（taxon）1本分。 */
@@ -43,6 +43,8 @@ export type CollectionPlantStatus = 'loading' | 'loaded' | 'error';
 export interface CollectionPlantState {
   status: CollectionPlantStatus;
   plant: CollectionPlant | null;
+  /** 失敗したときに、もう一度取得する */
+  retry: () => void;
 }
 
 /** /api/collection/:issuer/plant のレスポンス（列指向）。 */
@@ -120,7 +122,12 @@ export function loadPlant(issuer: string): Promise<CollectionPlant | null> {
 
 /** issuer のエコシステム（旧オーナー活性図）のデータを取得するフック。 */
 export function useCollectionPlant(issuer?: string | null): CollectionPlantState {
-  const [state, setState] = useState<CollectionPlantState>({ status: 'loading', plant: null });
+  const [state, setState] = useState<{ status: CollectionPlantStatus; plant: CollectionPlant | null }>({
+    status: 'loading',
+    plant: null,
+  });
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt(n => n + 1), []);
 
   useEffect(() => {
     if (!issuer) return;
@@ -137,7 +144,7 @@ export function useCollectionPlant(issuer?: string | null): CollectionPlantState
     return () => {
       cancelled = true;
     };
-  }, [issuer]);
+  }, [issuer, attempt]);
 
-  return state;
+  return { ...state, retry };
 }

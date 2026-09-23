@@ -10,6 +10,7 @@ import {
   AlertCircle,
   ArrowRight,
   Loader2,
+  RefreshCcw,
   Maximize,
   X,
   ZoomIn,
@@ -340,7 +341,7 @@ type Focus = { kind: 'owner' | 'hub'; index: number };
 
 const CommunityInflowNetwork: React.FC<CommunityInflowNetworkProps> = ({ lang, issuer }) => {
   const router = useRouter();
-  const { status, inflow } = useCreatorInflow(issuer);
+  const { status, inflow, retry } = useCreatorInflow(issuer);
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [fansOnly, setFansOnly] = useState(false);
   const [creatorsOnly, setCreatorsOnly] = useState(false);
@@ -583,7 +584,13 @@ const CommunityInflowNetwork: React.FC<CommunityInflowNetworkProps> = ({ lang, i
     return shell(
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{community.errors.loadFailed}</AlertDescription>
+        <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+          {community.errors.loadFailed}
+          <Button variant="outline" size="sm" onClick={retry}>
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            {community.actions.retry}
+          </Button>
+        </AlertDescription>
       </Alert>
     );
   }

@@ -259,6 +259,7 @@
         "actions": {
           "limit": "Show (top spenders)",
           "openCollection": "Open this collection",
+          "retry": "Retry",
           "closeFocus": "Close",
           "all": "All",
           "zoomIn": "Zoom in",
@@ -329,6 +330,7 @@
         "actions": {
           "fansOnly": "Fans only",
           "creatorsOnly": "Creators only",
+          "retry": "Retry",
           "openCreator": "Open this creator",
           "showHome": "Show home community",
           "closeFocus": "Close",

@@ -24,6 +24,7 @@ import {
   AlertCircle,
   ArrowRight,
   Loader2,
+  RefreshCcw,
   Maximize,
   X,
   ZoomIn,
@@ -621,7 +622,7 @@ type Focus = { kind: 'node'; index: number } | { kind: 'hub'; taxon: number };
 
 const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, taxon }) => {
   const router = useRouter();
-  const { status, plant } = useCollectionPlant(issuer);
+  const { status, plant, retry } = useCollectionPlant(issuer);
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [limit, setLimit] = useState(300);
   const [hover, setHover] = useState<Hover | null>(null);
@@ -865,7 +866,13 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
     return shell(
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{ownerPlant.errors.loadFailed}</AlertDescription>
+        <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+          {ownerPlant.errors.loadFailed}
+          <Button variant="outline" size="sm" onClick={retry}>
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            {ownerPlant.actions.retry}
+          </Button>
+        </AlertDescription>
       </Alert>
     );
   }

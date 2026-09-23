@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CACHE_API_BASE } from '@/app/components/useNftCache';
 
 /** 忠誠度のラベル。gift（この作家には 0 XRP）は paid_only=0 のときだけ出る */
@@ -152,11 +152,18 @@ export type CreatorInflowStatus = 'loading' | 'loaded' | 'error';
 export interface CreatorInflowState {
   status: CreatorInflowStatus;
   inflow: CreatorInflow | null;
+  /** 失敗したときに、もう一度取得する */
+  retry: () => void;
 }
 
 /** 作家（issuer）のコミュニティ流入図のデータを取得するフック。 */
 export function useCreatorInflow(issuer: string | null | undefined): CreatorInflowState {
-  const [state, setState] = useState<CreatorInflowState>({ status: 'loading', inflow: null });
+  const [state, setState] = useState<{ status: CreatorInflowStatus; inflow: CreatorInflow | null }>({
+    status: 'loading',
+    inflow: null,
+  });
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt(n => n + 1), []);
 
   useEffect(() => {
     if (!issuer) return;
@@ -173,7 +180,7 @@ export function useCreatorInflow(issuer: string | null | undefined): CreatorInfl
     return () => {
       cancelled = true;
     };
-  }, [issuer]);
+  }, [issuer, attempt]);
 
-  return state;
+  return { ...state, retry };
 }

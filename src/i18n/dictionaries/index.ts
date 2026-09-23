@@ -266,6 +266,7 @@ export interface Dictionary {
         actions: {
           limit: string;
           openCollection: string;
+          retry: string;
           closeFocus: string;
           all: string;
           zoomIn: string;
@@ -336,6 +337,7 @@ export interface Dictionary {
         actions: {
           fansOnly: string;
           creatorsOnly: string;
+          retry: string;
           openCreator: string;
           showHome: string;
           closeFocus: string;

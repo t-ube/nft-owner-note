@@ -259,6 +259,7 @@
         "actions": {
           "limit": "表示数（購入額の上位）",
           "openCollection": "このコレクションを開く",
+          "retry": "再試行",
           "closeFocus": "閉じる",
           "all": "すべて",
           "zoomIn": "拡大",
@@ -329,6 +330,7 @@
         "actions": {
           "fansOnly": "ファンだけ",
           "creatorsOnly": "アーティストだけ",
+          "retry": "再試行",
           "openCreator": "このアーティストを開く",
           "showHome": "本拠地を見る",
           "closeFocus": "閉じる",
