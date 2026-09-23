@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { M_PLUS_Rounded_1c } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/app/providers";
 import { Tracker } from "@/app/components/Tracker";
@@ -13,6 +14,13 @@ const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
+});
+// 収集率など、やわらかく見せたい数字に使う丸ゴシック
+const roundedFont = M_PLUS_Rounded_1c({
+  subsets: ["latin"],
+  weight: ["700"],
+  variable: "--font-rounded",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -60,7 +68,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${roundedFont.variable} antialiased`}
       >
         <Tracker />
         <Providers>

@@ -7,8 +7,8 @@ import { fetchNFTTransferHistory } from '@/utils/nftHistory';
 import { updateNFTName } from '@/utils/nftMetadata';
 import _ from 'lodash';
 import { Client } from 'xrpl';
+import { withXrplClient } from '@/utils/xrplClient';
 
-const XRPL_WEBSOCKET_URL = 'wss://s1.ripple.com';
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 2000;
 /** 名前の一括取得は、この件数の URI がたまるごとにまとめて行う */
@@ -45,29 +45,9 @@ export const useNFTContext = () => {
   return context;
 };
 
-async function executeXrplRequest<T>(
-  requestFn: (client: Client) => Promise<T>,
-  retryCount = 0
-): Promise<T> {
-  const client = new Client(XRPL_WEBSOCKET_URL);
-
-  try {
-    await client.connect();
-    const result = await requestFn(client);
-    return result;
-  } catch (error) {
-    if (retryCount < MAX_RETRIES) {
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-      return executeXrplRequest(requestFn, retryCount + 1);
-    }
-    throw error;
-  } finally {
-    try {
-      await client.disconnect();
-    } catch (err) {
-      console.error('Error disconnecting from XRPL:', err);
-    }
-  }
+// 接続は使い回す（100 件ずつの同期でつなぎ直すと、その手続きの時間が積み上がるため）
+async function executeXrplRequest<T>(requestFn: (client: Client) => Promise<T>): Promise<T> {
+  return withXrplClient(requestFn, { retries: MAX_RETRIES, retryDelayMs: RETRY_DELAY });
 }
 
 export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({ 

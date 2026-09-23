@@ -90,6 +90,10 @@
     "detail": {
       "loading": "Loading project data...",
       "notFound": "Project not found",
+      "stats": {
+        "nfts": "{count} NFTs",
+        "owners": "{count} owners"
+      },
       "ownerRank": "Owner Rank",
       "nftList": "NFT List",
       "tabs": {
@@ -116,6 +120,15 @@
         "copy": "Copy"
       },
       "ownerList": {
+        "search": {
+          "placeholder": "Search owners..."
+        },
+        "named": {
+          "label": "Address coverage",
+          "count": "{named} / {total}",
+          "complete": "All addresses have a name",
+          "help": "The share of owners that have a name in your address book."
+        },
         "status": {
           "showingOwners": "Showing {count} owners",
           "loadingMore": "Loading more data...",
@@ -125,7 +138,8 @@
           "getProfileFromXrpCafe": "Auto Profile",
           "exportRank": "Export Owner Rank",
           "edit": "Edit",
-          "showGrouped": "Group by owners"
+          "byOwner": "By owner",
+          "byGroup": "By group"
         },
         "table": {
           "rank": "Rank",
@@ -194,10 +208,10 @@
       },
       "ownerActivity": {
         "title": "Owner Activity",
-        "description": "Every wallet that has ever acquired an NFT from this collection, including ones that no longer hold any (shown dimmed). Data is updated periodically, so very recent trades may be missing.",
+        "description": "Every owner that has ever acquired an NFT from this collection, including ones that no longer hold any (shown dimmed). Data is updated periodically, so very recent trades may be missing.",
         "status": {
           "loading": "Loading activity...",
-          "showing": "{count} wallets",
+          "showing": "{count} owners",
           "noData": "No activity data"
         },
         "actions": {
@@ -239,7 +253,7 @@
         "description": "Your collections drawn as a plant, showing how lively your owners are.",
         "status": {
           "loading": "Loading ecosystem...",
-          "showing": "{shown} / {total} wallets",
+          "showing": "{shown} / {total} owners",
           "noData": "No ecosystem data"
         },
         "actions": {
@@ -271,7 +285,7 @@
           "sprout": "A new owner who joined within 30 days.",
           "leavesLabel": "Leaves",
           "leaves": "Number of times they acquired an NFT.",
-          "note": "Includes wallets that no longer hold any."
+          "note": "Includes owners that no longer hold any."
         },
         "list": {
           "sproutOnly": "New only",
@@ -298,7 +312,7 @@
           "acquired": "Acquisitions",
           "spend": "Spent",
           "collections": "By collection",
-          "wallets": "Wallets"
+          "wallets": "Owners"
         },
         "errors": {
           "loadFailed": "Failed to load ecosystem data"

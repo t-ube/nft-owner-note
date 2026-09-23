@@ -90,6 +90,10 @@
     "detail": {
       "loading": "プロジェクトデータを読み込み中...",
       "notFound": "プロジェクトが見つかりません",
+      "stats": {
+        "nfts": "作品 {count}",
+        "owners": "オーナー {count}"
+      },
       "ownerRank": "オーナーランク",
       "nftList": "NFTリスト",
       "tabs": {
@@ -116,6 +120,15 @@
         "copy": "コピー"
       },
       "ownerList": {
+        "search": {
+          "placeholder": "オーナーを検索..."
+        },
+        "named": {
+          "label": "アドレス収集率",
+          "count": "{named} / {total}",
+          "complete": "ぜんぶ名前が入りました",
+          "help": "アドレス帳に名前があるオーナーの割合です。"
+        },
         "status": {
           "showingOwners": "オーナー数：{count}",
           "loadingMore": "データを読み込み中...",
@@ -125,7 +138,8 @@
           "getProfileFromXrpCafe": "自動でプロフィール取得",
           "exportRank": "オーナーランクを出力",
           "edit": "編集",
-          "showGrouped": "同じオーナーをまとめる"
+          "byOwner": "オーナー表示",
+          "byGroup": "グループ表示"
         },
         "table": {
           "rank": "ランク",
@@ -194,10 +208,10 @@
       },
       "ownerActivity": {
         "title": "オーナー活動",
-        "description": "このコレクションを一度でも入手したウォレットの一覧です。もう手放したウォレットも含みます（今持っていない人は薄く表示）。データは定期的に更新しているので、直近の取引はまだ入っていないことがあります。",
+        "description": "このコレクションを一度でも入手したオーナーの一覧です。もう手放したオーナーも含みます（今持っていない人は薄く表示）。データは定期的に更新しているので、直近の取引はまだ入っていないことがあります。",
         "status": {
           "loading": "活動実績を読み込み中...",
-          "showing": "{count} ウォレット",
+          "showing": "{count} オーナー",
           "noData": "活動実績のデータがありません"
         },
         "actions": {
@@ -239,7 +253,7 @@
         "description": "コレクションを植物に見立てて、オーナーが元気かどうかを表した図です。",
         "status": {
           "loading": "エコシステムを読み込み中...",
-          "showing": "{shown} / {total} ウォレット",
+          "showing": "{shown} / {total} オーナー",
           "noData": "エコシステムのデータがありません"
         },
         "actions": {
@@ -271,7 +285,7 @@
           "sprout": "30日以内に加わった新しいオーナー。",
           "leavesLabel": "葉",
           "leaves": "NFTを入手した回数。",
-          "note": "手放したウォレットも含みます。"
+          "note": "手放したオーナーも含みます。"
         },
         "list": {
           "sproutOnly": "新規のみ",
@@ -298,7 +312,7 @@
           "acquired": "NFT入手回数",
           "spend": "購入額",
           "collections": "入手回数内訳",
-          "wallets": "ウォレット数"
+          "wallets": "オーナー数"
         },
         "errors": {
           "loadFailed": "エコシステムの読み込みに失敗しました"

@@ -55,6 +55,19 @@ const config: Config = {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
+  		},
+  		fontFamily: {
+  			rounded: ['var(--font-rounded)', 'ui-rounded', 'sans-serif']
+  		},
+  		keyframes: {
+  			// 終わりの見えない読み込み用に、左右へ流れるバー
+  			'indeterminate-bar': {
+  				'0%': { transform: 'translateX(-100%)' },
+  				'100%': { transform: 'translateX(400%)' }
+  			}
+  		},
+  		animation: {
+  			'indeterminate-bar': 'indeterminate-bar 1.4s ease-in-out infinite'
   		}
   	}
   },

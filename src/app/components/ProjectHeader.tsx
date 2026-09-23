@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AlertCircle, Edit2, Save, X, ExternalLink, Copy, Check, Info } from 'lucide-react';
+import { AlertCircle, Edit2, Save, X, ExternalLink, Copy, Check, Images, Info, Users } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { dbManager, Project } from '@/utils/db';
 import {
@@ -15,6 +15,7 @@ import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import IssuerSiteIcons from '@/app/components/IssuerSiteIcons';
 import CollectionFace from '@/app/components/CollectionFace';
+import { useNFTContext } from '@/app/contexts/NFTContext';
 
 interface ProjectHeaderProps {
   lang: string;
@@ -29,6 +30,13 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [copied, setCopied] = useState(false);
   const [issuerInfo, setIssuerInfo] = useState<{ groupName: string | null; xAccount: string | null } | null>(null);
+  const { isLoading: isSyncingNFTs, nfts } = useNFTContext();
+
+  // バーンされた NFT は数えない
+  const counts = useMemo(() => {
+    const active = nfts.filter(nft => !nft.is_burned);
+    return { nfts: active.length, owners: new Set(active.map(nft => nft.owner)).size };
+  }, [nfts]);
 
   useEffect(() => {
     const loadDictionary = async () => {
@@ -106,7 +114,7 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
   const xHandle = issuerInfo?.xAccount?.replace('@', '');
 
   return (
-    <div className="mb-4 sm:mb-6">
+    <div className="relative mb-4 sm:mb-6">
       <div className="flex items-center gap-3">
         <CollectionFace
           issuer={project.issuer}
@@ -117,7 +125,7 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
 
         <div className="flex-1 min-w-0">
           {isEditing ? (
-            <div className="flex items-center gap-2">
+            <div className="flex h-9 items-center gap-2">
               <Input
                 value={editedName}
                 onChange={(e) => setEditedName(e.target.value)}
@@ -146,34 +154,51 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
               </Button>
             </div>
           ) : (
-            <h1 className="text-xl sm:text-2xl font-bold truncate">{project.name}</h1>
+            <h1 className="flex h-9 items-center truncate text-xl font-bold sm:text-2xl">{project.name}</h1>
           )}
 
-          {/* 発行者名 · Xアカウント · リンク · 詳細 */}
-          <div className="flex items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-sm text-gray-500 dark:text-gray-400 min-w-0">
+          {/* 作品数（リンク付き） · オーナー数 · 発行者名 · Xアカウント · 詳細 */}
+          <div className="mt-0.5 flex h-6 min-w-0 items-center gap-x-1.5 overflow-hidden whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+            {/* 作品数とオーナー数。同期が終わるまでは増えていく（読み込み中かどうかは下のバーで分かる） */}
+            {([
+              [Images, dict?.project.detail.stats.nfts, counts.nfts],
+              [Users, dict?.project.detail.stats.owners, counts.owners],
+            ] as const).map(([Icon, label, count]) => (
+              <span
+                key={label}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-foreground/80"
+              >
+                <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="min-w-[4.5rem] text-center font-medium tabular-nums">
+                  {label?.replace('{count}', count.toLocaleString())}
+                </span>
+                {/* 外部サイトへのリンクは作品数のバッジの中に入れる */}
+                {Icon === Images && (
+                  <IssuerSiteIcons issuer={project.issuer} taxon={project.taxon} className="h-4 w-4" />
+                )}
+              </span>
+            ))}
+            {/* 発行者名と X アカウントは読み込みのあとに出るので、位置が動いても困らない末尾に置く */}
             {issuerInfo?.groupName && (
               <>
-                <span className="truncate">{issuerInfo.groupName}</span>
                 <span aria-hidden="true">·</span>
+                <span className="max-w-[10rem] truncate">{issuerInfo.groupName}</span>
               </>
             )}
             {xHandle && (
               <>
+                <span aria-hidden="true">·</span>
                 <a
                   href={`https://twitter.com/${xHandle}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center shrink-0 text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+                  className="inline-flex min-w-0 items-center text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
                 >
-                  @{xHandle}
-                  <ExternalLink className="h-3 w-3 ml-0.5" />
+                  <span className="max-w-[8rem] truncate">@{xHandle}</span>
+                  <ExternalLink className="h-3 w-3 ml-0.5 shrink-0" />
                 </a>
-                <span aria-hidden="true">·</span>
               </>
             )}
-            <div className="shrink-0">
-              <IssuerSiteIcons issuer={project.issuer} taxon={project.taxon} />
-            </div>
             <Popover>
               <PopoverTrigger asChild>
                 <button
@@ -241,6 +266,13 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
           </div>
         )}
       </div>
+
+      {/* 同期中の目安。行が増えて画面ががたつかないよう、バーは下端に重ねて出す */}
+      {isSyncingNFTs && (
+        <div className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden rounded-full bg-muted">
+          <div className="h-full w-1/5 rounded-full bg-primary animate-indeterminate-bar" />
+        </div>
+      )}
 
       {error && (
         <Alert variant="destructive" className="mt-3">

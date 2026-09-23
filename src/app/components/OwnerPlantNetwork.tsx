@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import NFTSiteWalletIcons from '@/app/components/NFTSiteWalletIcons';
 import HelpPopover from '@/app/components/HelpPopover';
+import { SegmentedControl } from '@/app/components/SegmentedControl';
 import SortableTableHead from '@/app/components/SortableTableHead';
 import { STICKY_COL, STICKY_ROW_HOVER } from '@/app/components/stickyColumn';
 import { useCollectionPlant, CollectionPlant, PlantHub, PlantNode } from '@/app/components/useCollectionPlant';
@@ -736,19 +737,14 @@ const OwnerPlantNetwork: React.FC<OwnerPlantNetworkProps> = ({ lang, issuer, tax
       <div className="flex flex-col sm:flex-row lg:flex-col justify-between items-start sm:items-center lg:items-start gap-3">
         <div className="flex flex-wrap lg:flex-col items-center lg:items-start gap-2">
           <span className="text-sm">{ownerPlant.actions.limit}</span>
-          <div className="inline-flex rounded-md border">
-            {LIMITS.map(value => (
-              <Button
-                key={value}
-                variant={limit === value ? 'secondary' : 'ghost'}
-                size="sm"
-                className="h-8 rounded-none first:rounded-l-md last:rounded-r-md"
-                onClick={() => setLimit(value)}
-              >
-                {value === Infinity ? ownerPlant.actions.all : value.toLocaleString()}
-              </Button>
-            ))}
-          </div>
+          <SegmentedControl
+            value={limit}
+            onChange={setLimit}
+            options={LIMITS.map(value => ({
+              value,
+              label: value === Infinity ? ownerPlant.actions.all : value.toLocaleString(),
+            }))}
+          />
         </div>
         <div className="flex items-center gap-2">
           {plant && layout && (

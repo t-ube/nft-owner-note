@@ -97,6 +97,10 @@ export interface Dictionary {
     detail: {
       loading: string;
       notFound: string;
+      stats: {
+        nfts: string;
+        owners: string;
+      };
       ownerRank: string;
       nftList: string;
       tabs: {
@@ -123,6 +127,15 @@ export interface Dictionary {
         copy: string;
       };
       ownerList: {
+        search: {
+          placeholder: string;
+        };
+        named: {
+          label: string;
+          count: string;
+          complete: string;
+          help: string;
+        };
         status: {
           showingOwners: string;
           loadingMore: string;
@@ -132,7 +145,8 @@ export interface Dictionary {
           getProfileFromXrpCafe: string;
           exportRank: string;
           edit: string;
-          showGrouped: string;
+          byOwner: string;
+          byGroup: string;
         };
         table: {
           rank: string;

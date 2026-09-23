@@ -21,13 +21,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { AddressGroupDialog } from './AddressGroupDialog';
 import { dbManager, AddressGroup, AddressInfo } from '@/utils/db';
 import NFTSiteWalletIcons from '@/app/components/NFTSiteWalletIcons';
 import Papa from 'papaparse';
-import { Download, Pencil, Loader2 } from "lucide-react";
+import { BookUser, Download, Pencil, Loader2, Search, Sparkles } from "lucide-react";
 import OwnerValueEditor from '@/app/components/OwnerValueEditor';
+import { SegmentedControl } from '@/app/components/SegmentedControl';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import { OwnerDetailSheet } from '@/app/components/OwnerDetailSheet';
@@ -89,8 +90,33 @@ type DisplayStat =
 
 type ExportData = GroupedExportData | IndividualExportData;
 
+/**
+ * アドレス収集率のバーの色（バー全体が単色で、値によって色が変わる）。
+ * 60% まではティールのまま、80% に向けて濃いティールになり、
+ * 80% を超えると淡いピンクから、やさしいピンクへ濃くなる。
+ */
+const COVERAGE_STOPS: [number, [number, number, number]][] = [
+  [0, [0x14, 0xB8, 0xA6]],   // ティール
+  [60, [0x14, 0xB8, 0xA6]],  // ここまで同じ
+  [80, [0x0F, 0x76, 0x6E]],  // 濃いティール
+  [80.01, [0xF9, 0xA8, 0xD4]], // 淡いピンク
+  [100, [0xF4, 0x72, 0xB6]], // やさしいピンク
+];
+
+function coverageColor(ratio: number): string {
+  const r = Math.min(100, Math.max(0, ratio));
+  for (let i = 1; i < COVERAGE_STOPS.length; i++) {
+    const [to, color] = COVERAGE_STOPS[i];
+    if (r > to) continue;
+    const [from, prev] = COVERAGE_STOPS[i - 1];
+    const t = to === from ? 1 : (r - from) / (to - from);
+    return `rgb(${prev.map((v, k) => Math.round(v + (color[k] - v) * t)).join(' ')})`;
+  }
+  return `rgb(${COVERAGE_STOPS[COVERAGE_STOPS.length - 1][1].join(' ')})`;
+}
+
 const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
-  const { nfts, hasMore } = useNFTContext();
+  const { nfts } = useNFTContext();
   const [addressGroups, setAddressGroups] = useState<Record<string, AddressGroup>>({});
   const [addressInfos, setAddressInfos] = useState<Record<string, AddressInfo>>({});
   const [editingCell, setEditingCell] = useState<{ address: string; field: 'userValue1' | 'userValue2' } | null>(null);
@@ -98,6 +124,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [showGrouped, setShowGrouped] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [ownerToDelete, setOwnerToDelete] = useState<AddressGroup | null>(null);
   const [selectedOwner, setSelectedOwner] = useState<AddressGroup | null>(null);
@@ -230,6 +257,37 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
   }, []);
 
   const ranks = useMemo(() => calculateRank(displayStats), [displayStats, calculateRank]);
+
+  // 検索で絞り込む（オーナー一覧と同じく、名前・Xアカウント・アドレスが対象）。順位は絞り込む前のまま
+  const visibleRows = useMemo(() => {
+    const rows = displayStats.map((stat, index) => ({ stat, rank: ranks[index] }));
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return rows;
+    return rows.filter(({ stat }) => {
+      const name = stat.type === 'group' ? stat.groupName : stat.group?.name;
+      const xAccount = stat.type === 'group' ? stat.xAccount : stat.group?.xAccount;
+      const addresses = stat.type === 'group' ? stat.addresses : [stat.address];
+      return (
+        name?.toLowerCase().includes(term) ||
+        xAccount?.toLowerCase().includes(term) ||
+        addresses.some(address => address.toLowerCase().includes(term))
+      );
+    });
+  }, [displayStats, ranks, searchTerm]);
+
+  // 名前が入っている割合（まとめ表示のときはグループ単位で数える）
+  const namedProgress = useMemo(() => ({
+    named: displayStats.filter(stat =>
+      (stat.type === 'group' ? stat.groupName : stat.group?.name)?.trim()
+    ).length,
+    total: displayStats.length,
+  }), [displayStats]);
+
+  // グループ表示にしたときの行数（グループ＋どこにも属さないアドレス）
+  const groupedCount = useMemo(
+    () => groupedStats.length + ownerStats.filter(stat => !stat.group?.id).length,
+    [groupedStats, ownerStats]
+  );
 
   const handleValueSave = async (address: string, field: 'userValue1' | 'userValue2', value: number | null) => {
     if (!projectId) return;
@@ -503,31 +561,71 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
     return stat.type === 'group';
   };
 
+  const namedRatio = namedProgress.total > 0 ? (namedProgress.named / namedProgress.total) * 100 : 0;
+  const isAllNamed = namedProgress.total > 0 && namedProgress.named === namedProgress.total;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-          <Checkbox
-            id="showGrouped"
-            checked={showGrouped}
-            onCheckedChange={(checked) => setShowGrouped(checked as boolean)}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {/* オーナー単位とグループ単位の切り替え。件数もここに出す */}
+          <SegmentedControl
+            value={showGrouped}
+            onChange={setShowGrouped}
+            options={[
+              [false, ownerList.actions.byOwner, ownerStats.length],
+              [true, ownerList.actions.byGroup, groupedCount],
+            ].map(([grouped, label, count]) => ({
+              value: grouped as boolean,
+              label: (
+                <>
+                  {label as string}
+                  <span className="tabular-nums text-muted-foreground">{(count as number).toLocaleString()}</span>
+                </>
+              ),
+            }))}
           />
-            <label htmlFor="showGrouped" className="text-sm">
-              {ownerList.actions.showGrouped}
-            </label>
-          </div>
-          <div className="text-sm text-gray-500">
-            {ownerList.status.showingOwners.replace('{count}', displayStats.length.toLocaleString())}
-            {hasMore && (
-              <span className="ml-2 inline-flex items-center gap-1 text-gray-500">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                {ownerList.status.loadingMore}
-              </span>
-            )}
-          </div>
+          {/* アドレス収集率（アドレス帳に名前があるオーナーの割合） */}
+          {namedProgress.total > 0 && (
+            <div
+              className="flex items-center gap-1.5 text-xs text-muted-foreground"
+              title={isAllNamed ? ownerList.named.complete : ownerList.named.help}
+            >
+              {isAllNamed ? <Sparkles className="h-4 w-4 shrink-0" /> : <BookUser className="h-4 w-4 shrink-0" />}
+              <div className="w-36 space-y-0.5">
+                <div className="flex items-baseline gap-1.5 leading-none">
+                  <span className="truncate">{ownerList.named.label}</span>
+                  {/* 収集率。やわらかい印象の丸ゴシックで少し大きめに出す */}
+                  <span className="ml-auto shrink-0 font-rounded text-sm text-foreground tabular-nums">
+                    {Math.round(namedRatio)}%
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/15">
+                  <div
+                    className="h-full rounded-full transition-[width,background-color] duration-500"
+                    style={{ width: `${namedRatio}%`, backgroundColor: coverageColor(namedRatio) }}
+                  />
+                </div>
+                <div className="text-right text-[10px] leading-none tabular-nums">
+                  {ownerList.named.count
+                    .replace('{named}', namedProgress.named.toLocaleString())
+                    .replace('{total}', namedProgress.total.toLocaleString())}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         <div className='flex items-center space-x-2'>
+          {/* 検索（オーナー一覧と同じく、名前・Xアカウント・アドレスが対象） */}
+          <div className="relative w-full sm:w-56">
+            <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              placeholder={ownerList.search.placeholder}
+              className="h-9 pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
           <Button
             variant="outline"
             size="sm"
@@ -580,7 +678,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {displayStats.map((stat, index) => (
+            {visibleRows.map(({ stat, rank }) => (
               <TableRow
                 key={stat.type === 'group'
                   ? `group-${stat.groupId}`
@@ -590,7 +688,7 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
                 onClick={() => {handleRowClick(stat)}}
               >
                 <TableCell className="text-center font-medium">
-                  {ranks[index]}
+                  {rank}
                 </TableCell>
                 <TableCell className="font-mono hidden sm:table-cell">
                   {isGroupedStat(stat) ? (

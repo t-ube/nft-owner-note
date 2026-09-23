@@ -511,8 +511,12 @@ class DatabaseManager {
     const store = transaction.objectStore('nfts');
     const now = Date.now();
 
-    const existingNFTs = await this.request(store.index('projectId').getAll(projectId)) as NFToken[];
-    const existingNFTsMap = new Map(existingNFTs.map(nft => [nft.nft_id, nft]));
+    // 保存する分だけをキーで引く（プロジェクトの全件を読むと、件数が増えるほど重くなる）
+    const existingNFTsMap = new Map<string, NFToken>();
+    for (const nft of nfts) {
+      const existing = await this.request(store.get(`${projectId}-${nft.nft_id}`)) as NFToken | undefined;
+      if (existing) existingNFTsMap.set(nft.nft_id, existing);
+    }
 
     const updatedNFTs = nfts.map(nft => {
       const existing = existingNFTsMap.get(nft.nft_id);
