@@ -129,14 +129,28 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
 
   const xHandle = issuerInfo?.xAccount?.replace('@', '');
 
+  // お気に入り。押しても画面を作り直さないよう、表示はここで持つ
+  const starButton = (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={handlePinClick}
+      title={isPinned ? dict?.project.sidebar.unpin : dict?.project.sidebar.pin}
+      aria-label={isPinned ? dict?.project.sidebar.unpin : dict?.project.sidebar.pin}
+      className="h-6 w-6 shrink-0"
+    >
+      <Star className={`h-4 w-4 ${isPinned ? 'fill-current text-amber-400' : 'text-gray-400'}`} />
+    </Button>
+  );
+
   return (
-    <div className="relative mb-4 sm:mb-6">
-      <div className="flex items-center gap-3">
+    <div className="relative mb-3 sm:mb-6">
+      <div className="flex items-center gap-2 sm:gap-3">
         <CollectionFace
           issuer={project.issuer}
           taxon={project.taxon}
           alt={project.name}
-          className="h-10 w-10 sm:h-12 sm:w-12 shrink-0"
+          className="h-14 w-14 shrink-0 sm:h-16 sm:w-16"
         />
 
         <div className="flex-1 min-w-0">
@@ -175,6 +189,8 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
 
           {/* 作品数（リンク付き） · オーナー数 · 発行者名 · Xアカウント · 詳細 */}
           <div className="mt-0.5 flex h-6 min-w-0 items-center gap-x-1.5 overflow-hidden whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+            {/* お気に入りは作品数の左に置く */}
+            {starButton}
             {/* 作品数とオーナー数。同期が終わるまでは増えていく（読み込み中かどうかは下のバーで分かる） */}
             {([
               [Images, dict?.project.detail.stats.nfts, counts.nfts],
@@ -182,10 +198,15 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
             ] as const).map(([Icon, label, count]) => (
               <span
                 key={label}
+                title={label?.replace('{count}', count.toLocaleString())}
                 className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-foreground/80"
               >
                 <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="min-w-[4.5rem] text-center font-medium tabular-nums">
+                {/* 幅が狭いときは、はみ出さないよう数字だけにする */}
+                <span className="font-medium tabular-nums lg:hidden">
+                  {count.toLocaleString()}
+                </span>
+                <span className="hidden min-w-[4.5rem] text-center font-medium tabular-nums lg:inline">
                   {label?.replace('{count}', count.toLocaleString())}
                 </span>
                 {/* 外部サイトへのリンクは作品数のバッジの中に入れる */}
@@ -196,13 +217,13 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
             ))}
             {/* 発行者名と X アカウントは読み込みのあとに出るので、位置が動いても困らない末尾に置く */}
             {issuerInfo?.groupName && (
-              <>
+              <span className="hidden items-center gap-x-1.5 sm:inline-flex">
                 <span aria-hidden="true">·</span>
                 <span className="max-w-[10rem] truncate">{issuerInfo.groupName}</span>
-              </>
+              </span>
             )}
             {xHandle && (
-              <>
+              <span className="hidden items-center gap-x-1.5 sm:inline-flex">
                 <span aria-hidden="true">·</span>
                 <a
                   href={`https://twitter.com/${xHandle}`}
@@ -213,7 +234,7 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
                   <span className="max-w-[8rem] truncate">@{xHandle}</span>
                   <ExternalLink className="h-3 w-3 ml-0.5 shrink-0" />
                 </a>
-              </>
+              </span>
             )}
             <Popover>
               <PopoverTrigger asChild>
@@ -227,6 +248,33 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
               </PopoverTrigger>
               <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)] dark:bg-gray-800 dark:border-gray-700">
                 <dl className="space-y-3 text-sm">
+                  {/* スマホでは行に出していないので、ここに入れる */}
+                  {(issuerInfo?.groupName || xHandle) && (
+                    <div className="space-y-1 sm:hidden">
+                      {issuerInfo?.groupName && (
+                        <>
+                          <dt className="text-xs text-gray-500 dark:text-gray-400">{dict?.project.detail.info.issuerName}</dt>
+                          <dd className="break-words dark:text-gray-200">{issuerInfo.groupName}</dd>
+                        </>
+                      )}
+                      {xHandle && (
+                        <>
+                          <dt className="text-xs text-gray-500 dark:text-gray-400">{dict?.project.detail.info.xAccount}</dt>
+                          <dd>
+                            <a
+                              href={`https://twitter.com/${xHandle}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+                            >
+                              @{xHandle}
+                              <ExternalLink className="ml-0.5 h-3 w-3" />
+                            </a>
+                          </dd>
+                        </>
+                      )}
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <dt className="text-xs text-gray-500 dark:text-gray-400">{dict?.project.detail.info.issuerAddress}</dt>
                     <dd className="flex items-center justify-between gap-2 font-mono text-xs bg-gray-50 dark:bg-gray-700 p-2 rounded-md text-gray-700 dark:text-gray-200">
@@ -272,24 +320,10 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
           </div>
         </div>
 
-        {!isEditing && (
-          <div className="flex items-center gap-1 shrink-0 self-start sm:self-center">
-            {/* お気に入り。押しても画面を作り直さないよう、表示はここで持つ */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handlePinClick}
-              title={isPinned ? dict?.project.sidebar.unpin : dict?.project.sidebar.pin}
-              aria-label={isPinned ? dict?.project.sidebar.unpin : dict?.project.sidebar.pin}
-            >
-              <Star className={`h-5 w-5 ${isPinned ? 'fill-current text-amber-400' : 'text-gray-400'}`} />
-            </Button>
-          </div>
-        )}
-
-        {/* URL を開いて自動で作ったプロジェクトは見るだけなので、名前を編集させない */}
+        {/* URL を開いて自動で作ったプロジェクトは見るだけなので、名前を編集させない。
+            スマホでは編集の操作自体を出さない */}
         {!isEditing && !project.isAutoCreated && (
-          <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+          <div className="hidden shrink-0 items-center gap-2 self-start sm:flex sm:self-center">
             <Button size="sm" variant="outline" onClick={handleStartEdit} className="dark:border-gray-600 dark:text-gray-200">
               <Edit2 className="h-4 w-4 mr-1.5" />
               {dict?.project.detail.info.edit}
@@ -298,9 +332,10 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ lang, project, onProjectU
         )}
       </div>
 
-      {/* 同期中の目安。行が増えて画面ががたつかないよう、バーは下端に重ねて出す */}
+      {/* 同期中の目安。行が増えて画面ががたつかないよう、バーは下端に重ねて出す。
+          画像の下には重ねず、その右から始める */}
       {isSyncingNFTs && (
-        <div className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden rounded-full bg-muted">
+        <div className="absolute bottom-0 right-0 left-16 h-0.5 overflow-hidden rounded-full bg-muted sm:left-[4.75rem]">
           <div className="h-full w-1/5 rounded-full bg-foreground/20 animate-indeterminate-bar" />
         </div>
       )}

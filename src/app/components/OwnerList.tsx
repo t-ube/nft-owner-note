@@ -154,6 +154,17 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
     void loadData();
   }, [loadData]);
 
+  // スマホでは切り替えを出さないので、オーナー表示に固定する
+  useEffect(() => {
+    const narrow = window.matchMedia('(max-width: 639px)');
+    const apply = () => {
+      if (narrow.matches) setShowGrouped(false);
+    };
+    apply();
+    narrow.addEventListener('change', apply);
+    return () => narrow.removeEventListener('change', apply);
+  }, []);
+
   useEffect(() => {
     const loadDictionary = async () => {
       const dictionary = await getDictionary(lang as 'en' | 'ja');
@@ -566,10 +577,54 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          {/* オーナー単位とグループ単位の切り替え。件数もここに出す */}
+      {/* 左端に検索、その右に収集率、右端に表示の切り替えと操作ボタン */}
+      <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        {/* 検索（オーナー一覧と同じく、名前・Xアカウント・アドレスが対象）。余った幅いっぱいに広げる */}
+        <div className="relative w-full min-w-[12rem] sm:flex-1">
+          <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+          <Input
+            placeholder={ownerList.search.placeholder}
+            className="h-9 pl-8"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        {/* アドレス収集率（アドレス帳に名前があるオーナーの割合） */}
+        {namedProgress.total > 0 && (
+          <div
+            className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground"
+            title={isAllNamed ? ownerList.named.complete : ownerList.named.help}
+          >
+            {isAllNamed ? <Sparkles className="h-4 w-4 shrink-0" /> : <BookUser className="h-4 w-4 shrink-0" />}
+            <div className="w-36 space-y-0.5">
+              <div className="flex items-baseline gap-1.5 leading-none">
+                <span className="truncate">{ownerList.named.label}</span>
+                {/* 収集率。やわらかい印象の丸ゴシックで少し大きめに出す */}
+                <span className="ml-auto shrink-0 font-rounded text-sm text-foreground tabular-nums">
+                  {Math.round(namedRatio)}%
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/15">
+                <div
+                  className="h-full rounded-full transition-[width,background-color] duration-500"
+                  style={{ width: `${namedRatio}%`, backgroundColor: coverageColor(namedRatio) }}
+                />
+              </div>
+              <div className="text-right text-[10px] leading-none tabular-nums">
+                {ownerList.named.count
+                  .replace('{named}', namedProgress.named.toLocaleString())
+                  .replace('{total}', namedProgress.total.toLocaleString())}
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        <div className="flex w-full min-w-0 shrink-0 flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:items-center">
+
+          {/* オーナー単位とグループ単位の切り替え。件数もここに出す（スマホでは出さない） */}
           <SegmentedControl
+            className="hidden shrink-0 sm:inline-flex"
             value={showGrouped}
             onChange={setShowGrouped}
             options={[
@@ -585,76 +640,39 @@ const OwnerList: React.FC<OwnerListProps> = ({ lang, issuer, taxon }) => {
               ),
             }))}
           />
-          {/* アドレス収集率（アドレス帳に名前があるオーナーの割合） */}
-          {namedProgress.total > 0 && (
-            <div
-              className="flex items-center gap-1.5 text-xs text-muted-foreground"
-              title={isAllNamed ? ownerList.named.complete : ownerList.named.help}
+          <div className="flex flex-nowrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleFetchAutoProfile}
+              disabled={isFetchingProfile}
+              className="shrink-0 gap-2"
             >
-              {isAllNamed ? <Sparkles className="h-4 w-4 shrink-0" /> : <BookUser className="h-4 w-4 shrink-0" />}
-              <div className="w-36 space-y-0.5">
-                <div className="flex items-baseline gap-1.5 leading-none">
-                  <span className="truncate">{ownerList.named.label}</span>
-                  {/* 収集率。やわらかい印象の丸ゴシックで少し大きめに出す */}
-                  <span className="ml-auto shrink-0 font-rounded text-sm text-foreground tabular-nums">
-                    {Math.round(namedRatio)}%
-                  </span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/15">
-                  <div
-                    className="h-full rounded-full transition-[width,background-color] duration-500"
-                    style={{ width: `${namedRatio}%`, backgroundColor: coverageColor(namedRatio) }}
-                  />
-                </div>
-                <div className="text-right text-[10px] leading-none tabular-nums">
-                  {ownerList.named.count
-                    .replace('{named}', namedProgress.named.toLocaleString())
-                    .replace('{total}', namedProgress.total.toLocaleString())}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className='flex items-center space-x-2'>
-          {/* 検索（オーナー一覧と同じく、名前・Xアカウント・アドレスが対象） */}
-          <div className="relative w-full sm:w-56">
-            <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-            <Input
-              placeholder={ownerList.search.placeholder}
-              className="h-9 pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+              {isFetchingProfile ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Image
+                  src="/images/xrpcafe.jpg"
+                  alt="xrp.cafe"
+                  width={16}
+                  height={16}
+                  className="object-contain rounded-full"
+                />
+              )}
+              <span className="hidden 2xl:inline">{ownerList.actions.getProfileFromXrpCafe}</span>
+              <span className="2xl:hidden">{ownerList.actions.getProfileFromXrpCafeShort}</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              className="flex shrink-0 items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden 2xl:inline">{ownerList.actions.exportRank}</span>
+              <span className="2xl:hidden">{ownerList.actions.exportRankShort}</span>
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleFetchAutoProfile}
-            disabled={isFetchingProfile}
-            className="gap-2"
-          >
-            {isFetchingProfile ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Image
-                src="/images/xrpcafe.jpg"
-                alt="xrp.cafe"
-                width={16}
-                height={16}
-                className="object-contain rounded-full"
-              />
-            )}
-            {ownerList.actions.getProfileFromXrpCafe}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCSV}
-            className="flex items-center gap-2"
-          >
-            <Download className="h-4 w-4" />
-            {ownerList.actions.exportRank}
-          </Button>
         </div>
       </div>
 

@@ -23,7 +23,6 @@ import OwnerNFTGroupList from '@/app/components/OwnerNFTGroupList';
 import OwnerActivityList from '@/app/components/OwnerActivityList';
 import OwnerPlantNetwork from '@/app/components/OwnerPlantNetwork';
 import CommunityInflowNetwork from '@/app/components/CommunityInflowNetwork';
-import { NFTContextProvider } from '@/app/contexts/NFTContext';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 
@@ -96,42 +95,37 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, project: proje
 
 
   return (
-    <NFTContextProvider 
-      projectId={projectId}
-      issuer={project.issuer}
-      taxon={project.taxon}
-    >
-      <NFTWrapper>
+    <NFTWrapper>
         <div className="flex-1 overflow-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
           {/* 上の余白はサイドバーのタイトル（p-4）に合わせる */}
           <div className="p-3 pt-4 sm:p-6 sm:pt-4">
             <ProjectHeader lang={lang} project={project} onProjectUpdate={handleProjectUpdate} />
 
             <Tabs value={tab} onValueChange={handleTabChange} className="space-y-4">
-              <TabsList className="grid h-auto w-full grid-cols-2 sm:inline-flex sm:h-9 sm:w-auto">
-                <TabsTrigger value="owners">
-                  <Users className="h-4 w-4 mr-2" />
-                  {dict?.project.detail.ownerRank}
+              <TabsList className="flex h-9 w-full justify-start gap-1 overflow-x-auto [scrollbar-width:none] sm:w-auto [&::-webkit-scrollbar]:hidden">
+                <TabsTrigger value="owners" title={dict?.project.detail.ownerRank} className="shrink-0">
+                  <Users className="h-4 w-4" />
+                  <span className={tab === 'owners' ? 'ml-2' : 'ml-2 hidden xl:inline'}>{dict?.project.detail.ownerRank}</span>
                 </TabsTrigger>
-                <TabsTrigger value="holdings">
-                  <LayoutGrid className="h-4 w-4 mr-2" />
-                  {dict?.project.detail.ownerCollection.title}
+                <TabsTrigger value="holdings" title={dict?.project.detail.ownerCollection.title} className="shrink-0">
+                  <LayoutGrid className="h-4 w-4" />
+                  <span className={tab === 'holdings' ? 'ml-2' : 'ml-2 hidden xl:inline'}>{dict?.project.detail.ownerCollection.title}</span>
                 </TabsTrigger>
-                <TabsTrigger value="ecosystem">
-                  <Sprout className="h-4 w-4 mr-2" />
-                  {dict?.project.detail.ownerPlant.title}
+                <TabsTrigger value="ecosystem" title={dict?.project.detail.ownerPlant.title} className="shrink-0">
+                  <Sprout className="h-4 w-4" />
+                  <span className={tab === 'ecosystem' ? 'ml-2' : 'ml-2 hidden xl:inline'}>{dict?.project.detail.ownerPlant.title}</span>
                 </TabsTrigger>
-                <TabsTrigger value="community">
-                  <Waypoints className="h-4 w-4 mr-2" />
-                  {dict?.project.detail.community.title}
+                <TabsTrigger value="community" title={dict?.project.detail.community.title} className="shrink-0">
+                  <Waypoints className="h-4 w-4" />
+                  <span className={tab === 'community' ? 'ml-2' : 'ml-2 hidden xl:inline'}>{dict?.project.detail.community.title}</span>
                 </TabsTrigger>
-                <TabsTrigger value="activity">
-                  <Activity className="h-4 w-4 mr-2" />
-                  {dict?.project.detail.ownerActivity.title}
+                <TabsTrigger value="activity" title={dict?.project.detail.ownerActivity.title} className="shrink-0">
+                  <Activity className="h-4 w-4" />
+                  <span className={tab === 'activity' ? 'ml-2' : 'ml-2 hidden xl:inline'}>{dict?.project.detail.ownerActivity.title}</span>
                 </TabsTrigger>
-                <TabsTrigger value="nfts">
-                  <List className="h-4 w-4 mr-2" />
-                  {dict?.project.detail.nftList}
+                <TabsTrigger value="nfts" title={dict?.project.detail.nftList} className="shrink-0">
+                  <List className="h-4 w-4" />
+                  <span className={tab === 'nfts' ? 'ml-2' : 'ml-2 hidden xl:inline'}>{dict?.project.detail.nftList}</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -197,8 +191,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, project: proje
             </Tabs>
           </div>
         </div>
-      </NFTWrapper>
-    </NFTContextProvider>
+    </NFTWrapper>
   );
 };
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react';
 import { dbManager, NFToken } from '@/utils/db';
 import { fetchNftNamesByHex } from '@/app/components/useNftCache';
+import { fetchCollectionNFTs } from '@/utils/xrpldataNfts';
 import { fetchNFTTransferHistory } from '@/utils/nftHistory';
 import { updateNFTName } from '@/utils/nftMetadata';
 import _ from 'lodash';
@@ -13,6 +14,11 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY = 2000;
 /** 名前の一括取得は、この件数の URI がたまるごとにまとめて行う */
 const NAMES_FLUSH_SIZE = 1000;
+/**
+ * まとめて返す API（api.xrpldata.com）で同期するか。
+ * false にすると、XRPL から 100 件ずつ取る従来の方式だけになる。
+ */
+const USE_XRPLDATA_SYNC = true;
 
 interface NFTContextType {
   nfts: NFToken[];
@@ -98,6 +104,62 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
     void p.finally(() => nameFlushesRef.current.delete(p));
     return p;
   }, []);
+
+  /**
+   * コレクションの NFT をまとめて取って保存する（成功したら true）。
+   * 取れなかったときは false を返し、呼び出し側が XRPL からの取得に切り替える。
+   */
+  const syncAllFromXrplData = useCallback(async (): Promise<boolean> => {
+    if (!USE_XRPLDATA_SYNC) return false;
+
+    setIsLoading(true);
+    try {
+      const result = await fetchCollectionNFTs(issuer, taxon);
+      if (!result || result.nfts.length === 0) return false;
+
+      const updated = await dbManager.updateNFTs(
+        projectId,
+        result.nfts.map(nft => ({
+          nft_id: nft.nft_id,
+          nft_serial: nft.nft_serial,
+          owner: nft.owner,
+          is_burned: false,
+          uri: nft.uri,
+          flags: nft.flags,
+          transfer_fee: nft.transfer_fee,
+          issuer: nft.issuer,
+          nft_taxon: nft.nft_taxon,
+          ledger_index: result.ledgerIndex,
+        }))
+      );
+
+      // この API はバーン済みを返さないので、一覧に無いものはバーン済みにする
+      await dbManager.markMissingNFTsBurned(projectId, result.nfts.map(nft => nft.nft_id));
+
+      // 名前が無いものは、hex の URI のまま名前の一括取得に回す
+      const updatedById = new Map(updated.map(nft => [nft.nft_id, nft]));
+      for (const nft of result.nfts) {
+        if (!nft.hexUri || updatedById.get(nft.nft_id)?.name?.trim()) continue;
+        const ids = pendingNamesRef.current.get(nft.hexUri) ?? [];
+        ids.push(`${projectId}-${nft.nft_id}`);
+        pendingNamesRef.current.set(nft.hexUri, ids);
+      }
+
+      setNfts(await dbManager.getNFTsByProjectId(projectId));
+      setHasMore(false);
+      setMarker(undefined);
+      setError(null);
+
+      void flushNames();
+      await Promise.all(Array.from(nameFlushesRef.current));
+      return true;
+    } catch (err) {
+      console.error('Failed to sync NFTs from xrpldata:', err);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [projectId, issuer, taxon, flushNames]);
 
   // 単一のNFTの履歴を更新
   const updateNFTHistory = async (nftId: string) => {
@@ -345,14 +407,14 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
           setIsLoading(false);
         }
 
-        // キャッシュデータ読み込み後に一度だけfetchNFTsを呼び出す
-        if (mounted) {
-          fetchNFTs();
+        // キャッシュデータ読み込み後に同期する（まとめて取れなければ XRPL から 100 件ずつ）
+        if (mounted && !(await syncAllFromXrplData())) {
+          if (mounted) fetchNFTs();
         }
       } catch (err) {
         console.error('Failed to load cached data:', err);
-        if (mounted) {
-          fetchNFTs();
+        if (mounted && !(await syncAllFromXrplData())) {
+          if (mounted) fetchNFTs();
         }
       }
     };
@@ -371,6 +433,7 @@ export const NFTContextProvider: React.FC<NFTContextProviderProps> = ({
   const refreshData = async () => {
     setMarker(undefined);
     setHasMore(true);
+    if (await syncAllFromXrplData()) return;
     await fetchNFTs();
   };
 

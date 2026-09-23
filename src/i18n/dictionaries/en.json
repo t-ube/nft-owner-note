@@ -136,7 +136,9 @@
         },
         "actions": {
           "getProfileFromXrpCafe": "Auto Profile",
+          "getProfileFromXrpCafeShort": "Auto",
           "exportRank": "Export Owner Rank",
+          "exportRankShort": "Export",
           "edit": "Edit",
           "byOwner": "By owner",
           "byGroup": "By group"

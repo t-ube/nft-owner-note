@@ -136,7 +136,9 @@
         },
         "actions": {
           "getProfileFromXrpCafe": "自動でプロフィール取得",
+          "getProfileFromXrpCafeShort": "自動取得",
           "exportRank": "オーナーランクを出力",
+          "exportRankShort": "出力",
           "edit": "編集",
           "byOwner": "オーナー表示",
           "byGroup": "グループ表示"

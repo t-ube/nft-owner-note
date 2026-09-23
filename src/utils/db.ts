@@ -549,6 +549,33 @@ class DatabaseManager {
     return updatedNFTs;
   }
 
+  /**
+   * 一覧に無かった NFT をバーン済みにする（全件を取得できたときだけ呼ぶこと）。
+   * 戻り値は、バーン済みにした件数。
+   */
+  async markMissingNFTsBurned(projectId: string, presentNftIds: string[]): Promise<number> {
+    const db = await this.initDB();
+    const present = new Set(presentNftIds);
+    const transaction = db.transaction('nfts', 'readwrite');
+    const request = transaction.objectStore('nfts').index('projectId').openCursor(projectId);
+    const now = Date.now();
+    let burned = 0;
+
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) return;
+      const nft = cursor.value as NFToken;
+      if (!present.has(nft.nft_id) && !nft.is_burned) {
+        cursor.update({ ...nft, is_burned: true, updatedAt: now });
+        burned++;
+      }
+      cursor.continue();
+    };
+
+    await this.done(transaction);
+    return burned;
+  }
+
   async getNFTsByProjectId(projectId: string): Promise<NFToken[]> {
     const db = await this.initDB();
     return new Promise((resolve, reject) => {

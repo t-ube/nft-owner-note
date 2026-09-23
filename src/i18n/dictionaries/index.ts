@@ -143,7 +143,9 @@ export interface Dictionary {
         };
         actions: {
           getProfileFromXrpCafe: string;
+          getProfileFromXrpCafeShort: string;
           exportRank: string;
+          exportRankShort: string;
           edit: string;
           byOwner: string;
           byGroup: string;
