@@ -264,7 +264,7 @@ const OwnersPage: React.FC<OwnersPageProps> = ({ lang }) => {
   const { owners: t } = dict.project;
 
   return (
-    <div className="p-2 sm:p-4 lg:p-8">
+    <div className="p-2 pt-4 sm:p-4 sm:pt-4 lg:p-8 lg:pt-4">
       <Card className="mx-[-0.5rem] sm:mx-0 rounded-none sm:rounded-lg border-x-0 sm:border-x">
         <CardHeader className="px-3 sm:px-6">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">

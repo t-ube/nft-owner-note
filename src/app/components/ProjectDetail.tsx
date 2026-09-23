@@ -103,7 +103,8 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, project: proje
     >
       <NFTWrapper>
         <div className="flex-1 overflow-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
-          <div className="p-3 sm:p-6">
+          {/* 上の余白はサイドバーのタイトル（p-4）に合わせる */}
+          <div className="p-3 pt-4 sm:p-6 sm:pt-4">
             <ProjectHeader lang={lang} project={project} onProjectUpdate={handleProjectUpdate} />
 
             <Tabs value={tab} onValueChange={handleTabChange} className="space-y-4">

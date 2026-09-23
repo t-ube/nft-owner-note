@@ -504,7 +504,7 @@ const OwnerNFTGroupList: React.FC<OwnerNFTGroupListProps> = ({ lang, projectId }
           options={nameOptions}
           selected={selectedNames}
           onChange={handleSelectedNamesChange}
-          labels={page.filter}
+          labels={{ ...page.filter, more: page.showMore }}
         />
         {/* 名前未取得の NFT は絞り込みと種類数に入らないので、そのことをフィルタのすぐ下で伝える */}
         {unnamedNFTs.length > 0 && (

@@ -28,8 +28,13 @@ interface NFTNameMultiSelectProps {
     noResults: string;
     holders: string;
     clear: string;
+    /** 候補が多すぎて省いたときの表示（{count} 件） */
+    more: string;
   };
 }
+
+/** 一度に描く候補の数（多いと開くのが重くなるため） */
+const MAX_VISIBLE_OPTIONS = 100;
 
 /** グループ化済みの NFT 名（＋URI のサムネイル）から複数選択するドロップダウン。 */
 const NFTNameMultiSelect: React.FC<NFTNameMultiSelectProps> = ({
@@ -39,10 +44,33 @@ const NFTNameMultiSelect: React.FC<NFTNameMultiSelectProps> = ({
   labels,
 }) => {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const optionsByName = useMemo(
     () => new Map(options.map(option => [option.name, option])),
     [options]
   );
+
+  // 既定のあいまい検索（入力した文字が順に含まれていれば一致）ではなく、部分一致で絞り込む。
+  // 「#1」と入れたときに「#10000」に埋もれないよう、完全一致・前方一致・短い名前の順に並べる
+  const matched = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return options;
+    const rank = (name: string) => {
+      const lower = name.toLowerCase();
+      if (lower === term) return 0;
+      if (lower.startsWith(term)) return 1;
+      return 2;
+    };
+    return options
+      .filter(option => option.name.toLowerCase().includes(term))
+      .sort((a, b) =>
+        rank(a.name) - rank(b.name) ||
+        a.name.length - b.name.length ||
+        a.name.localeCompare(b.name)
+      );
+  }, [options, query]);
+  const visibleOptions = matched.slice(0, MAX_VISIBLE_OPTIONS);
+  const hiddenCount = matched.length - visibleOptions.length;
 
   const toggle = (name: string) => {
     onChange(
@@ -72,12 +100,16 @@ const NFTNameMultiSelect: React.FC<NFTNameMultiSelectProps> = ({
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[calc(100vw-2rem)] sm:w-96 p-0" align="start">
-            <Command>
-              <CommandInput placeholder={labels.searchPlaceholder} />
+            <Command shouldFilter={false}>
+              <CommandInput
+                placeholder={labels.searchPlaceholder}
+                value={query}
+                onValueChange={setQuery}
+              />
               <CommandList>
-                <CommandEmpty>{labels.noResults}</CommandEmpty>
+                {matched.length === 0 && <CommandEmpty>{labels.noResults}</CommandEmpty>}
                 <CommandGroup>
-                  {options.map(option => {
+                  {visibleOptions.map(option => {
                     const isSelected = selected.includes(option.name);
                     return (
                       <CommandItem
@@ -95,6 +127,11 @@ const NFTNameMultiSelect: React.FC<NFTNameMultiSelectProps> = ({
                     );
                   })}
                 </CommandGroup>
+                {hiddenCount > 0 && (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">
+                    {labels.more.replace('{count}', hiddenCount.toLocaleString())}
+                  </div>
+                )}
               </CommandList>
             </Command>
           </PopoverContent>

@@ -378,6 +378,7 @@ const ProjectSidebar = ({
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-40
         w-64 bg-white dark:bg-gray-800 border-r dark:border-gray-700
+        shadow-[2px_0_6px_rgba(0,0,0,0.05)] dark:shadow-[2px_0_6px_rgba(0,0,0,0.3)]
         transform transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         flex flex-col h-[100dvh] lg:h-screen
