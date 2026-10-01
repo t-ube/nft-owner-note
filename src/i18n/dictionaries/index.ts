@@ -12,10 +12,20 @@ export interface Dictionary {
     login: string;
     logout: string;
     settings: string;
+    signInWithSignature: string;
   };
   walletSelect: {
     title: string;
     description: string;
+  };
+  xamanLogin: {
+    title: string;
+    description: string;
+    openInXaman: string;
+    cancel: string;
+    failed: string;
+    declined: string;
+    expired: string;
   };
   project: {
     title: string;
@@ -583,20 +593,6 @@ export interface Dictionary {
       backupFeature: string;
       revenueTracking: string;
       prepareRevenue: string;
-      cloudSync: {
-        title: string;
-        description: string;
-        signedInAs: string;
-        expiresAt: string;
-        signIn: string;
-        signOut: string;
-        notSignedIn: string;
-        dialogTitle: string;
-        dialogDescription: string;
-        openInXaman: string;
-        cancel: string;
-        signError: string;
-      };
     };
     sidebar: {
       title: string;

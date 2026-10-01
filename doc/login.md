@@ -4,7 +4,7 @@ Xaman と Joey（WalletConnect）でログインできる。どちらも「サ�
 台帳に書き込むものは無く、手数料もかからない。
 
 - **Xaman**: SignIn ペイロード（XRPL に送られない疑似トランザクション）に署名してもらい、サーバーが Xaman API から結果を引く。
-- **Joey**: サーバーが出したチャレンジを Memo に入れた、**台帳に載り得ない**トランザクションに署名だけしてもらい、サーバーが署名を検証する。
+- **Joey**: サーバーが出したチャレンジを Memo に入れた、何も変えない AccountSet に署名だけしてもらい（送信はしない）、サーバーが署名を検証する。
 
 ログインに成功すると、どちらも同じセッション Cookie（`on_session`）を受け取る。
 
@@ -25,19 +25,20 @@ Xaman と Joey（WalletConnect）でログインできる。どちらも「サ�
 
 ## 登場するもの
 
-ファイルはこの仕様に沿って作る予定のもの。名前は実装時に変わってもよいが、役割の分け方は守る。
-
 | ファイル | 役割 |
 |---|---|
-| `src/components/XamanLogin.tsx` | Xaman のログインボタンと、PC 用の QR ダイアログ |
-| `src/lib/auth/session-client.ts` | 画面側のログイン状態と API 呼び出し |
+| `src/app/contexts/AuthSessionContext.tsx` | 画面側のログイン状態。Xaman（PC は QR ダイアログ、スマホはページ遷移と戻りの確認）と Joey のログイン操作 |
+| `src/app/components/XamanLoginDialog.tsx` | Xaman・PC 用の QR ダイアログ |
+| `src/app/contexts/XamanContext.tsx` | Xaman での取引の署名（`/api/xaman/payload` を呼ぶ） |
+| `src/app/contexts/XRPLWalletContext.tsx` | ウォレットの窓口。Joey のログインもここから呼ぶ |
+| `src/lib/auth/session-client.ts` | 画面側の API 呼び出し |
 | `src/app/api/auth/*/route.ts` | `/api/auth/*` |
 | `src/app/api/xaman/webhook/route.ts` | `/api/xaman/webhook` |
 | `src/app/api/xaman/payload/**/route.ts` | `/api/xaman/payload`（取引の署名） |
 | `src/lib/auth/xaman.ts` | Xaman Platform API。API Secret を持つのはここだけ（サーバー専用） |
 | `src/lib/auth/joey.ts` | Joey 用チャレンジ tx の組み立てと検証（サーバー専用） |
 | `src/lib/auth/session.ts` | Cookie の署名と検証（HMAC-SHA256、サーバー専用） |
-| `src/lib/auth/supabase-admin.ts` | Supabase RPC（`owner_note_login` / `owner_note_touch_token`）。service_role キーを使う（サーバー専用） |
+| `src/lib/auth/supabase-admin.ts` | Supabase RPC（`owner_note_login` / `owner_note_touch_token` / `owner_note_live_token`）。service_role キーを使う（サーバー専用） |
 | `src/query/account.sql` | `owner_note.account` と `owner_note.push_token` |
 
 サーバー専用のモジュールはクライアントコンポーネントから import しない。
@@ -47,7 +48,7 @@ Xaman と Joey（WalletConnect）でログインできる。どちらも「サ�
 | 名前 | 用途 |
 |---|---|
 | `SESSION_SECRET` | `on_login` / `on_session` の署名鍵 |
-| `XAMAN_API_KEY` / `XAMAN_API_SECRET` | Xaman Platform API |
+| `XAMAN_API_KEY` / `XAMAN_API_SECRET` | Xaman Platform API。API Key は公開値なので、`XAMAN_API_KEY` が無ければ既存の `NEXT_PUBLIC_XAMAN_API_KEY` を使う |
 | `SUPABASE_SERVICE_ROLE_KEY` | RPC 呼び出し。`NEXT_PUBLIC_` を付けない |
 
 ## Cookie
@@ -71,7 +72,7 @@ Xaman と Joey（WalletConnect）でログインできる。どちらも「サ�
 | POST | `/api/auth/verify` | Xaman。`on_login` の uuid の署名結果を確かめる | 下表 |
 | POST | `/api/auth/joey/challenge` | Joey。本文 `{address}` に対し、署名してもらう tx を作る | 200 `{tx_json}` と `on_login` |
 | POST | `/api/auth/joey/verify` | Joey。本文 `{tx_json}`（署名済み）を確かめる | 下表 |
-| GET | `/api/auth/me` | 今のログイン状態 | 200 `{account, wallet}`（未ログインは `account: null`） |
+| GET | `/api/auth/me` | 今のログイン状態 | 200 `{account, wallet, expiresAt}`（未ログインはすべて null） |
 | POST | `/api/auth/logout` | 両方の Cookie を消す | 200 `{ok: true}` |
 | POST | `/api/xaman/webhook` | Xaman からの通知で user_token を更新 | 常に 200 |
 | POST | `/api/xaman/payload` | 取引の署名用ペイロードを作る | 「取引の署名（Xaman）」を参照 |
@@ -107,7 +108,7 @@ Xaman と Joey（WalletConnect）でログインできる。どちらも「サ�
 
 - `SESSION_SECRET` が無いと 503 `not_configured`。Xaman の経路は `XAMAN_API_KEY` / `XAMAN_API_SECRET` も必要
 - POST は `Origin` が自サイトでなければ 403 `cross_origin`。`Origin` が無い POST も拒否する（webhook を除く）
-- POST の本文は `Content-Type: application/json` のときだけ受け付ける（`<form enctype="text/plain">` からの送信を弾く）
+- 本文を読む POST（joey/challenge・joey/verify・xaman/payload）は `Content-Type: application/json` のときだけ受け付ける（`<form enctype="text/plain">` からの送信を弾く）。それ以外は 415 `bad_content_type`
 - 応答はすべて `Cache-Control: no-store`。Route Handler は動的に扱い、キャッシュさせない
 - エラー応答に例外のメッセージ・スタック・DB のエラー内容を載せない。詳細はサーバーのログにだけ出す
 - `/api/*` はロケールのリダイレクト（`middleware.ts`）の対象外にする
@@ -120,9 +121,6 @@ Xaman と Joey（WalletConnect）でログインできる。どちらも「サ�
 {
   "TransactionType": "AccountSet",
   "Account": "<challenge で受け取ったアドレス>",
-  "Fee": "0",
-  "Sequence": 0,
-  "LastLedgerSequence": 1,
   "Memos": [{
     "Memo": {
       "MemoType": "<'owner-note/login' の hex>",
@@ -132,15 +130,19 @@ Xaman と Joey（WalletConnect）でログインできる。どちらも「サ�
 }
 ```
 
-- Joey には `options: { autofill: false, submit: false }` で渡す。自動補完させると `Fee` / `Sequence` / `LastLedgerSequence` が本物の値に書き換わり、送信できる tx になってしまう。
-- `Fee: "0"`、`LastLedgerSequence: 1`（とうに過ぎた台帳）なので、署名済みの tx が漏れても台帳には載らない。
+- Joey の `signTransaction` には `{ tx_json, autofill: true, submit: false }` のように、`autofill` / `submit` を**一番上の階層**に置いて渡す。`Fee` / `Sequence` / `LastLedgerSequence` は Joey が本物の値を入れ、送信はしない。
+  - Joey の SDK は渡した値をそのまま並べて送るだけなので、`options: { submit: false }` と入れ子にすると Joey アプリに読まれず、**送信されてしまう**（実際に台帳に載った）。
+  - 当初の「台帳に載り得ない」形（`LastLedgerSequence: 1`、`Fee: "0"` / `Sequence: 0`）で「ネットワークに送信する前に有効期限が切れた」と拒まれていたのも、この入れ子のせいで Joey が送信しようとしていたため。
+  - Joey の SDK にはメッセージ署名が無い。XRPL Wallet Kit（`@xrpl-wallet-kit/adapter-walletconnect`）も同じく、Memo 入りの tx を `submit: false` で署名させる方式を Joey で確認済みとしている。
+- **署名済みの tx は送信できる形になる。** サーバーは送信しないが、漏れれば第三者が送信できる。その場合に起きるのは、何も変えない AccountSet として手数料が引かれ Sequence が1つ進むことだけで、`LastLedgerSequence` を過ぎれば送信もできなくなる。手数料は verify で上限（1000 drops）を設けている。
 - チャレンジは 32 バイトの乱数。`on_login` に、チャレンジ・アドレス・期限を入れて署名する。
 - MemoData にホスト名を入れるのは、署名の画面で「どこへのログインか」が読めるようにするため。
 
 verify で確かめること（すべて満たしたときだけ通す）:
 
 1. `on_login` が正しく署名されていて、Joey 用で、期限内
-2. `TransactionType` / `Fee` / `Sequence` / `LastLedgerSequence` / `Memos` が上の形のとおりで、余計なフィールドが無い（`SigningPubKey` / `TxnSignature` を除く）
+2. `TransactionType` / `Memos` が上の形のとおりで、余計なフィールドが無い（`SigningPubKey` / `TxnSignature` と、autofill の `Fee` / `Sequence` / `LastLedgerSequence` を除く。ウォレットが書き足すことのある `Flags` は 0 のときだけ許す。応答に付く `hash` は検証の前に外す）
+   - `Fee` は 1000 drops 以下の整数文字列、`Sequence` は 1 以上の整数、`LastLedgerSequence` は付いていれば整数
 3. MemoData が `<自分のホスト名> <on_login のチャレンジ>` と一致する
 4. `Account` が `on_login` のアドレスと一致する
 5. 署名が `SigningPubKey` で検証でき、`deriveAddress(SigningPubKey) === Account`
@@ -177,15 +179,17 @@ verify で確かめること（すべて満たしたときだけ通す）:
 
 ### Joey
 
-接続（WalletConnect）とログインは別の段階。接続しただけではログインにならない。
+ウォレット選択で Joey を選ぶと、接続（WalletConnect）に続けて署名まで一続きで行う（`connect('joey')`）。
 
-1. Joey を接続する（今の `joeyConnect` のまま）
-2. ログインボタン → `POST /api/auth/joey/challenge`（本文は接続中のアドレス）
-3. 返ってきた `tx_json` を `signTransaction` に `autofill: false, submit: false` で渡す
+1. Joey を接続する（接続済みならそのまま）
+2. `POST /api/auth/joey/challenge`（本文は接続中のアドレス）
+3. 返ってきた `tx_json` を `signTransaction` に `autofill: true, submit: false` で渡す
 4. 署名済みの `tx_json` を `POST /api/auth/joey/verify` に送る
 5. 200 が返ればログイン完了
 
-接続中のアドレスと `on_session` のアドレスが違うとき（Joey 側でアカウントを切り替えたとき）は、ログインしていない扱いにして、もう一度ログインボタンを出す。
+同じアドレスで既にログインしていれば、2 以降は省く。署名を断られたときは接続だけが残るので、サイドバーのアカウント欄から署名し直せる。
+
+接続中のアドレスと `on_session` のアドレスが違うとき（Joey 側でアカウントを切り替えたとき）は、ログインしていない扱いにして、サイドバーのアカウント欄に署名し直す項目を出す。
 
 ## ログアウト
 
@@ -196,7 +200,7 @@ verify で確かめること（すべて満たしたときだけ通す）:
 
 - **アドレスはブラウザの申告をそのまま信じない。** Xaman はサーバーが自分の資格情報で `GET /payload/{uuid}` を引き、`response.account` を読む。Joey はサーバーが出したチャレンジへの署名を検証する。WebSocket の「署名された」は確認のきっかけにしか使わない。
 - **お題をブラウザに結び付ける。** Xaman の uuid は QR や WebSocket の URL に載り、Joey の署名済み tx も漏れうる。知っている・持っているだけでは `verify` を通せないよう、署名付き Cookie にあるお題しか見ない。
-- **署名させるものは台帳に載らない。** Xaman の SignIn は疑似トランザクション、Joey の tx は手数料 0・期限切れの形にしてある。
+- **署名させたものは送信しない。** Xaman の SignIn は台帳に送られない疑似トランザクション。Joey の tx は何も変えない AccountSet で、サーバーは送信しない（漏れたときの影響は「Joey のチャレンジ tx」を参照）。
 - **保存に失敗したらログインさせない。** user_token が貯まらないのにセッションだけ出すと、通知が届かないことに誰も気づけない。
 - **Xaman に出す文言・Joey に渡す tx はサーバーが作る。** ブラウザから受け取った文字列は出さない。
 - **Cookie の検証は `crypto.subtle.verify` に任せる。** 文字列比較によるタイミング攻撃を避ける。
@@ -232,7 +236,7 @@ verify で確かめること（すべて満たしたときだけ通す）:
 | Xaman がペイロードを作れなかった | 502 `payload_failed` |
 | 成功 | 200 `{uuid, next, refs, pushed}` |
 
-- `TransactionType` は、このアプリが実際に署名させる種類だけを許可リストにする（実装時に呼び出し元を洗い出して決める）。
+- `TransactionType` は、このアプリが実際に署名させる種類だけを許可リストにする（`src/app/api/xaman/payload/route.ts` の `ALLOWED_TX_TYPES`）。現時点では `signAndSubmit` の呼び出し元が無いので空。署名させる機能を作るときに足す。
 - `options.force_network` は `MAINNET`。
 - 戻り先（`options.return_url`）はサーバーが組み立てる。ブラウザからは `return_path`（`/` で始まり `//` で始まらないパスとクエリ）だけを受け取り、自分のオリジンを前に付ける。localhost では付けない。
 - 期限（`options.expire`）は 5 分。
@@ -267,7 +271,6 @@ verify で確かめること（すべて満たしたときだけ通す）:
 - ログアウトしても user_token は消さない。ブラウザではなく Xaman アプリに紐づくため。
 - 普通の API アプリが送れるのは署名リクエストの push だけ。自由な文面の通知（xapp/push）は xApp のホワイトリストが必要。通知の送出は未実装。
 
-## 実装前に確かめること
+## 動作確認の記録
 
-- **取引の署名で使う `TransactionType` の洗い出し。** `/api/xaman/payload` の許可リストにする。
-- **Joey の `signTransaction` が `autofill: false` を守り、`Fee: "0"` / `LastLedgerSequence: 1` の tx に署名できるか。** 拒否されるなら、メッセージ署名に切り替えるか、別の「台帳に載らない」形を探す。
+- Joey: `autofill` / `submit` を一番上の階層に置く形で、ログインでき、台帳にも tx が残らないことを確認した（2026-10-02）。

@@ -1,371 +1,137 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
-import type { Xumm as XummType } from "xumm"
-import type { XummTypes } from 'xumm-sdk'
+// Xaman での取引の署名。ペイロードはサーバーが作る（doc/login.md「取引の署名（Xaman）」）。
+// ブラウザ側の Xumm SDK は使わない。ログイン状態は AuthSessionContext が持つ。
+import { createContext, useCallback, useContext, useState, ReactNode } from 'react'
 import type { UnifiedTx } from '@/types/Wallet'
-import type { XummJsonTransaction } from '@/types/Xaman'
-
-export const XAMAN_NETWORK = 'MAINNET'
+import {
+  LOGIN_TTL_MS,
+  createXamanSignRequest,
+  fetchXamanSignResult,
+  type XamanSignRequest,
+} from '@/lib/auth/session-client'
 
 interface TransactionResult {
   hash?: string;
   success: boolean;
   error?: string;
-  [key: string]: string | number | boolean | object | undefined;
-}
-
-interface Account {
-  address: string;
-}
-
-interface XamanWalletProviderProps {
-  children: ReactNode;
-}
-
-interface SignRequest {
-  payload: XummTypes.XummPostPayloadResponse;
-  resolve: (result: TransactionResult) => void;
-  reject: (error: Error) => void;
+  [key: string]: string | number | boolean | object | null | undefined;
 }
 
 interface XamanContextType {
-  account: Account | undefined;
-  isConnected: boolean;
-  isConnecting: boolean;
-  connect: () => Promise<boolean>;
-  disconnect: () => Promise<boolean>;
   signAndSubmitTransaction: (
     transaction: UnifiedTx,
     return_url_query?: string
   ) => Promise<TransactionResult>;
   error: string | null;
   clearError: () => void;
-  balanceXrp: number | null;
-  currentSignRequest: SignRequest | null;
+  /** 署名待ちのリクエスト（QR やリンクを出す画面が使う） */
+  currentSignRequest: XamanSignRequest | null;
   clearSignRequest: () => void;
 }
 
-const XamanContext = createContext<XamanContextType>({
-  account: undefined,
-  isConnected: false,
-  isConnecting: false,
-  connect: async () => false,
-  disconnect: async () => false,
-  signAndSubmitTransaction: async () => ({ success: false }),
-  error: null,
-  clearError: () => {},
-  balanceXrp: null,
-  currentSignRequest: null,
-  clearSignRequest: () => {},
-})
+const XamanContext = createContext<XamanContextType | null>(null)
 
-export const useAccount = () => {
+function useXamanContext(name: string) {
   const context = useContext(XamanContext)
-  if (context === undefined) {
-    throw new Error('useAccount must be used within a XamanWalletProvider')
-  }
-  return context.account
+  if (!context) throw new Error(`${name} must be used within a XamanProvider`)
+  return context
 }
 
-export const useConnect = () => {
-  const context = useContext(XamanContext)
-  if (context === undefined) {
-    throw new Error('useConnect must be used within a XamanWalletProvider')
-  }
-  return {
-    connect: context.connect,
-    isConnecting: context.isConnecting
-  }
-}
-
-export const useDisconnect = () => {
-  const context = useContext(XamanContext)
-  if (context === undefined) {
-    throw new Error('useDisconnect must be used within a XamanWalletProvider')
-  }
-  return context.disconnect
-}
-
-export const useSignAndSubmitTransaction = () => {
-  const context = useContext(XamanContext)
-  if (context === undefined) {
-    throw new Error('useSignAndSubmitTransaction must be used within a XamanWalletProvider')
-  }
-  return context.signAndSubmitTransaction
-}
+export const useSignAndSubmitTransaction = () =>
+  useXamanContext('useSignAndSubmitTransaction').signAndSubmitTransaction
 
 export const useXamanError = () => {
-  const context = useContext(XamanContext)
-  if (context === undefined) {
-    throw new Error('useXamanError must be used within a XamanWalletProvider')
-  }
-  return {
-    error: context.error,
-    clearError: context.clearError
-  }
-}
-
-export const useXamanStatus = () => {
-  const context = useContext(XamanContext)
-  if (context === undefined) {
-    throw new Error('useXamanStatus must be used within a XamanWalletProvider')
-  }
-  return {
-    isConnected: context.isConnected
-  }
-}
-
-export const useBalanceXrp = () => {
-  const context = useContext(XamanContext)
-  if (context === undefined) {
-    throw new Error('useAccount must be used within a XamanWalletProvider')
-  }
-  return context.balanceXrp
+  const { error, clearError } = useXamanContext('useXamanError')
+  return { error, clearError }
 }
 
 export const useXamanSignRequest = () => {
-  const context = useContext(XamanContext)
-  if (context === undefined) {
-    throw new Error('useXamanSignRequest must be used within a XamanWalletProvider')
-  }
-  return {
-    signRequest: context.currentSignRequest,
-    clearSignRequest: context.clearSignRequest
-  }
+  const { currentSignRequest, clearSignRequest } = useXamanContext('useXamanSignRequest')
+  return { signRequest: currentSignRequest, clearSignRequest }
 }
 
-export const XamanProvider = ({ children }: XamanWalletProviderProps) => {
-  const [account, setAccount] = useState<Account | undefined>(undefined)
-  const [isConnecting, setIsConnecting] = useState<boolean>(false)
+/** WebSocket で決着の知らせを待つ。知らせが来なくても期限で打ち切る */
+function waitForResolution(wsUrl: string): Promise<void> {
+  return new Promise((resolve) => {
+    const socket = new WebSocket(wsUrl)
+    const finish = () => {
+      clearTimeout(timer)
+      socket.close()
+      resolve()
+    }
+    const timer = setTimeout(finish, LOGIN_TTL_MS)
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        if ('signed' in data || 'expired' in data) finish()
+      } catch {
+        /* 状態以外のメッセージは無視 */
+      }
+    }
+    socket.onerror = finish
+  })
+}
+
+export const XamanProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null)
-  const [currentSignRequest, setCurrentSignRequest] = useState<SignRequest | null>(null)
-  const [balanceXrp, setBalanceXrp] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      import('xumm').then(({ Xumm }) => {
-        const sdk = new Xumm(process.env.NEXT_PUBLIC_XAMAN_API_KEY as string);
-        setXaman(sdk);
-      });
-    }
-  }, []);
-  const [xaman, setXaman] = useState<XummType | null>(null);
-
-  const checkConnectionStatus = useCallback(async () => {
-    if (!xaman) return;
-    try {
-      const user = await xaman.user;
-      if (user) {
-        const accountAddress = await user.account;
-        if (accountAddress) {
-          console.log('Existing Xaman connection found for account:', accountAddress);
-          setAccount({ address: accountAddress });
-          setBalanceXrp(await getXrpBalance(accountAddress));
-        }
-      }
-    } catch (error) {
-      console.warn('No existing connection:', error);
-    }
-  }, [xaman]);
-
-  const connect = useCallback(async (): Promise<boolean> => {
-    if (!xaman) {
-      setError('SDK not initialized');
-      return false;
-    }
-
-    setIsConnecting(true)
-    setError(null)
-
-    try {
-      console.log('Starting wallet connection process...');
-      const result = await xaman.authorize();
-
-      if (result instanceof Error) {
-        console.error('Authorize failed:', result);
-        setError(result.message);
-        return false;
-      }
-
-      if (!result) {
-        setError('Sign-in was cancelled');
-        return false;
-      }
-
-      console.log('Authorize finished.');
-
-      const address = await xaman.user.account;
-      if (address) {
-        setAccount({ address });
-        setBalanceXrp(await getXrpBalance(address));
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Wallet connection error:', error);
-      setError('Failed to connect wallet');
-      return false;
-    } finally {
-      setIsConnecting(false);
-      console.log('Wallet connection process ended.');
-    }
-  }, [xaman]);
-
-  const disconnect = useCallback(async (): Promise<boolean> => {
-    if (!xaman) return false;
-    try {
-      await xaman.logout();
-      setAccount(undefined);
-      setBalanceXrp(null);
-      return true
-    } catch (error) {
-      console.error('Wallet disconnection error:', error);
-      setError('Failed to disconnect wallet');
-      return false;
-    }
-  }, [xaman]);
-
-  useEffect(() => {
-    if (xaman) {
-      console.log('Checking existing Xaman connection status...');
-      checkConnectionStatus().then(() => {
-      });
-    }
-  }, [xaman, checkConnectionStatus]);
+  const [currentSignRequest, setCurrentSignRequest] = useState<XamanSignRequest | null>(null)
 
   const signAndSubmitTransaction = useCallback(async (
     transaction: UnifiedTx,
     return_url_query?: string
   ): Promise<TransactionResult> => {
-    if (!xaman) {
-      return { success: false, error: 'SDK not initialized' };
+    setError(null)
+    const txjson = 'txjson' in transaction ? transaction.txjson : transaction
+    if ('txblob' in transaction) {
+      return { success: false, error: 'txblob is not supported' }
     }
 
-    setError(null)
-
-    const baseUrl = window.location.origin + window.location.pathname
-    const connector = window.location.search ? '&' : '?'
-    const fullUrl = return_url_query ? `${baseUrl}${connector}${return_url_query}` : baseUrl
+    let returnPath: string | undefined
+    if (return_url_query) {
+      const connector = window.location.search ? '&' : '?'
+      returnPath = `${window.location.pathname}${window.location.search}${connector}${return_url_query}`
+    }
 
     try {
-      if (!account) throw new Error('Wallet is not connected');
-      const payload = await xaman.payload?.create({
-        txjson: transaction as XummJsonTransaction,
-        options: {
-          return_url: {
-            app: fullUrl,
-            web: fullUrl,
-          },
-          force_network: XAMAN_NETWORK
-        }
-      })
-
-      if (!payload) throw new Error('Failed to create payload');
-      return new Promise((resolve, reject) => {
-        setCurrentSignRequest({ payload, resolve, reject })
-
-        const socket = new WebSocket(payload.refs.websocket_status)
-        const timeout = setTimeout(() => {
-          if (socket.readyState === WebSocket.OPEN) {
-            socket.close()
-            setCurrentSignRequest(null)
-            reject(new Error('Transaction signing timed out'));
-          }
-        }, 60000)
-
-        socket.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data)
-            if (data.signed === true) {
-              clearTimeout(timeout)
-              socket.close()
-              const result = {
-                hash: data.txid,
-                success: true,
-                payload_uuid: payload.uuid,
-                next: payload.next,
-                refs: payload.refs,
-                pushed: payload.pushed
-              }
-              resolve(result)
-              setCurrentSignRequest(null)
-            } else if (data.signed === false) {
-              clearTimeout(timeout)
-              socket.close()
-              const result = {
-                success: false,
-                error: 'User cancelled',
-                payload_uuid: payload.uuid
-              }
-              resolve(result)
-              setCurrentSignRequest(null)
+      const request = await createXamanSignRequest(txjson, returnPath)
+      setCurrentSignRequest(request)
+      try {
+        await waitForResolution(request.refs.websocket_status)
+        // 結果は WebSocket ではなくサーバーで確かめる
+        const result = await fetchXamanSignResult(request.uuid)
+        switch (result.status) {
+          case 'signed':
+            return {
+              success: true,
+              hash: result.txid ?? undefined,
+              dispatched_result: result.dispatched_result,
+              payload_uuid: request.uuid,
             }
-          } catch (e) {
-            console.error('WebSocket parsing error:', e);
-          }
+          case 'rejected':
+            return { success: false, error: 'User cancelled', payload_uuid: request.uuid }
+          case 'pending':
+            return { success: false, error: 'Transaction signing timed out', payload_uuid: request.uuid }
+          default:
+            throw new Error(result.error)
         }
-
-        socket.onerror = (err) => {
-          clearTimeout(timeout)
-          console.error('WebSocket error:', err);
-          socket.close()
-          setCurrentSignRequest(null)
-          reject(new Error('WebSocket communication error'));
-        }
-
-        socket.onclose = () => {
-          console.log('WebSocket connection closed');
-        }
-      })
+      } finally {
+        setCurrentSignRequest(null)
+      }
     } catch (err) {
-      console.error('Signing error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Signing error:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
       setError(errorMessage)
-      setCurrentSignRequest(null)
       return { success: false, error: errorMessage }
     }
-  }, [xaman, account]);
-
-  const clearError = (): void => {
-    setError(null)
-  }
-
-  const clearSignRequest = (): void => {
-    setCurrentSignRequest(null)
-  }
-
-  const getXrpBalance = async (address: string): Promise<number | null> => {
-    try {
-      const res = await fetch('/api/xrp-balance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address })
-      })
-      if (!res.ok) {
-        console.warn('Failed to fetch balance:', await res.text());
-        return null
-      }
-      const data = await res.json()
-      return data.availableXrp ?? null
-    } catch (err) {
-      console.error('Balance fetch error:', err);
-      return null
-    }
-  }
+  }, [])
 
   const value: XamanContextType = {
-    account,
-    isConnected: !!account,
-    isConnecting,
-    connect,
-    disconnect,
     signAndSubmitTransaction,
     error,
-    clearError,
-    balanceXrp,
+    clearError: () => setError(null),
     currentSignRequest,
-    clearSignRequest,
+    clearSignRequest: () => setCurrentSignRequest(null),
   }
 
   return (

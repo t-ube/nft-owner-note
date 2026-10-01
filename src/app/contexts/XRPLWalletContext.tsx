@@ -2,16 +2,15 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react'
 import type { WalletType, UnifiedTx, TxResult } from '@/types/Wallet'
-import type { SyncSession } from '@/app/contexts/SyncSessionContext'
+import type { AuthSession } from '@/app/contexts/AuthSessionContext'
 
 import {
   useSignAndSubmitTransaction as useXamanSign,
   useXamanError,
 } from '@/app/contexts/XamanContext'
-import { getXumm } from '@/lib/xumm/client'
 
 import { useProvider as useJoey } from '@/app/contexts/JoeyContext'
-import { useSyncSession } from '@/app/contexts/SyncSessionContext'
+import { useAuthSession } from '@/app/contexts/AuthSessionContext'
 
 type UnifiedCtx = {
   walletType: WalletType | null
@@ -24,15 +23,36 @@ type UnifiedCtx = {
   clearError: () => void
   balanceXrp: number | null
   /**
-   * Joey-only: trigger the sync sign-in flow for an already-connected Joey
-   * wallet. Skips the WC connect step. If the server already has a valid
-   * cookie for the current address, returns immediately without prompting.
+   * Joey 専用: 接続済みの Joey で署名し直してログインする（通常は connect('joey') が署名まで行う）。
+   * Joey 側でアカウントを切り替えたときの入り口。同じアドレスで既にログインしていれば何もしない。
    */
   authenticateJoeySync: () => Promise<{ ok: boolean; error?: string }>
   isAuthenticatingJoey: boolean
 }
 
 const Ctx = createContext<UnifiedCtx | null>(null)
+
+function extractXrplAddress(caipAccount?: string | null): string | null {
+  if (!caipAccount) return null
+
+  const parts = caipAccount.split(':')
+  if (parts.length !== 3) return null
+
+  const [namespace, , address] = parts
+  if (namespace !== 'xrpl') return null
+
+  return address
+}
+
+/** 署名に必要な、接続中の Joey のアドレス・セッション・チェーン */
+type JoeyTarget = { address: string; topic: string; chainId: string }
+
+function toJoeyTarget(topic: string | undefined, caipAccount: string | undefined): JoeyTarget | null {
+  const address = extractXrplAddress(caipAccount)
+  if (!topic || !caipAccount || !address) return null
+  // "xrpl:0:rXXXX" → "xrpl:0"
+  return { address, topic, chainId: caipAccount.split(':').slice(0, 2).join(':') }
+}
 
 export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
   const [walletType, setWalletType] = useState<WalletType | null>(null)
@@ -42,154 +62,85 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
   const [account, setAccount] = useState<string | null>(null)
   const [balanceXrp, setBalanceXrp] = useState<number | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
-  const prevSyncSessionRef = useRef<SyncSession | null>(null)
+  const prevSessionRef = useRef<AuthSession | null>(null)
 
-  // --- Xaman: only used for transaction signing path. Sign-in is now handled
-  //     entirely via the server SignIn flow exposed by SyncSessionContext.
+  // --- Xaman: 取引の署名だけ。ログインは AuthSessionContext（サーバーの SignIn）
   const xamanSign = useXamanSign()
   const { error: xamanError, clearError: clearXamanError } = useXamanError()
 
-  // --- Sync session: source of truth for Xaman address ---
+  // --- ログイン状態（on_session）。Xaman のアドレスはここが正
   const {
-    session: syncSession,
-    isLoading: isSyncLoading,
-    requestSignIn,
-    refresh: refreshSyncSession,
-    signOut: syncSignOut,
-  } = useSyncSession()
+    session: authSession,
+    isLoading: isSessionLoading,
+    requestXamanSignIn,
+    signInWithJoey,
+    refresh: refreshSession,
+    signOut: sessionSignOut,
+  } = useAuthSession()
+  // Xaman としての復元に使うのは、Xaman でログインしたセッションだけ
+  const xamanSession = authSession?.wallet === 'xaman' ? authSession : null
 
   // --- Joey ---
   const joey = useJoey()
 
-  function extractXrplAddress(caipAccount?: string | null): string | null {
-    if (!caipAccount) return null
+  // 接続直後は joey の state がまだ古いので、最新の値はこの ref から読む
+  const joeyRef = useRef(joey)
+  joeyRef.current = joey
 
-    const parts = caipAccount.split(':')
-    if (parts.length !== 3) return null
-
-    const [namespace, , address] = parts
-    if (namespace !== 'xrpl') return null
-
-    return address
-  }
-
-  const joeyConnect = useCallback(async (): Promise<boolean> => {
-    setError(null)
-    try {
-      if (joey.session && joey.accounts?.length) {
-        setWalletType('joey')
-        return true
-      }
-      const res = await joey.actions.connect()
-      if (res?.error) {
-        console.error('Joey connect error:', res.error)
-        setError(res.error.message)
-        return false
-      }
-      setWalletType('joey')
-      return true
-    } catch (e) {
-      console.error('Joey connect exception:', e)
-      setError(e instanceof Error ? e.message : 'Unknown error')
-      return false
+  /** WalletConnect で接続する（接続済みならそのまま）。接続先を返す */
+  const joeyConnect = useCallback(async (): Promise<JoeyTarget | null> => {
+    const current = joeyRef.current
+    if (current.session && current.accounts?.length) {
+      return toJoeyTarget(current.session.topic, current.accounts[0])
     }
-  }, [joey.actions, joey.accounts, joey.session])
+    const res = await current.actions.connect()
+    if (res?.error) throw res.error
+    const session = res?.data
+    return toJoeyTarget(session?.topic, session?.namespaces?.xrpl?.accounts?.[0])
+  }, [])
 
-  // Joey two-step flow: separate sync sign-in invoked from MyAccount UI.
-  // Assumes WC connect already completed.
+  /** 接続中の Joey でチャレンジ tx に署名してログインする。同じアドレスで既にログイン済みなら何もしない */
+  const signInJoey = useCallback(async (target: JoeyTarget) => {
+    const current = await refreshSession()
+    if (current?.address === target.address) return
+
+    const api = joeyRef.current.api
+    if (!api) throw new Error('Joey API is not initialized')
+
+    // サーバーが組み立てたチャレンジ tx に署名だけしてもらう（送信はしない）。
+    // Fee / Sequence / LastLedgerSequence は Joey に本物の値を入れてもらう（台帳で通らない値だと署名を拒むため）。
+    // autofill / submit は一番上の階層に置く（options の中に入れると Joey アプリに読まれず、送信されていた）
+    await signInWithJoey(target.address, async (tx) => {
+      const signRes = await api.signTransaction(
+        {
+          tx_signer: target.address,
+          tx_json: tx,
+          autofill: true,
+          submit: false,
+        } as unknown as Parameters<typeof api.signTransaction>[0],
+        { sessionId: target.topic, chainId: target.chainId }
+      )
+      if (signRes.error) throw signRes.error
+      const signedTxJson = signRes.data?.tx_json
+      if (!signedTxJson) throw new Error('Joey returned no signed tx_json')
+      return signedTxJson
+    })
+  }, [refreshSession, signInWithJoey])
+
+  // 接続済みの Joey で署名し直す（Joey 側でアカウントを切り替えたときなど）
   const authenticateJoeySync = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
     setError(null)
-
-    if (walletType !== 'joey') {
-      const msg = 'Joey is not the active wallet'
-      setError(msg)
-      return { ok: false, error: msg }
-    }
-    if (!joey.session || !joey.accounts?.length) {
+    const target =
+      walletType === 'joey' ? toJoeyTarget(joey.session?.topic, joey.accounts?.[0]) : null
+    if (!target) {
       const msg = 'Joey is not connected'
-      setError(msg)
-      return { ok: false, error: msg }
-    }
-
-    const topic = joey.session.topic
-    const address = extractXrplAddress(joey.accounts[0])
-    if (!address) {
-      const msg = 'Could not resolve XRPL address from Joey session'
       setError(msg)
       return { ok: false, error: msg }
     }
 
     setIsAuthenticatingJoey(true)
     try {
-      // 1. Existing cookie check — if the server already has a valid sync
-      //    session for this address, we don't need to sign again.
-      try {
-        const sessionRes = await fetch('/api/auth/sync/session', { cache: 'no-store' })
-        if (sessionRes.ok) {
-          const data = await sessionRes.json()
-          if (data?.session?.address === address) {
-            console.log('[authenticateJoeySync] existing sync session, skipping sign')
-            await refreshSyncSession()
-            return { ok: true }
-          }
-        }
-      } catch (e) {
-        console.warn('[authenticateJoeySync] session check failed, proceeding to sign', e)
-      }
-
-      const api = joey.api
-      if (!api) {
-        const msg = 'Joey API is not initialized'
-        setError(msg)
-        return { ok: false, error: msg }
-      }
-
-      // 2. Sign-only AccountSet via methods.signTransaction (matches Joey docs).
-      const tx = {
-        TransactionType: 'AccountSet',
-        Account: address,
-      }
-      console.log('[authenticateJoeySync] calling signTransaction', { tx_signer: address, tx })
-
-      const signRes = await api.signTransaction(
-        {
-          tx_signer: address,
-          tx_json: tx,
-          options: { autofill: true, submit: false },
-        } as unknown as Parameters<typeof api.signTransaction>[0],
-        { sessionId: topic, chainId: joey.chain }
-      )
-      console.log('[authenticateJoeySync] signTransaction returned', {
-        error: signRes.error,
-        hasData: !!signRes.data,
-      })
-      if (signRes.error) {
-        throw signRes.error
-      }
-      const signedTxJson = signRes.data?.tx_json
-      if (!signedTxJson) {
-        throw new Error('Joey returned no signed tx_json')
-      }
-
-      // 3. Server-side verify and session issuance.
-      const verifyRes = await fetch('/api/auth/joey/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tx_json: signedTxJson,
-          deviceLabel: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-        }),
-      })
-      if (!verifyRes.ok) {
-        const data = await verifyRes.json().catch(() => ({}))
-        const msg = data.detail
-          ? `${data.error || 'Verification failed'}: ${data.detail}`
-          : data.error || 'Verification failed'
-        throw new Error(msg)
-      }
-
-      await refreshSyncSession()
-      console.log('[authenticateJoeySync] success')
+      await signInJoey(target)
       return { ok: true }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error'
@@ -199,7 +150,7 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
     } finally {
       setIsAuthenticatingJoey(false)
     }
-  }, [walletType, joey.session, joey.accounts, joey.api, joey.chain, refreshSyncSession])
+  }, [walletType, joey.session, joey.accounts, signInJoey])
 
   const clearError = useCallback(() => {
     setError(null)
@@ -212,17 +163,27 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
       setIsConnecting(true)
       try {
         if (type === 'xaman') {
-          const result = await requestSignIn()
-          if (!result) {
-            setError('Sign-in was cancelled')
-            return false
-          }
+          // スマホは Xaman へページ遷移するので、ここには戻らない（戻ったあとは復元で拾う）
+          const result = await requestXamanSignIn()
+          if (!result) return false
           setAccount(result.address)
           setWalletType('xaman')
           return true
         } else if (type === 'joey') {
-          const ok = await joeyConnect()
-          if (!ok) return false
+          // 接続に続けて署名まで行い、Xaman と同じく一続きでログインを済ませる
+          const target = await joeyConnect()
+          if (!target) {
+            setError('Could not resolve XRPL address from Joey session')
+            return false
+          }
+          setWalletType('joey')
+          setAccount(target.address)
+          setIsAuthenticatingJoey(true)
+          try {
+            await signInJoey(target)
+          } finally {
+            setIsAuthenticatingJoey(false)
+          }
           return true
         }
         setError('Unsupported wallet type')
@@ -234,31 +195,25 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
         setIsConnecting(false)
       }
     },
-    [clearError, requestSignIn, joeyConnect]
+    [clearError, requestXamanSignIn, joeyConnect, signInJoey]
   )
 
   const disconnect = useCallback(async () => {
     clearError()
     try {
-      if (walletType === 'xaman') {
-        await syncSignOut()
-        try { getXumm().logout() } catch { /* ignore */ }
-        setWalletType(null)
-        setAccount(null)
-        return true
-      }
+      // どちらのウォレットでも、セッションの Cookie は必ず消す
+      await sessionSignOut()
       if (walletType === 'joey') {
         await joey.actions.disconnect()
-        setWalletType(null)
-        setAccount(null)
-        return true
       }
+      setWalletType(null)
+      setAccount(null)
       return true
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error')
       return false
     }
-  }, [clearError, walletType, syncSignOut, joey.actions])
+  }, [clearError, walletType, sessionSignOut, joey.actions])
 
   const signAndSubmit = useCallback(
     async (tx: UnifiedTx): Promise<TxResult> => {
@@ -285,11 +240,11 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
   )
 
   // 初回セッション復元: Joey が接続中ならそれ、そうでなければ
-  // SyncSession に Xaman セッションがあれば xaman として復元
+  // Xaman でログインしたセッションがあれば xaman として復元
   useEffect(() => {
     if (isInitialized) return
     if (walletType !== null) return
-    if (isSyncLoading) return
+    if (isSessionLoading) return
 
     if (joey.accounts?.length) {
       const addr = extractXrplAddress(joey.accounts[0])
@@ -301,17 +256,27 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
       }
     }
 
-    if (syncSession) {
+    if (xamanSession) {
       setWalletType('xaman')
-      setAccount(syncSession.address)
+      setAccount(xamanSession.address)
       setIsInitialized(true)
       return
     }
 
     setIsInitialized(true)
-  }, [joey.accounts, syncSession, isSyncLoading, walletType, isInitialized])
+  }, [joey.accounts, xamanSession, isSessionLoading, walletType, isInitialized])
 
-  // walletType が xaman のとき、syncSession の変化を account に反映。
+  // スマホの Xaman ログインはページ遷移で戻ってくるので、未接続のときに
+  // Xaman のセッションが現れたら xaman として拾う
+  useEffect(() => {
+    if (!isInitialized) return
+    if (walletType !== null) return
+    if (!xamanSession) return
+    setWalletType('xaman')
+    setAccount(xamanSession.address)
+  }, [isInitialized, walletType, xamanSession])
+
+  // walletType が xaman のとき、セッションの変化を account に反映。
   // ただし「初めて xaman に切り替わった瞬間に session がまだ非同期で読み込み
   // 中で null」というケースで誤って account/walletType をクリアしないよう、
   // 「以前 session があったのに失われたとき」だけクリアする遷移検知にする。
@@ -319,16 +284,16 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
     if (!isInitialized) return
     if (walletType !== 'xaman') return
 
-    const prev = prevSyncSessionRef.current
-    prevSyncSessionRef.current = syncSession
+    const prev = prevSessionRef.current
+    prevSessionRef.current = xamanSession
 
-    if (syncSession) {
-      setAccount(syncSession.address)
+    if (xamanSession) {
+      setAccount(xamanSession.address)
     } else if (prev) {
       setAccount(null)
       setWalletType(null)
     }
-  }, [walletType, syncSession, isInitialized])
+  }, [walletType, xamanSession, isInitialized])
 
   // walletType が joey のとき、Joey 側の変化を反映
   useEffect(() => {

@@ -1,129 +1,44 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { verifySignature } from 'xrpl/dist/npm/Wallet/signer';
-import { deriveAddress } from 'ripple-keypairs';
-import { supabaseAdmin } from '@/lib/supabase/admin'; // シングルトン化されたインスタンスを読み込む
+// Joey。署名済みのチャレンジ tx を確かめる。お題は on_login にあるものしか見ない。
+import { NextRequest } from 'next/server';
 import {
-  attachSessionCookie,
-  computeExpiresAt,
-  generateToken,
-  hashToken,
-} from '@/lib/auth/syncSession';
+  clearLoginCookie,
+  errorJson,
+  getSessionSecret,
+  guardPost,
+  json,
+  readJsonBody,
+  readPendingLogin,
+  setSessionCookie,
+} from '@/lib/auth/session';
+import { verifyChallengeTx } from '@/lib/auth/joey';
+import { recordLogin } from '@/lib/auth/supabase-admin';
 
 export const runtime = 'edge';
-
-type IncomingTx = {
-  Account?: string;
-  SigningPubKey?: string;
-  TxnSignature?: string;
-  [key: string]: unknown;
-};
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  let body: { tx_json?: unknown; deviceLabel?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
+  const secret = getSessionSecret();
+  if (!secret) return errorJson('not_configured', 503);
+  const denied = guardPost(req);
+  if (denied) return denied;
 
-  const txJson = body.tx_json as IncomingTx | undefined;
-  const deviceLabel = typeof body.deviceLabel === 'string' ? body.deviceLabel : null;
+  const pending = await readPendingLogin(req, secret, 'joey');
+  if (!pending || !pending.a) return errorJson('no_pending_login', 401);
 
-  if (!txJson || typeof txJson !== 'object') {
-    return NextResponse.json({ error: 'tx_json is required' }, { status: 400 });
-  }
-  if (typeof txJson.SigningPubKey !== 'string' || !txJson.SigningPubKey) {
-    return NextResponse.json({ error: 'tx_json.SigningPubKey is missing' }, { status: 400 });
-  }
-  if (typeof txJson.TxnSignature !== 'string' || !txJson.TxnSignature) {
-    return NextResponse.json({ error: 'tx_json.TxnSignature is missing' }, { status: 400 });
-  }
-  if (typeof txJson.Account !== 'string' || !txJson.Account) {
-    return NextResponse.json({ error: 'tx_json.Account is missing' }, { status: 400 });
-  }
+  const body = await readJsonBody<{ tx_json?: unknown }>(req);
+  const failure = verifyChallengeTx(body?.tx_json, {
+    address: pending.a,
+    host: new URL(req.url).host,
+    challenge: pending.v,
+  });
+  if (failure) return errorJson(failure, 400);
 
-  // 1. Cryptographically verify the signature against the embedded SigningPubKey.
-  let signatureValid = false;
-  try {
-    // verifySignature accepts a Transaction object or a serialized blob.
-    // We pass the object directly. The function uses SigningPubKey from the tx
-    // when no public key is supplied.
-    signatureValid = verifySignature(txJson as unknown as Parameters<typeof verifySignature>[0]);
-  } catch (err) {
-    return NextResponse.json(
-      {
-        error: 'Signature verification threw',
-        detail: err instanceof Error ? err.message : String(err),
-      },
-      { status: 400 }
-    );
-  }
-  if (!signatureValid) {
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
-  }
+  const account = pending.a;
+  // Joey には user_token が無いので、ログインの記録だけを残す
+  if (!(await recordLogin(account, null, null))) return errorJson('save_failed', 502);
 
-  // 2. The address derived from the public key must match the tx Account
-  //    (otherwise the signer signed with a different key than they claim).
-  let derivedAddress: string;
-  try {
-    derivedAddress = deriveAddress(txJson.SigningPubKey);
-  } catch (err) {
-    return NextResponse.json(
-      {
-        error: 'Failed to derive address from SigningPubKey',
-        detail: err instanceof Error ? err.message : String(err),
-      },
-      { status: 400 }
-    );
-  }
-  if (derivedAddress !== txJson.Account) {
-    return NextResponse.json(
-      { error: 'Signing key does not match Account', expected: derivedAddress, got: txJson.Account },
-      { status: 400 }
-    );
-  }
-
-  // 3. All good — issue a session.
-  const address = txJson.Account;
-  const token = generateToken();
-  const tokenHash = await hashToken(token);
-  const expiresAt = computeExpiresAt();
-
-  try {
-    const { error: insertError } = await supabaseAdmin.from('sync_sessions').insert({
-      token_hash: tokenHash,
-      address,
-      device_label: deviceLabel,
-      expires_at: expiresAt.toISOString(),
-      last_seen_at: new Date().toISOString(),
-    });
-    if (insertError) {
-      console.error('Failed to insert sync_sessions row (joey):', insertError);
-      return NextResponse.json(
-        {
-          error: 'Failed to create session',
-          detail: insertError.message,
-          code: insertError.code,
-          hint: insertError.hint,
-        },
-        { status: 500 }
-      );
-    }
-
-    const response = NextResponse.json({
-      address,
-      expiresAt: expiresAt.toISOString(),
-    });
-    attachSessionCookie(response, token, expiresAt);
-    return response;
-  } catch (err) {
-    console.error('Joey verify error:', err);
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        detail: err instanceof Error ? err.message : String(err),
-      },
-      { status: 500 }
-    );
-  }
+  const res = json({ account });
+  clearLoginCookie(req, res);
+  await setSessionCookie(req, res, secret, account, 'joey');
+  return res;
 }

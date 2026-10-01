@@ -15,6 +15,7 @@ import { Wallets } from '@/types/Wallet'
 import { getDictionary } from '@/i18n/get-dictionary'
 import type { Dictionary } from '@/i18n/dictionaries/index'
 import { useXRPLWallet } from '@/app/contexts/XRPLWalletContext'
+import { useAuthSession } from '@/app/contexts/AuthSessionContext'
 
 interface WalletSelectDialogProps {
   children: React.ReactNode
@@ -31,6 +32,7 @@ export function WalletSelectDialog({
   const [dict, setDict] = useState<Dictionary | null>(null)
 
   const { connect, error, clearError } = useXRPLWallet()
+  const { loginError } = useAuthSession()
 
   useEffect(() => {
     const d = getDictionary(lang as 'en' | 'ja') as unknown as Dictionary
@@ -79,9 +81,9 @@ export function WalletSelectDialog({
               </div>
             </Button>
           ))}
-          {error && (
+          {(error || loginError) && (
             <div className="text-sm text-red-600">
-              {error}
+              {error || loginError}
             </div>
           )}
         </div>

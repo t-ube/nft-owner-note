@@ -132,6 +132,20 @@ CREATE OR REPLACE FUNCTION public.owner_note_touch_token(p_address text, p_token
 $$;
 
 
+-- 取引の署名リクエストを push で届けるための、生きている Xaman の user_token。
+-- 無ければ null（QR で署名してもらう）。
+CREATE OR REPLACE FUNCTION public.owner_note_live_token(p_address text) RETURNS text
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  select token from owner_note.push_token
+  where address = p_address
+    and provider = 'xaman'
+    and revoked_at is null
+    and expires_at > now();
+$$;
+
+
 ALTER TABLE owner_note.account ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE owner_note.push_token ENABLE ROW LEVEL SECURITY;
@@ -156,3 +170,5 @@ revoke execute on function public.owner_note_login(p_address text, p_token text,
 revoke execute on function public.owner_note_touch_token(p_address text, p_token text, p_expires_at timestamptz) from public, anon, authenticated;
 grant execute on function public.owner_note_login(p_address text, p_token text, p_expires_at timestamptz) to service_role;
 grant execute on function public.owner_note_touch_token(p_address text, p_token text, p_expires_at timestamptz) to service_role;
+revoke execute on function public.owner_note_live_token(p_address text) from public, anon, authenticated;
+grant execute on function public.owner_note_live_token(p_address text) to service_role;

@@ -1,44 +1,33 @@
-import { NextResponse } from 'next/server';
-import { createSyncChallenge } from '@/lib/auth/syncSession';
-import { REST_ENDPOINT } from '@/utils/xrpl';
+// Joey。署名してもらうチャレンジ tx を作り、チャレンジを on_login でこのブラウザに結び付ける。
+import { NextRequest } from 'next/server';
+// xrpl 本体は WebSocket クライアントごと読み込むので、edge では軽い codec だけを使う
+import { isValidClassicAddress } from 'ripple-address-codec';
+import {
+  createLoginCookieValue,
+  errorJson,
+  getSessionSecret,
+  guardPost,
+  json,
+  readJsonBody,
+  setLoginCookie,
+} from '@/lib/auth/session';
+import { buildChallengeTx, newChallenge } from '@/lib/auth/joey';
 
 export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
 
-async function fetchCurrentLedger(): Promise<number | null> {
-  try {
-    const res = await fetch(REST_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        method: 'ledger_current',
-        params: [{}],
-      }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const idx = data?.result?.ledger_current_index;
-    return typeof idx === 'number' ? idx : null;
-  } catch {
-    return null;
-  }
-}
+export async function POST(req: NextRequest) {
+  const secret = getSessionSecret();
+  if (!secret) return errorJson('not_configured', 503);
+  const denied = guardPost(req);
+  if (denied) return denied;
 
-export async function POST() {
-  try {
-    const challenge = await createSyncChallenge();
-    const currentLedger = await fetchCurrentLedger();
-    const lastLedgerSequence =
-      typeof currentLedger === 'number' ? currentLedger + 2 : null;
+  const body = await readJsonBody<{ address?: unknown }>(req);
+  const address = typeof body?.address === 'string' ? body.address : '';
+  if (!isValidClassicAddress(address)) return errorJson('bad_address', 400);
 
-    return NextResponse.json({ challenge, lastLedgerSequence });
-  } catch (err) {
-    console.error('Joey challenge error:', err);
-    return NextResponse.json(
-      {
-        error: 'Failed to create challenge',
-        detail: err instanceof Error ? err.message : String(err),
-      },
-      { status: 500 }
-    );
-  }
+  const challenge = newChallenge();
+  const res = json({ tx_json: buildChallengeTx(address, new URL(req.url).host, challenge) });
+  setLoginCookie(req, res, await createLoginCookieValue(secret, { k: 'joey', v: challenge, a: address }));
+  return res;
 }

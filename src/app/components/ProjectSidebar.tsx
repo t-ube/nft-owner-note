@@ -32,6 +32,7 @@ import { getDictionary } from '@/i18n/get-dictionary';
 import { Dictionary } from '@/i18n/dictionaries/index';
 import { CONTRIBUTORS } from '@/constants/contributors';
 import AddProjectDialog from '@/app/components/AddProjectDialog';
+import { SidebarAccount } from '@/app/components/SidebarAccount';
 import { dbManager } from '@/utils/db';
 import { loadRecentProjectIds } from '@/utils/recentProjects';
 import { SegmentedControl } from '@/app/components/SegmentedControl';
@@ -525,6 +526,9 @@ const ProjectSidebar = ({
               sectionProjects.map(project => renderProjectRow(project, `${section}-`))
             )}
           </div>
+
+          {/* アカウント（PC のみ）。ログインの入り口 */}
+          <SidebarAccount lang={lang} dict={dict} />
 
           {/* フッター（PC のみ）。ヘルプ・設定・クレジットを 1 行に収める */}
           <div className="hidden h-12 shrink-0 items-center justify-between border-t px-3 dark:border-gray-700 lg:flex">

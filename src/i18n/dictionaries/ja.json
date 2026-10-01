@@ -4,11 +4,21 @@
     "disconnect": "切断",
     "login": "ログイン",
     "logout": "ログアウト",
-    "settings": "設定"
+    "settings": "設定",
+    "signInWithSignature": "署名してログイン"
   },
   "walletSelect": {
     "title": "ウォレットを選択",
     "description": "接続するウォレットを選択してください。"
+  },
+  "xamanLogin": {
+    "title": "Xaman でログイン",
+    "description": "スマートフォンの Xaman で QR コードを読み取り、サインインを承認してください。",
+    "openInXaman": "Xaman で開く",
+    "cancel": "キャンセル",
+    "failed": "ログインに失敗しました。もう一度お試しください。",
+    "declined": "サインインが拒否されたか、期限が切れました。",
+    "expired": "時間切れになりました。もう一度お試しください。"
   },
   "project": {
     "title": "新規プロジェクト作成",
@@ -575,21 +585,7 @@
       "cloudBackup": "クラウドバックアップ",
       "backupFeature": "バックアップ機能の有効化/無効化",
       "revenueTracking": "収益管理",
-      "prepareRevenue": "収益管理機能の有効化/無効化（準備中）",
-      "cloudSync": {
-        "title": "クラウド同期",
-        "description": "ウォレットで署名して端末間同期を有効化します。",
-        "signedInAs": "署名済みアドレス",
-        "expiresAt": "有効期限",
-        "signIn": "署名して同期を有効化",
-        "signOut": "同期セッションをログアウト",
-        "notSignedIn": "未署名",
-        "dialogTitle": "クラウド同期の署名",
-        "dialogDescription": "Xaman でサインインリクエストを承認してください。",
-        "openInXaman": "Xaman で開く",
-        "cancel": "キャンセル",
-        "signError": "署名に失敗、またはキャンセルされました。"
-      }
+      "prepareRevenue": "収益管理機能の有効化/無効化（準備中）"
     },
     "sidebar": {
       "title": "Owner Note",

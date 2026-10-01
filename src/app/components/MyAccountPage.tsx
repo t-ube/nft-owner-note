@@ -7,16 +7,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, LogOut, Wallet, Cloud, CloudOff } from "lucide-react";
+import { Copy, Check, LogOut, Wallet } from "lucide-react";
 import { getDictionary } from "@/i18n/get-dictionary";
 import type { Dictionary } from "@/i18n/dictionaries/index";
 import { useXRPLWallet } from "@/app/contexts/XRPLWalletContext";
-import { useSyncSession } from "@/app/contexts/SyncSessionContext";
+import { useAuthSession } from "@/app/contexts/AuthSessionContext";
 import { WalletSelectDialog } from "@/app/components/WalletSelectDialog";
 
 type Props = { lang: string };
 
 const SHOW_REVENUE_SECTION = false;
+// クラウドバックアップは未実装のため一時的に隠す
+const SHOW_CLOUD_BACKUP = false;
 
 function shortAddr(addr: string) {
   if (addr.length <= 16) return addr;
@@ -25,15 +27,8 @@ function shortAddr(addr: string) {
 
 export default function MyAccountPage({ lang }: Props) {
   const [dict, setDict] = useState<Dictionary | null>(null);
-  const {
-    account,
-    balanceXrp,
-    walletType,
-    disconnect,
-    authenticateJoeySync,
-    isAuthenticatingJoey,
-  } = useXRPLWallet();
-  const { session: syncSession } = useSyncSession();
+  const { account, balanceXrp, walletType, disconnect } = useXRPLWallet();
+  const { loginError } = useAuthSession();
   const router = useRouter();
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
@@ -84,12 +79,8 @@ export default function MyAccountPage({ lang }: Props) {
 
   if (!dict) return null;
   const t = dict.project.myAccount;
-  const cs = t.cloudSync;
   const ws = dict.walletSelect;
   const menu = dict.menu;
-  const expiresLabel = syncSession
-    ? new Date(syncSession.expiresAt).toLocaleDateString(lang === "ja" ? "ja-JP" : "en-US")
-    : null;
 
   if (!account) {
     return (
@@ -112,6 +103,7 @@ export default function MyAccountPage({ lang }: Props) {
                 {menu.connect}
               </Button>
             </WalletSelectDialog>
+            {loginError && <div className="text-sm text-red-600">{loginError}</div>}
           </CardContent>
         </Card>
       </div>
@@ -170,64 +162,6 @@ export default function MyAccountPage({ lang }: Props) {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                {syncSession ? (
-                  <Cloud className="h-4 w-4 text-green-600" />
-                ) : (
-                  <CloudOff className="h-4 w-4 text-muted-foreground" />
-                )}
-                {cs.title}
-              </CardTitle>
-              {syncSession ? (
-                <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
-                  {cs.signedInAs}
-                </Badge>
-              ) : (
-                <Badge variant="secondary">{cs.notSignedIn}</Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="text-sm text-muted-foreground">{cs.description}</div>
-
-            {syncSession && (
-              <div className="flex flex-col gap-1 text-sm">
-                <div>
-                  <span className="text-muted-foreground">{cs.signedInAs}: </span>
-                  <span className="font-mono">{shortAddr(syncSession.address)}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">{cs.expiresAt}: </span>
-                  <span>{expiresLabel}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Joey は接続と認証が二段階。WC 接続済みでまだ sync session が
-                ない(あるいはアドレス不一致)ときだけ認証ボタンを出す。 */}
-            {walletType === 'joey' &&
-              account &&
-              syncSession?.address !== account && (
-                <div className="flex justify-end pt-2">
-                  <Button
-                    onClick={async () => {
-                      const result = await authenticateJoeySync();
-                      if (!result.ok && result.error) {
-                        console.error('Joey authenticate failed:', result.error);
-                      }
-                    }}
-                    disabled={isAuthenticatingJoey}
-                  >
-                    {isAuthenticatingJoey ? '...' : cs.signIn}
-                  </Button>
-                </div>
-              )}
-          </CardContent>
-        </Card>
-
         {SHOW_REVENUE_SECTION ? (
           <Card>
             <CardHeader>
@@ -246,19 +180,23 @@ export default function MyAccountPage({ lang }: Props) {
             <CardTitle className="text-base">{t.settings}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="font-medium">{t.cloudBackup}</div>
-                <div className="text-sm text-muted-foreground">{t.backupFeature}</div>
-              </div>
-              <Switch
-                checked={backupEnabled}
-                onCheckedChange={setBackupEnabled}
-                aria-label="Enable backup"
-              />
-            </div>
+            {SHOW_CLOUD_BACKUP ? (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium">{t.cloudBackup}</div>
+                    <div className="text-sm text-muted-foreground">{t.backupFeature}</div>
+                  </div>
+                  <Switch
+                    checked={backupEnabled}
+                    onCheckedChange={setBackupEnabled}
+                    aria-label="Enable backup"
+                  />
+                </div>
 
-            <Separator />
+                <Separator />
+              </>
+            ) : null}
 
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">

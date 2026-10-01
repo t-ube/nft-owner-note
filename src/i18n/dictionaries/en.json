@@ -4,11 +4,21 @@
     "disconnect": "Disconnect",
     "login": "Login",
     "logout": "Logout",
-    "settings": "Settings"
+    "settings": "Settings",
+    "signInWithSignature": "Sign to log in"
   },
   "walletSelect": {
     "title": "Select Wallet",
     "description": "Please select a wallet to connect to your account."
+  },
+  "xamanLogin": {
+    "title": "Sign in with Xaman",
+    "description": "Scan the QR code with Xaman on your phone and approve the sign-in request.",
+    "openInXaman": "Open in Xaman",
+    "cancel": "Cancel",
+    "failed": "Sign-in failed. Please try again.",
+    "declined": "The sign-in was rejected or has expired.",
+    "expired": "The sign-in request timed out. Please try again."
   },
   "project": {
     "title": "Create New Project",
@@ -575,21 +585,7 @@
       "cloudBackup": "Cloud Backup",
       "backupFeature": "Enable/disable backup feature",
       "revenueTracking": "Revenue Tracking",
-      "prepareRevenue": "Prepare revenue management (feature flag)",
-      "cloudSync": {
-        "title": "Cloud Sync",
-        "description": "Sign with your wallet to enable cross-device sync.",
-        "signedInAs": "Signed in as",
-        "expiresAt": "Expires",
-        "signIn": "Sign in to enable sync",
-        "signOut": "Sign out of sync",
-        "notSignedIn": "Not signed in",
-        "dialogTitle": "Sign in to enable Cloud Sync",
-        "dialogDescription": "Open Xaman and approve the sign-in request to authorize this device.",
-        "openInXaman": "Open in Xaman",
-        "cancel": "Cancel",
-        "signError": "Sign-in failed or was cancelled."
-      }
+      "prepareRevenue": "Prepare revenue management (feature flag)"
     },
     "sidebar": {
       "title": "Owner Note",
