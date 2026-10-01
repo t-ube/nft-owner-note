@@ -11,6 +11,7 @@ import {
 
 import { useProvider as useJoey } from '@/app/contexts/JoeyContext'
 import { useAuthSession } from '@/app/contexts/AuthSessionContext'
+import { fetchXrpBalance } from '@/utils/xrpBalance'
 
 type UnifiedCtx = {
   walletType: WalletType | null
@@ -335,35 +336,13 @@ export function XRPLWalletProvider({ children }: React.PropsWithChildren) {
     })()
   }, [walletType, joey.session, joey.accounts, joey.chain, joey.actions])
 
-  const getXrpBalance = useCallback(
-    async (address: string): Promise<number | null> => {
-      try {
-        const res = await fetch('/api/xrp-balance', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address }),
-        })
-        if (!res.ok) {
-          console.warn('Failed to fetch balance:', await res.text())
-          return null
-        }
-        const data = await res.json()
-        return data.xrp ?? null
-      } catch (err) {
-        console.error('Balance fetch error:', err)
-        return null
-      }
-    },
-    []
-  )
-
   useEffect(() => {
     if (account === null) {
       setBalanceXrp(null)
       return
     }
-    getXrpBalance(account).then(setBalanceXrp)
-  }, [account, getXrpBalance])
+    fetchXrpBalance(account).then(setBalanceXrp)
+  }, [account])
 
   const value: UnifiedCtx = {
     walletType,
