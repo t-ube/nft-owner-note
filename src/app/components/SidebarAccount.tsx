@@ -1,11 +1,10 @@
 'use client'
 
 // サイドバー（PC）のアカウント欄。未ログインならログインの入り口、ログイン中ならアカウントのメニュー。
-// ログインの入り口は、URL に ?dev=1 を付けたときだけ出す（公開前の一時的な措置）。
-import { useEffect, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { ChevronsUpDown, LogIn, LogOut, PenLine, Wallet } from 'lucide-react'
+import { Activity, ChevronsUpDown, LogIn, LogOut, PenLine, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -26,27 +25,6 @@ type Props = {
   dict: Dictionary
 }
 
-const DEV_MODE_KEY = 'auth.devMode'
-
-/**
- * ?dev=1 で有効、?dev=0 で無効。画面を移ったり Xaman から戻ったりしてもクエリが消えるので、
- * このタブの間は sessionStorage に覚えておく
- */
-function useDevMode(): boolean {
-  const [dev, setDev] = useState(false)
-  useEffect(() => {
-    const param = new URLSearchParams(window.location.search).get('dev')
-    try {
-      if (param === '1') sessionStorage.setItem(DEV_MODE_KEY, '1')
-      else if (param === '0') sessionStorage.removeItem(DEV_MODE_KEY)
-      setDev(sessionStorage.getItem(DEV_MODE_KEY) === '1')
-    } catch {
-      setDev(param === '1')
-    }
-  }, [])
-  return dev
-}
-
 function Frame({ children }: { children: ReactNode }) {
   return <div className="hidden shrink-0 border-t px-3 py-2 dark:border-gray-700 lg:block">{children}</div>
 }
@@ -59,11 +37,7 @@ export function SidebarAccount({ lang, dict }: Props) {
   const router = useRouter()
   const { account, walletType, disconnect, authenticateJoeySync, isAuthenticatingJoey } = useXRPLWallet()
   const { session, isLoading } = useAuthSession()
-  const devMode = useDevMode()
   const t = dict.project.sidebar
-
-  // ログイン中はアカウントのメニューを出すが、未ログインの入り口は ?dev=1 のときだけ
-  if (!account && !devMode) return null
 
   if (isLoading) {
     return (
@@ -128,6 +102,10 @@ export function SidebarAccount({ lang, dict }: Props) {
               {dict.menu.signInWithSignature}
             </DropdownMenuItem>
           )}
+          <DropdownMenuItem onSelect={() => router.push(`/${lang}/my-activity`)}>
+            <Activity className="mr-2 h-4 w-4" />
+            {dict.myActivity.title}
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => router.push(`/${lang}/my-account`)}>
             <Wallet className="mr-2 h-4 w-4" />
             {t.myAccount}

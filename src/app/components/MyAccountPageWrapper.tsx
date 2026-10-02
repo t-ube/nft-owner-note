@@ -19,9 +19,11 @@ import type { Dictionary } from '@/i18n/dictionaries/index';
 
 interface MyAccountPageWrapperProps {
   lang: string;
+  /** サイドバーの右に出す中身。省略時はマイアカウント */
+  children?: React.ReactNode;
 }
 
-export default function MyAccountPageWrapper({ lang }: MyAccountPageWrapperProps) {
+export default function MyAccountPageWrapper({ lang, children }: MyAccountPageWrapperProps) {
   const [dict, setDict] = useState<Dictionary | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -82,7 +84,7 @@ export default function MyAccountPageWrapper({ lang }: MyAccountPageWrapperProps
         lang={lang}
       />
       <div className="flex-1 overflow-auto">
-        <MyAccountPage lang={lang} />
+        {children ?? <MyAccountPage lang={lang} />}
       </div>
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>

@@ -19,9 +19,13 @@ import { Dictionary } from '@/i18n/dictionaries/index';
 interface AddressGroupDialogProps {
   groupId?: string;
   initialAddresses?: string[];
-  children: React.ReactNode;
+  /** 押すと開く部品。open / onOpenChange で外から開け閉めするときは省略できる */
+  children?: React.ReactNode;
   onSave?: (group: AddressGroup) => void;
   lang: string;
+  /** 外から開け閉めするとき（ツールチップの中など、開く部品が消えてしまう場所から開くため） */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function AddressGroupDialog({ 
@@ -29,9 +33,16 @@ export function AddressGroupDialog({
   initialAddresses = [], 
   children, 
   onSave,
-  lang
+  lang,
+  open: openProp,
+  onOpenChange,
 }: AddressGroupDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [innerOpen, setInnerOpen] = useState(false);
+  const open = openProp ?? innerOpen;
+  const setOpen = (value: boolean) => {
+    if (onOpenChange) onOpenChange(value);
+    else setInnerOpen(value);
+  };
   const [addressGroup, setAddressGroup] = useState<Partial<AddressGroup>>({
     name: '',
     xAccount: null,
@@ -133,9 +144,11 @@ export function AddressGroupDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+      {children && (
+        <DialogTrigger asChild>
+          {children}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
